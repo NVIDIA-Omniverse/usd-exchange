@@ -68,6 +68,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         if os.path.exists(stagingDir):
             shutil.rmtree(stagingDir)
         shutil.copytree(f"{source}/python/usdex/core", f"{stagingDir}/usdex/core", ignore=ignore_callable)
+        shutil.copytree(f"{source}/python/usdex/rtx", f"{stagingDir}/usdex/rtx", ignore=ignore_callable)
         shutil.copytree(f"{source}/python/usdex/test", f"{stagingDir}/usdex/test", ignore=ignore_callable)
         shutil.copytree(f"{source}/python/pxr", f"{stagingDir}/pxr", ignore=ignore_callable)
         if omni.repo.man.is_windows():

@@ -18,3 +18,4 @@ done
 
 # Run the tests
 python -m unittest discover -v -s source/core/tests/unittest
+python -m unittest discover -v -s source/rtx/tests/unittest
