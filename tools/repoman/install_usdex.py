@@ -286,6 +286,8 @@ def __install(
             "usdUI",
             "usdVol",
         ]
+        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
+            usdPlugins.append("usdSemantics")
     else:
         usdLibs = [
             "ar",
@@ -321,6 +323,8 @@ def __install(
         ]
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdLibs.append("ts")
+            usdLibs.append("usdSemantics")
+            usdPlugins.append("usdSemantics")
 
     if installTestModules and python_ver != "0":
         # omni.asset_validator uses some OpenUSD modules that we don't otherwise require in our runtime
@@ -401,6 +405,7 @@ def __install(
         ]
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdModules.append(("pxr/Ts", "_ts"))
+            usdModules.append(("pxr/UsdSemantics", "_usdSemantics"))
 
         # usdex.test
         if installTestModules:
@@ -529,7 +534,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         type=str,
         default=[],
         help="""
-        List additional OpenUSD plugins by name (e.g. 'usdSemantics' or 'usdMtlx') to install the necessary plugInfo.json and associated schema,
+        List additional OpenUSD plugins by name (e.g. 'usdMtlx' or 'usdVol') to install the necessary plugInfo.json and associated schema,
         libraries, and python modules.
         If unspecified, only the strictly required OpenUSD plugins will be installed.
         Python modules will be skipped if --python-version=0

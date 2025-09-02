@@ -17,4 +17,14 @@ class PxrTest(unittest.TestCase):
         # Run in subprocess to avoid usdex.core already being imported
         code = "from pxr import Tf; assert hasattr(Tf, 'Status')"
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env)
-        self.assertEqual(result.returncode, 0, f"Failed to import pxr: {result.stderr.decode()}")
+        self.assertEqual(result.returncode, 0, f"Failed to import pxr.Tf: {result.stderr.decode()}")
+
+        code = """
+from pxr import Usd
+major, minor, patch = Usd.GetVersion()
+if major >= 24 and minor >= 11:
+    from pxr import UsdSemantics
+    assert hasattr(UsdSemantics, 'LabelsAPI'), "UsdSemantics.LabelsAPI not available"
+"""
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, f"Failed to import pxr.UsdSemantics: {result.stderr.decode()}")

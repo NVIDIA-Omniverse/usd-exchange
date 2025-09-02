@@ -29,8 +29,12 @@ import os
 if hasattr(os, "add_dll_directory"):
     __scriptdir = os.path.dirname(os.path.realpath(__file__))
     __dlldir = os.path.abspath(os.path.join(__scriptdir, "../../../lib"))
+    __whl_libdir = os.path.abspath(os.path.join(__scriptdir, "../../usd_exchange.libs"))
     if os.path.exists(__dlldir):
         with os.add_dll_directory(__dlldir):
+            from ._usdex_rtx import *  # noqa
+    elif os.path.exists(__whl_libdir):
+        with os.add_dll_directory(__whl_libdir):
             from ._usdex_rtx import *  # noqa
     else:
         # fallback to requiring the client to setup the dll directory

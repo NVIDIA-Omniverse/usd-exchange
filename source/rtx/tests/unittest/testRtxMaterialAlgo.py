@@ -59,10 +59,9 @@ class MaterialAlgoTest(usdex.test.TestCase):
     @staticmethod
     def getExpectedResolveDiagMsgs(failCount, mdlName):
         expected = []
-        if os.environ["USD_FLAVOR"] != "nv-usd":
-            msg = f".*Failed to resolve reference @{mdlName}@"
-            for i in range(failCount):
-                expected.append((Tf.TF_DIAGNOSTIC_WARNING_TYPE, msg))
+        msg = f".*Failed to resolve reference @{mdlName}@"
+        for i in range(failCount):
+            expected.append((Tf.TF_DIAGNOSTIC_WARNING_TYPE, msg))
         return expected
 
     def _createTestStage(self):

@@ -18,6 +18,7 @@ Changelog = "https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/la
 authors = ["NVIDIA"]
 packages = [
     { include="usdex/core" },
+    { include="usdex/rtx" },
     { include="usdex/test" },
     { include="pxr" },
 ]

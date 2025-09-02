@@ -319,8 +319,8 @@ warn_if_not_exist = true
 enabled = true
 staging_dir = "$root/_build/pyproject"
 install_dir = "$root/_build/packages"
-"platform:windows-x86_64".exclude       = ["*.pdb", "*.exp", "*.lib", "usdex_rtx*"]
-"platform:linux-x86_64".exclude         = ["usdex_rtx*"]
+"platform:windows-x86_64".exclude       = ["*.pdb", "*.exp", "*.lib"]
+"platform:linux-x86_64".exclude         = []
 
 [repo_codesign]
 enabled = true

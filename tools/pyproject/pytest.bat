@@ -23,4 +23,7 @@ REM Run the tests
 python.exe -m unittest discover -v -s source\core\tests\unittest
 if %errorlevel% neq 0 ( exit /b %errorlevel% )
 
+python.exe -m unittest discover -v -s source\rtx\tests\unittest
+if %errorlevel% neq 0 ( exit /b %errorlevel% )
+
 endlocal
