@@ -79,6 +79,12 @@ __all__ = [
     "definePolyMesh",
     "defineLinearBasisCurves",
     "defineCubicBasisCurves",
+    "definePlane",
+    "defineSphere",
+    "defineCube",
+    "defineCone",
+    "defineCylinder",
+    "defineCapsule",
     # camera
     "defineCamera",
     # primvars

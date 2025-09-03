@@ -30,10 +30,18 @@
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usdGeom/basisCurves.h>
 #include <pxr/usd/usdGeom/camera.h>
+#include <pxr/usd/usdGeom/capsule.h>
+#include <pxr/usd/usdGeom/capsule_1.h>
+#include <pxr/usd/usdGeom/cone.h>
+#include <pxr/usd/usdGeom/cube.h>
+#include <pxr/usd/usdGeom/cylinder.h>
+#include <pxr/usd/usdGeom/cylinder_1.h>
 #include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/plane.h>
 #include <pxr/usd/usdGeom/points.h>
 #include <pxr/usd/usdGeom/primvar.h>
 #include <pxr/usd/usdGeom/scope.h>
+#include <pxr/usd/usdGeom/sphere.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdGeom/xformable.h>
 #include <pxr/usd/usdLux/distantLight.h>
@@ -177,7 +185,22 @@ PYBOOST11_TYPE_CASTER(pxr::UsdPhysicsPrismaticJoint, _("pxr.UsdPhysics.Prismatic
 PYBOOST11_TYPE_CASTER(pxr::UsdPhysicsSphericalJoint, _("pxr.UsdPhysics.SphericalJoint"));
 //! pybind11 interoperability for `UsdPhysicsJoint`
 PYBOOST11_TYPE_CASTER(pxr::UsdPhysicsJoint, _("pxr.UsdPhysics.Joint"));
-
+//! pybind11 interoperability for `UsdGeomSphere`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomSphere, _("pxr.UsdGeom.Sphere"));
+//! pybind11 interoperability for `UsdGeomPlane`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomPlane, _("pxr.UsdGeom.Plane"));
+//! pybind11 interoperability for `UsdGeomCube`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomCube, _("pxr.UsdGeom.Cube"));
+//! pybind11 interoperability for `UsdGeomCone`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomCone, _("pxr.UsdGeom.Cone"));
+//! pybind11 interoperability for `UsdGeomCylinder`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomCylinder, _("pxr.UsdGeom.Cylinder"));
+//! pybind11 interoperability for `UsdGeomCylinder_1`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomCylinder_1, _("pxr.UsdGeom.Cylinder_1"));
+//! pybind11 interoperability for `UsdGeomCapsule`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomCapsule, _("pxr.UsdGeom.Capsule"));
+//! pybind11 interoperability for `UsdGeomCapsule_1`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomCapsule_1, _("pxr.UsdGeom.Capsule_1"));
 //! @}
 
 } // namespace pybind11::detail
