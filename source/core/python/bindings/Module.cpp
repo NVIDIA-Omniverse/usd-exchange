@@ -12,6 +12,7 @@ ARCH_PRAGMA_MAYBE_UNINITIALIZED
 #include "CoreBindings.h"
 #include "CurvesAlgoBindings.h"
 #include "DiagnosticsBindings.h"
+#include "GprimAlgoBindings.h"
 #include "LayerAlgoBindings.h"
 #include "LightAlgoBindings.h"
 #include "MaterialAlgoBindings.h"
@@ -52,6 +53,7 @@ PYBIND11_MODULE(_usdex_core, m)
     bindMaterialAlgo(m);
     bindPhysicsJointAlgo(m);
     bindPhysicsMaterialAlgo(m);
+    bindGprimAlgo(m);
 }
 
 } // namespace
