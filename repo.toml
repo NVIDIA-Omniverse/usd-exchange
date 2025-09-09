@@ -343,4 +343,5 @@ test.script = "$root/tools/ci/test.py"
 verify_deps.script = "$root/tools/ci/verify_deps.py"
 # the publishing scripts only exist during CI
 publish_packages.script = "$root/usd-exchange-ci/scripts/publish_packages.py"
+publish_wheels.script = "$root/usd-exchange-ci/scripts/wheel_upload.py"
 publish_docs.script = "$root/usd-exchange-ci/scripts/publish_docs.py"
