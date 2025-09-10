@@ -81,6 +81,55 @@ void bindAssetStructure(module& m)
     );
 
     m.def(
+        "configureComponentHierarchy",
+        &configureComponentHierarchy,
+        arg("prim"),
+        R"(
+            Configure a prim and its descendants to establish a proper asset component hierarchy.
+
+            Sets the kind of the prim to "component" and adjusts the kinds of all descendant prims to maintain
+            a valid USD model hierarchy. Any descendant prim that currently has the kind "component" will be
+            changed to "subcomponent". Any descendant prim that has an authored kind other than "component"
+            or "subcomponent" will have its kind cleared (set to an empty token).
+
+            If a prim has no authored kind, it will be set to "group" if it has descendant model prims.
+
+            This function is commonly used when configuring asset interfaces to ensure the model hierarchy
+            follows USD best practices for components.
+
+            Args:
+                - prim: The prim to configure as a component. This prim and all its descendants will be processed.
+
+            Returns:
+                True if the component hierarchy was successfully configured, false otherwise.
+
+        )"
+    );
+
+    m.def(
+        "configureAssemblyHierarchy",
+        &configureAssemblyHierarchy,
+        arg("prim"),
+        R"(
+            Configure a prim and its descendants to establish a proper asset assembly hierarchy.
+
+            Sets the kind of the prim to "assembly" and adjusts the kinds of all descendant prims to maintain
+            a valid USD model hierarchy. Any descendant prim with an invalid kind will be changed to "group".
+            Descendant prims with "component" kind are left unchanged to preserve the component hierarchy.
+
+            This function is commonly used when configuring complex assets that contain multiple components
+            to ensure the model hierarchy follows USD best practices for assemblies.
+
+            Args:
+                - prim: The prim to configure as an assembly. This prim and all its descendants will be processed.
+
+            Returns:
+                True if the assembly hierarchy was successfully configured, false otherwise.
+
+        )"
+    );
+
+    m.def(
         "addAssetInterface",
         &addAssetInterface,
         arg("stage"),

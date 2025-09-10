@@ -1166,3 +1166,426 @@ class DefinePayloadTestCase(DefineReferencePayloadBase, usdex.test.DefineFunctio
     def getReferencePayloadList(self, prim):
         primSpec = prim.GetStage().GetEditTarget().GetLayer().GetPrimAtPath(prim.GetPath())
         return primSpec.payloadList.prependedItems
+
+
+class ConfigureComponentHierarchyTestCase(usdex.test.TestCase):
+
+    def createTestStage(self):
+        """Create a simple test stage with a default prim"""
+        stageFile = self.tmpFile("test", "usda")
+        stage = usdex.core.createStage(
+            stageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        return stage
+
+    def testInvalidPrim(self):
+        # Test with invalid prim
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*invalid prim")]):
+            result = usdex.core.configureComponentHierarchy(Usd.Prim())
+            self.assertFalse(result)
+
+    def testBasicComponent(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Initially, the prim should have no kind
+        modelAPI = Usd.ModelAPI(rootPrim)
+        kind = modelAPI.GetKind()
+        self.assertEqual(kind, "")
+
+        # Call configureComponentHierarchy
+        result = usdex.core.configureComponentHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # The prim should now have component kind
+        kind = modelAPI.GetKind()
+        self.assertEqual(kind, Kind.Tokens.component)
+
+        self.assertIsValidUsd(stage)
+
+    def testComponentWithChildren(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create some child prims with different kinds
+        childA = usdex.core.defineScope(rootPrim, "ChildA").GetPrim()
+        self.assertTrue(childA)
+        Usd.ModelAPI(childA).SetKind(Kind.Tokens.component)  # This should become subcomponent
+
+        childB = usdex.core.defineScope(rootPrim, "ChildB").GetPrim()
+        Usd.ModelAPI(childB).SetKind(Kind.Tokens.assembly)  # This should be cleared
+
+        childC = usdex.core.defineScope(rootPrim, "ChildC").GetPrim()
+        # childC has no kind - should remain unchanged
+
+        # Call configureComponentHierarchy on the root
+        result = usdex.core.configureComponentHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check the root prim
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.component)
+
+        # Check the children
+        self.assertEqual(Usd.ModelAPI(childA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(childB).GetKind(), "")  # Should be cleared
+        self.assertEqual(Usd.ModelAPI(childC).GetKind(), "")  # Should remain empty
+
+        self.assertIsValidUsd(stage)
+
+    def testNestedHierarchy(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create a nested hierarchy
+        childA = usdex.core.defineScope(rootPrim, "ChildA").GetPrim()
+        Usd.ModelAPI(childA).SetKind(Kind.Tokens.component)
+
+        grandchildA = usdex.core.defineScope(childA, "GrandchildA").GetPrim()
+        Usd.ModelAPI(grandchildA).SetKind(Kind.Tokens.component)
+
+        greatGrandchildA = usdex.core.defineScope(grandchildA, "GreatGrandchildA").GetPrim()
+        Usd.ModelAPI(greatGrandchildA).SetKind(Kind.Tokens.subcomponent)
+
+        grandchildB = usdex.core.defineScope(childA, "GrandchildB").GetPrim()
+        Usd.ModelAPI(grandchildB).SetKind(Kind.Tokens.group)
+
+        # Call configureComponentHierarchy on the root
+        result = usdex.core.configureComponentHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check all prims
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(childA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(grandchildA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(greatGrandchildA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(grandchildB).GetKind(), "")  # group should be cleared
+
+        self.assertIsValidUsd(stage)
+
+    def testExistingSubcomponent(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create a child with subcomponent kind
+        child = usdex.core.defineScope(rootPrim, "Child").GetPrim()
+        Usd.ModelAPI(child).SetKind(Kind.Tokens.subcomponent)
+
+        # Call configureComponentHierarchy on the root
+        result = usdex.core.configureComponentHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check that the root is component and child remains subcomponent
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(child).GetKind(), Kind.Tokens.subcomponent)
+
+        self.assertIsValidUsd(stage)
+
+    def testSetKindFailure(self):
+        # Test behavior with a read-only layer where setting kinds might fail
+        stage = self.createTestStage()
+
+        # This should fail because the layer is read-only
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to set the kind of")]):
+            result = usdex.core.configureComponentHierarchy(stage.GetPseudoRoot())
+            self.assertFalse(result)
+
+
+class ConfigureAssemblyHierarchyTestCase(usdex.test.TestCase):
+
+    def createTestStage(self):
+        """Create a simple test stage with a default prim"""
+        stageFile = self.tmpFile("test", "usda")
+        stage = usdex.core.createStage(
+            stageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        return stage
+
+    def testInvalidPrim(self):
+        # Test with invalid prim
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*invalid prim")]):
+            result = usdex.core.configureAssemblyHierarchy(Usd.Prim())
+            self.assertFalse(result)
+
+    def testBasicAssembly(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Initially, the prim should have no kind
+        modelAPI = Usd.ModelAPI(rootPrim)
+        kind = modelAPI.GetKind()
+        self.assertEqual(kind, "")
+
+        # Call configureAssemblyHierarchy
+        result = usdex.core.configureAssemblyHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # The prim should now have assembly kind
+        kind = modelAPI.GetKind()
+        self.assertEqual(kind, Kind.Tokens.assembly)
+
+        self.assertIsValidUsd(stage)
+
+    def testAssemblyWithChildren(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create some child prims with different kinds
+        childA = usdex.core.defineScope(rootPrim, "ChildA").GetPrim()
+        Usd.ModelAPI(childA).SetKind(Kind.Tokens.component)  # This should stay component
+
+        childB = usdex.core.defineScope(rootPrim, "ChildB").GetPrim()
+        Usd.ModelAPI(childB).SetKind(Kind.Tokens.assembly)  # This is technically a group so it should stay assembly
+
+        childC = usdex.core.defineScope(rootPrim, "ChildC").GetPrim()
+        # childC has no kind - should remain unchanged
+
+        childD = usdex.core.defineScope(rootPrim, "ChildD").GetPrim()
+        Usd.ModelAPI(childD).SetKind(Kind.Tokens.model)  # This is wrong and should be set to group
+
+        # Call configureAssemblyHierarchy on the root
+        result = usdex.core.configureAssemblyHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check the root prim
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.assembly)
+
+        # Check the children
+        self.assertEqual(Usd.ModelAPI(childA).GetKind(), Kind.Tokens.component)  # Should stay component
+        self.assertEqual(Usd.ModelAPI(childB).GetKind(), Kind.Tokens.assembly)  # Should stay assembly
+        self.assertEqual(Usd.ModelAPI(childC).GetKind(), "")  # Should remain empty
+        self.assertEqual(Usd.ModelAPI(childD).GetKind(), Kind.Tokens.group)  # Should be set to group
+
+        self.assertIsValidUsd(stage)
+
+    def testNestedAssemblyHierarchy(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create a nested hierarchy
+        childA = usdex.core.defineScope(rootPrim, "ChildA").GetPrim()
+        Usd.ModelAPI(childA).SetKind(Kind.Tokens.assembly)  # Should stay assembly
+
+        grandchildA = usdex.core.defineScope(childA, "GrandchildA").GetPrim()
+        Usd.ModelAPI(grandchildA).SetKind(Kind.Tokens.component)  # Should stay component
+
+        grandchildB = usdex.core.defineScope(childA, "GrandchildB").GetPrim()
+        Usd.ModelAPI(grandchildB).SetKind(Kind.Tokens.group)  # Should stay group
+
+        # Call configureAssemblyHierarchy on the root
+        result = usdex.core.configureAssemblyHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check all prims
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.assembly)
+        self.assertEqual(Usd.ModelAPI(childA).GetKind(), Kind.Tokens.assembly)  # assembly preserved
+        self.assertEqual(Usd.ModelAPI(grandchildA).GetKind(), Kind.Tokens.component)  # component unchanged
+        self.assertEqual(Usd.ModelAPI(grandchildB).GetKind(), Kind.Tokens.group)  # group unchanged
+
+        self.assertIsValidUsd(stage)
+
+    def testComponentsPreserved(self):
+        # Test that components and their subcomponents are preserved
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create a component with subcomponents
+        componentPrim = usdex.core.defineScope(rootPrim, "Component").GetPrim()
+        Usd.ModelAPI(componentPrim).SetKind(Kind.Tokens.component)
+
+        subcomponentA = usdex.core.defineScope(componentPrim, "SubA").GetPrim()
+        Usd.ModelAPI(subcomponentA).SetKind(Kind.Tokens.subcomponent)
+
+        subcomponentB = usdex.core.defineScope(componentPrim, "SubB").GetPrim()
+        Usd.ModelAPI(subcomponentB).SetKind(Kind.Tokens.subcomponent)
+
+        # Also add in a group and an assembly
+        groupPrim = usdex.core.defineScope(rootPrim, "Group").GetPrim()
+        Usd.ModelAPI(groupPrim).SetKind(Kind.Tokens.group)
+
+        subAssemblyPrim = usdex.core.defineScope(rootPrim, "SubAssembly").GetPrim()
+        Usd.ModelAPI(subAssemblyPrim).SetKind(Kind.Tokens.assembly)
+
+        # Call configureAssemblyHierarchy on the root
+        result = usdex.core.configureAssemblyHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check all prims
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.assembly)
+        self.assertEqual(Usd.ModelAPI(componentPrim).GetKind(), Kind.Tokens.component)  # component preserved
+        self.assertEqual(Usd.ModelAPI(subcomponentA).GetKind(), Kind.Tokens.subcomponent)  # subcomponent preserved
+        self.assertEqual(Usd.ModelAPI(subcomponentB).GetKind(), Kind.Tokens.subcomponent)  # subcomponent preserved
+        self.assertEqual(Usd.ModelAPI(groupPrim).GetKind(), Kind.Tokens.group)  # group preserved
+        self.assertEqual(Usd.ModelAPI(subAssemblyPrim).GetKind(), Kind.Tokens.assembly)  # assembly preserved
+
+        self.assertIsValidUsd(stage)
+
+    def testComplexHierarchyWithEmptyKinds(self):
+        # Test the new behavior where empty kinds are set to "group" if they have descendant model prims
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create the complex hierarchy structure
+        # /AssetRoot (will become assembly)
+        # |-- /CarBody (empty kind) -> should become "group"
+        # |   |-- /Exterior (empty kind) -> should become "group"
+        # |   |   |-- /Hood (component)
+        # |   |   `-- /Doors (group)
+        # |   |       |-- /DoorLeft (component)
+        # |   |       `-- /DoorRight (component)
+        # |   `-- /Engine (assembly)
+        # |       |-- /Block (component)
+        # |       `-- /Pistons (group)
+        # |           `-- /Piston1 (component)
+        # `-- /Wheels (group)
+        # |   `-- /WheelFL (component)
+        # `-- /Materials (empty kind) -> should stay empty (no model descendants)
+
+        # Create CarBody (empty kind - should become group)
+        carBody = usdex.core.defineScope(rootPrim, "CarBody").GetPrim()
+
+        # Create Exterior (empty kind - should become group)
+        exterior = usdex.core.defineScope(carBody, "Exterior").GetPrim()
+
+        # Create Hood (component)
+        hood = usdex.core.defineScope(exterior, "Hood").GetPrim()
+        Usd.ModelAPI(hood).SetKind(Kind.Tokens.component)
+
+        # Create Doors (group)
+        doors = usdex.core.defineScope(exterior, "Doors").GetPrim()
+        Usd.ModelAPI(doors).SetKind(Kind.Tokens.group)
+
+        # Create DoorLeft and DoorRight (components)
+        doorLeft = usdex.core.defineScope(doors, "DoorLeft").GetPrim()
+        Usd.ModelAPI(doorLeft).SetKind(Kind.Tokens.component)
+        doorRight = usdex.core.defineScope(doors, "DoorRight").GetPrim()
+        Usd.ModelAPI(doorRight).SetKind(Kind.Tokens.component)
+
+        # Create Engine (assembly)
+        engine = usdex.core.defineScope(carBody, "Engine").GetPrim()
+        Usd.ModelAPI(engine).SetKind(Kind.Tokens.assembly)
+
+        # Create Block (component)
+        block = usdex.core.defineScope(engine, "Block").GetPrim()
+        Usd.ModelAPI(block).SetKind(Kind.Tokens.component)
+
+        # Create Pistons (group)
+        pistons = usdex.core.defineScope(engine, "Pistons").GetPrim()
+        Usd.ModelAPI(pistons).SetKind(Kind.Tokens.group)
+
+        # Create Piston1 (component)
+        piston1 = usdex.core.defineScope(pistons, "Piston1").GetPrim()
+        Usd.ModelAPI(piston1).SetKind(Kind.Tokens.component)
+
+        # Create Wheels (group)
+        wheels = usdex.core.defineScope(rootPrim, "Wheels").GetPrim()
+        Usd.ModelAPI(wheels).SetKind(Kind.Tokens.group)
+
+        # Create WheelFL (component)
+        wheelFL = usdex.core.defineScope(wheels, "WheelFL").GetPrim()
+        Usd.ModelAPI(wheelFL).SetKind(Kind.Tokens.component)
+
+        # Create Materials (empty kind - should stay empty, no model descendants)
+        materials = usdex.core.defineScope(rootPrim, "Materials").GetPrim()
+
+        # Verify initial state - CarBody and Exterior should have empty kinds
+        self.assertEqual(Usd.ModelAPI(carBody).GetKind(), "")
+        self.assertEqual(Usd.ModelAPI(exterior).GetKind(), "")
+        self.assertEqual(Usd.ModelAPI(materials).GetKind(), "")
+
+        # Call configureAssemblyHierarchy on the root
+        result = usdex.core.configureAssemblyHierarchy(rootPrim)
+        self.assertTrue(result)
+
+        # Check that the root is now assembly
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.assembly)
+
+        # Check CarBody - should now be group (has model descendants)
+        self.assertEqual(Usd.ModelAPI(carBody).GetKind(), Kind.Tokens.group)
+
+        # Check Exterior - should now be group (has model descendants)
+        self.assertEqual(Usd.ModelAPI(exterior).GetKind(), Kind.Tokens.group)
+
+        # Check that existing kinds are preserved correctly
+        self.assertEqual(Usd.ModelAPI(hood).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(doors).GetKind(), Kind.Tokens.group)
+        self.assertEqual(Usd.ModelAPI(doorLeft).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(doorRight).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(engine).GetKind(), Kind.Tokens.assembly)
+        self.assertEqual(Usd.ModelAPI(block).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(pistons).GetKind(), Kind.Tokens.group)
+        self.assertEqual(Usd.ModelAPI(piston1).GetKind(), Kind.Tokens.component)
+        self.assertEqual(Usd.ModelAPI(wheels).GetKind(), Kind.Tokens.group)
+        self.assertEqual(Usd.ModelAPI(wheelFL).GetKind(), Kind.Tokens.component)
+
+        # Check Materials - should stay empty (no model descendants)
+        self.assertEqual(Usd.ModelAPI(materials).GetKind(), "")
+
+        self.assertIsValidUsd(stage)
+
+    def testSubcomponentsConverted(self):
+        stage = self.createTestStage()
+        rootPrim = stage.GetDefaultPrim()
+
+        # Create a hierarchy with subcomponents that should be converted:
+        # /AssetRoot (will become assembly)
+        # `-- /ComponentA (subcomponent) - should be converted to component
+        #     |-- /SubA (subcomponent) - should remain subcomponent
+        #     `-- /SubB (subcomponent) - should remain subcomponent
+        #         `-- /NestedSub (subcomponent) - should remain subcomponent
+
+        # Create ComponentA as a subcomponent (will be converted to component)
+        componentA = usdex.core.defineScope(rootPrim, "ComponentA").GetPrim()
+        Usd.ModelAPI(componentA).SetKind(Kind.Tokens.subcomponent)
+
+        subA = usdex.core.defineScope(componentA, "SubA").GetPrim()
+        Usd.ModelAPI(subA).SetKind(Kind.Tokens.subcomponent)
+
+        subB = usdex.core.defineScope(componentA, "SubB").GetPrim()
+        Usd.ModelAPI(subB).SetKind(Kind.Tokens.subcomponent)
+
+        # Create a nested subcomponent under SubB
+        nestedSub = usdex.core.defineScope(subB, "NestedSub").GetPrim()
+        Usd.ModelAPI(nestedSub).SetKind(Kind.Tokens.subcomponent)
+
+        # Verify initial state
+        self.assertEqual(Usd.ModelAPI(componentA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(subA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(subB).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(nestedSub).GetKind(), Kind.Tokens.subcomponent)
+
+        # Call configureAssemblyHierarchy on the root
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Found subcomponent")]):
+            result = usdex.core.configureAssemblyHierarchy(rootPrim)
+            self.assertFalse(result)
+
+        # Check that the root is now assembly
+        self.assertEqual(Usd.ModelAPI(rootPrim).GetKind(), Kind.Tokens.assembly)
+
+        # Check that the subcomponent is converted to component
+        # This is the anticipated behavior change
+        self.assertEqual(Usd.ModelAPI(componentA).GetKind(), Kind.Tokens.component)
+
+        # Check that subcomponents under the converted component remain unchanged
+        # because PruneChildren() stops processing that subtree
+        self.assertEqual(Usd.ModelAPI(subA).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(subB).GetKind(), Kind.Tokens.subcomponent)
+        self.assertEqual(Usd.ModelAPI(nestedSub).GetKind(), Kind.Tokens.subcomponent)
+
+        self.assertIsValidUsd(stage)
+
+    def testSetKindFailure(self):
+        # Test behavior when setting kinds fails
+        stage = self.createTestStage()
+
+        # This should fail because the pseudo root can't have model API applied
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to set the kind of")]):
+            result = usdex.core.configureAssemblyHierarchy(stage.GetPseudoRoot())
+            self.assertFalse(result)

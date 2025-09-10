@@ -66,6 +66,26 @@ TF_DEFINE_PRIVATE_TOKENS(
 // clang-format on
 #endif
 
+bool hasDescendantModelPrims(const UsdPrim& prim)
+{
+    for (const UsdPrim& descendant : UsdPrimRange::AllPrims(prim))
+    {
+        if (descendant == prim)
+        {
+            continue;
+        }
+
+        UsdModelAPI model = UsdModelAPI(descendant);
+        TfToken kind;
+        bool hasAuthoredKind = model.GetKind(&kind);
+
+        if (hasAuthoredKind && (kind == KindTokens->assembly || kind == KindTokens->group || kind == KindTokens->component))
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 //! Compute the relative identifier from an anchor identifier to a source identifier
 //!
@@ -261,41 +281,6 @@ bool getReferencePayloadPrimPath(UsdPrim parent, UsdPrim source, std::optional<s
     return true;
 }
 
-//! Set the kind of a prim and all its descendants to component
-//!
-//! If any descendant is a component, it is set to subcomponent
-//! If any descendant has an authored kind that is not component, it is set to an empty token
-void createAssetComponent(UsdPrim prim)
-{
-    UsdModelAPI(prim).SetKind(KindTokens->component);
-    for (UsdPrim descendant : UsdPrimRange(prim))
-    {
-        if (descendant == prim)
-        {
-            continue;
-        }
-
-        UsdModelAPI model = UsdModelAPI(descendant);
-        TfToken currentKind;
-        bool hasAuthoredKind = model.GetKind(&currentKind);
-        if (currentKind == KindTokens->component)
-        {
-            bool success = model.SetKind(KindTokens->subcomponent);
-            if (!success)
-            {
-                TF_WARN("Unable to set the kind of \"%s\" to subcomponent", descendant.GetPath().GetAsString().c_str());
-            }
-        }
-        else if (hasAuthoredKind)
-        {
-            bool success = model.SetKind(_tokens->Empty);
-            if (!success)
-            {
-                TF_WARN("Unable to clear the kind of \"%s\"", descendant.GetPath().GetAsString().c_str());
-            }
-        }
-    }
-}
 } // namespace
 
 UsdGeomScope usdex::core::defineScope(UsdStagePtr stage, const SdfPath& path)
@@ -630,7 +615,12 @@ bool usdex::core::addAssetInterface(UsdStagePtr stage, const UsdStagePtr source)
     // annotate the asset interface
     UsdModelAPI model = UsdModelAPI(root);
     model.SetAssetName(usdex::core::computeEffectiveDisplayName(root));
-    ::createAssetComponent(root);
+    success = usdex::core::configureComponentHierarchy(root);
+    if (!success)
+    {
+        TF_WARN("Unable to configure component hierarchy for the default prim");
+        return false;
+    }
 
     UsdGeomModelAPI geomModel = UsdGeomModelAPI::Apply(root);
     if (!geomModel)
@@ -648,6 +638,144 @@ bool usdex::core::addAssetInterface(UsdStagePtr stage, const UsdStagePtr source)
     }
 
     return true;
+}
+
+bool usdex::core::configureComponentHierarchy(pxr::UsdPrim prim)
+{
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to configure component hierarchy due to invalid prim");
+        return false;
+    }
+
+    // Set the root prim kind to component
+    UsdModelAPI rootModel = UsdModelAPI(prim);
+    if (!rootModel.SetKind(KindTokens->component))
+    {
+        TF_RUNTIME_ERROR("Unable to set the kind of \"%s\" to component", prim.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    // Process all descendants
+    bool overallSuccess = true;
+    for (UsdPrim descendant : UsdPrimRange(prim))
+    {
+        if (descendant == prim)
+        {
+            continue;
+        }
+
+        UsdModelAPI model = UsdModelAPI(descendant);
+        TfToken currentKind;
+        bool hasAuthoredKind = model.GetKind(&currentKind);
+
+        // If the prim has no kind, skip it
+        if (!hasAuthoredKind)
+        {
+            continue;
+        }
+
+        // If the prim has a component kind, set it to subcomponent
+        if (currentKind == KindTokens->component)
+        {
+            bool success = model.SetKind(KindTokens->subcomponent);
+            if (!success)
+            {
+                TF_RUNTIME_ERROR("Unable to set the kind of \"%s\" to subcomponent", descendant.GetPath().GetAsString().c_str());
+                overallSuccess &= false;
+            }
+        }
+        else if (currentKind != KindTokens->subcomponent)
+        {
+            bool success = model.SetKind(_tokens->Empty);
+            if (!success)
+            {
+                TF_RUNTIME_ERROR("Unable to clear the kind of \"%s\"", descendant.GetPath().GetAsString().c_str());
+                overallSuccess &= false;
+            }
+        }
+    }
+
+    return overallSuccess;
+}
+
+bool usdex::core::configureAssemblyHierarchy(pxr::UsdPrim prim)
+{
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to configure assembly hierarchy due to invalid prim");
+        return false;
+    }
+
+    // Set the root prim kind to assembly
+    UsdModelAPI rootModel = UsdModelAPI(prim);
+    if (!rootModel.SetKind(KindTokens->assembly))
+    {
+        TF_RUNTIME_ERROR("Unable to set the kind of \"%s\" to assembly", prim.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    // Process all descendants
+    bool overallSuccess = true;
+    UsdPrimRange range(prim);
+    for (auto iter = range.begin(); iter != range.end(); ++iter)
+    {
+        UsdPrim descendant = *iter;
+        if (descendant == prim)
+        {
+            continue;
+        }
+
+        UsdModelAPI model = UsdModelAPI(descendant);
+        TfToken currentKind;
+        bool hasAuthoredKind = model.GetKind(&currentKind);
+
+        // Stop iterating down this branch if we encounter a component
+        if (currentKind == KindTokens->component)
+        {
+            iter.PruneChildren();
+            continue;
+        }
+
+        // Leave component and group prims unchanged, but set other authored kinds to group
+        bool isGroup = (currentKind == KindTokens->group || currentKind == KindTokens->assembly);
+        if (hasAuthoredKind && !isGroup)
+        {
+            if (currentKind == KindTokens->subcomponent)
+            {
+                bool success = usdex::core::configureComponentHierarchy(descendant);
+                if (!success)
+                {
+                    TF_RUNTIME_ERROR("Unable to configure component hierarchy for \"%s\"", descendant.GetPath().GetAsString().c_str());
+                    overallSuccess &= false;
+                }
+                TF_WARN(
+                    "Found subcomponent \"%s\" in the assembly hierarchy, configuring a component hierarchy",
+                    descendant.GetPath().GetAsString().c_str()
+                );
+                overallSuccess &= false;
+                iter.PruneChildren();
+                continue;
+            }
+            bool success = model.SetKind(KindTokens->group);
+            if (!success)
+            {
+                TF_RUNTIME_ERROR("Unable to set the kind of \"%s\" to group", descendant.GetPath().GetAsString().c_str());
+                overallSuccess &= false;
+            }
+        }
+        else if (!hasAuthoredKind && ::hasDescendantModelPrims(descendant))
+        {
+            bool success = model.SetKind(KindTokens->group);
+            if (!success)
+            {
+                TF_RUNTIME_ERROR("Unable to set the kind of \"%s\" to group", descendant.GetPath().GetAsString().c_str());
+                overallSuccess &= false;
+            }
+        }
+    }
+
+    return overallSuccess;
 }
 
 UsdPrim usdex::core::defineReference(UsdStagePtr stage, const SdfPath& path, const UsdPrim& source)

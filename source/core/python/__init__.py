@@ -52,6 +52,8 @@ __all__ = [
     "addAssetContent",
     "addAssetLibrary",
     "addAssetInterface",
+    "configureAssemblyHierarchy",
+    "configureComponentHierarchy",
     # names
     "getValidPrimName",
     "getValidPrimNames",

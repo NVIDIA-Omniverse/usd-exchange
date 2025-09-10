@@ -74,6 +74,11 @@ namespace usdex::core
 //! [Components](https://openusd.org/release/glossary.html?highlight=kind#usdglossary-component) in the
 //! [Model Hierarchy](https://openusd.org/release/glossary.html?highlight=kind#usdglossary-modelhierarchy).
 //!
+//! Because model hierarchy/kind is difficult to maintain manually, two functions are provided to help:
+//! - `usdex::core::configureComponentHierarchy`: Configures a component hierarchy, setting all descendant `components` to `subcomponent`
+//! - `usdex::core::configureAssemblyHierarchy`: Configures an assembly hierarchy, setting all authored descendant kinds to `group` until a
+//! `component` is found
+//!
 //! The following diagram shows the file, directory, layer, and reference structure of an atomic model:
 //!
 //! @code{.unparsed}
@@ -352,6 +357,35 @@ USDEX_API pxr::UsdStageRefPtr addAssetContent(
 //! @param source The stage that the Asset Interface will target as a Payload
 //! @returns True if the Asset Interface was added successfully, false otherwise
 USDEX_API bool addAssetInterface(pxr::UsdStagePtr stage, const pxr::UsdStagePtr source);
+
+//! Configure a prim and its descendants to establish a proper asset component hierarchy
+//!
+//! Sets the kind of the prim to "component" and adjusts the kinds of all descendant prims to maintain
+//! a valid USD model hierarchy. Any descendant prim that currently has the kind "component" will be
+//! changed to "subcomponent". Any descendant prim that has an authored kind other than "component"
+//! or "subcomponent" will have its kind cleared (set to an empty token).
+//!
+//! This function is commonly used when configuring asset interfaces to ensure the model hierarchy
+//! follows USD best practices for components.
+//!
+//! @param prim The prim to configure as a component. This prim and all its descendants will be processed.
+//! @returns True if the component hierarchy was successfully configured, false otherwise.
+USDEX_API bool configureComponentHierarchy(pxr::UsdPrim prim);
+
+//! Configure a prim and its descendants to establish a proper asset assembly hierarchy
+//!
+//! Sets the kind of the prim to "assembly" and adjusts the kinds of all descendant prims to maintain
+//! a valid USD model hierarchy. Any descendant prim with an invalid kind will be changed to "group".
+//! Descendant prims with "component" kind are left unchanged to preserve the component hierarchy.
+//!
+//! If a prim has no authored kind, it will be set to "group" if it has descendant model prims.
+//!
+//! This function is commonly used when configuring complex assets that contain multiple components
+//! to ensure the model hierarchy follows USD best practices for assemblies.
+//!
+//! @param prim The prim to configure as an assembly. This prim and all its descendants will be processed.
+//! @returns True if the assembly hierarchy was successfully configured, false otherwise.
+USDEX_API bool configureAssemblyHierarchy(pxr::UsdPrim prim);
 
 //! @}
 
