@@ -4,6 +4,7 @@
 
 import argparse
 import os
+import platform
 import shutil
 
 import omni.repo.ci
@@ -72,7 +73,8 @@ def main(arguments: argparse.Namespace):
                 ]
             )
         # build the docs only for the default USD flavor & python version but for all platforms
-        if usd_flavor == default_usd_flavor and usd_ver == default_usd_ver and python_ver == default_python_ver:
+        arch = platform.machine()
+        if usd_flavor == default_usd_flavor and usd_ver == default_usd_ver and python_ver == default_python_ver and arch not in ["aarch64", "arm64"]:
             omni.repo.ci.launch([repo, "docs"])
             # package the docs for linux only as we don't want overlapping packages once all flavors are assembled
             if omni.repo.man.is_linux():
