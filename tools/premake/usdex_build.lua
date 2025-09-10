@@ -36,7 +36,7 @@ function m.setup_workspace(args)
     repo_build.setup_workspace({
         windows_x86_64_enabled = args.windows_x86_64_enabled or true,
         linux_x86_64_enabled = args.linux_x86_64_enabled or true,
-        linux_aarch64_enabled = args.linux_aarch64_enabled or false,
+        linux_aarch64_enabled = args.linux_aarch64_enabled or true,
         macos_universal_enabled = args.macos_universal_enabled or false,
         copy_windows_debug_libs = args.copy_windows_debug_libs or false,
         allow_undefined_symbols_linux = args.allow_undefined_symbols_linux or true,
