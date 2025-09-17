@@ -158,3 +158,42 @@ class DefineCameraTestCase(usdex.test.DefineFunctionTestCase):
             camera = usdex.core.defineCamera(xformPrim, cameraData)
         self.assertTrue(camera)
         self.assertEqual(camera.GetPrim().GetTypeName(), "Camera")
+
+    def testAuthoringOneFilmbackAttributeAuthorsAllOnNonCentimeterStage(self):
+        # Authoring a single lens/filmback attribute should result in all related
+        # attributes being explicitly authored when the stage units are not centimeters.
+        stage = self.createTestStage()
+        stage.SetEditTarget(Usd.EditTarget(self.rootLayer))
+
+        # Switch the stage to meters so tenths-of-scene-unit no longer equals millimeters
+        UsdGeom.SetStageMetersPerUnit(stage, UsdGeom.LinearUnits.meters)
+
+        path = Sdf.Path("/World/CameraUnits")
+
+        # Only author a single property on the GfCamera; SetFromCamera should still
+        # author all lens/filmback properties on the prim.
+        cameraData = Gf.Camera()
+        cameraData.verticalAperture = 0.1
+
+        camera = usdex.core.defineCamera(stage, path, cameraData)
+        self.assertDefineFunctionSuccess(camera)
+
+        # Verify that all lens/filmback properties have authored default values
+        # in the current edit target layer (no reliance on fallbacks).
+        layer = stage.GetEditTarget().GetLayer()
+        primPath = camera.GetPath()
+        for propertyName in [
+            UsdGeom.Tokens.horizontalAperture,
+            UsdGeom.Tokens.verticalAperture,
+            UsdGeom.Tokens.horizontalApertureOffset,
+            UsdGeom.Tokens.verticalApertureOffset,
+            UsdGeom.Tokens.focalLength,
+            UsdGeom.Tokens.focusDistance,
+            UsdGeom.Tokens.clippingRange,
+        ]:
+            propertySpec = layer.GetAttributeAtPath(primPath.AppendProperty(propertyName))
+            attr = camera.GetPrim().GetAttribute(propertyName)
+            self.assertTrue(
+                propertySpec and propertySpec.HasDefaultValue() and attr.HasAuthoredValue(),
+                f'Property "{propertyName}" not explicitly authored on non-centimeter stage',
+            )
