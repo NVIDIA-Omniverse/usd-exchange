@@ -1,4 +1,22 @@
-# 2.1.0-dev
+# 2.1.0-a1
+
+## Core
+
+### Features
+
+- Added convenience functions for defining basic Gprims (plane, sphere, cube, cone, cylinder, capsule)
+- Added Kind configuration helpers for Components and Assemblies
+
+## Dev Tools
+
+### Features
+
+- Added `usdex.rtx` and `UsdSemantics` to the `usd-exchange` wheel
+- Added Linux ARM (aarch64) support for USD 25.02+
+
+### Fixes
+
+- Fixed code-signing of Windows wheels
 
 # 2.0.1
 

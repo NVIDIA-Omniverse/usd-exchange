@@ -70,19 +70,21 @@ By making a contribution to this project, I certify that:
 
 ### Branches and Versions
 
-The default branch is named `main` and it is a protected branch. Our internal CI Pipeline automatically builds & tests all changes from this branch across a large suite of OpenUSD & Python runtimes on both Windows and Linux. However, all new features target the `main` branch, and we may merge code changes to this branch at any time; it is not guaranteed to be stable/usable and may break API/ABI regularly.
+The default branch is named `main` and it is a protected branch. Our internal CI Pipeline automatically builds & tests all changes from this branch across a large suite of OpenUSD & Python runtimes on both Windows and Linux (x86 and arm). However, all new features target the `main` branch, and we may merge code changes to this branch at any time; it is not guaranteed to be stable/usable and may break API/ABI regularly.
 
 We advise to use an official tagged version of the OpenUSD Exchange SDK to ensure stability. Tagged releases are named e.g. `v1.2.3` following a [SemVer 2.0](https://semver.org) naming scheme. We guarantee API/ABI stability (for both C++ and Python) within any given major version series of releases, as well as support for all OpenUSD runtimes that the initial major version release was supporting.
 
-Once a tagged release has passed internal QA processes, we push the tag to [OpenUSD Exchange SDK on GitHub](https://github.com/NVIDIA-Omniverse/usd-exchange) and author a corresponding [GitHub Release](https://github.com/NVIDIA-Omniverse/usd-exchange/releases). Official artifacts from tagged releases are deployed for both Linux and Windows, and the Windows flavors will be codesigned by NVIDIA Corporation.
+Once a tagged release has passed internal QA processes, we push the tag to [OpenUSD Exchange SDK on GitHub](https://github.com/NVIDIA-Omniverse/usd-exchange) and author a corresponding [GitHub Release](https://github.com/NVIDIA-Omniverse/usd-exchange/releases). Official artifacts from tagged releases are deployed for both Linux (x86 and arm) and Windows, and the Windows flavors will be codesigned by NVIDIA Corporation.
 
-Long term support of any existing releases is done using a maintenance branch. The naming pattern for maintenance branches is e.g. `release/1.x` for the v1.0+ series of releases. Only hotfixes should target release branches. Hotfix tags also run through the usual CI/CD process, for testing, deployment, and codesigning.
+> Note: We will occasionally provide pre-release alphas, betas, or release candidates prior to an official release. The API/ABI of these pre-releases is not guaranteed, and they should not be used in final runtime deployments. Consider these pre-releases ephemeral & unstable. They can be identified by the version suffix which will be in the form `(a|b|rc)[0-9]`
+
+Long term support of any existing releases is done using a maintenance branch. The naming pattern for maintenance branches is e.g. `production/1.x` for the v1.0+ series of releases. Only hotfixes should target release branches. Hotfix tags also run through the usual CI/CD process, for testing, deployment, and codesigning.
 
 ### Development Branches
 
 For all development, changes are pushed into a branch in personal development forks of usd-exchange, and code is submitted upstream for code review and CI verification before being merged into `main` or the target release branch.
 
-We do not enforce any particular naming convention for development branches, other than avoiding the reserved branch patterns `main` and `release/*`. We recommend using legible branch names that imply the feature or fix being developed.
+We do not enforce any particular naming convention for development branches, other than avoiding the reserved branch patterns `main` and `production/*`. We recommend using legible branch names that imply the feature or fix being developed.
 
 All code changes must contain either new unittests, or updates to existing tests, and we won't merge any code changes that have failing CI pipelines or sub-standard code coverage.
 
@@ -147,9 +149,9 @@ To run the `whl` suite you must first build the wheel using `repo py_package` an
 
 This workflow requires tag names to be consistent, using the pattern "v" plus the semver at the top of [`CHANGELOG.md`](./CHANGELOG.md?plain=1#L1) (eg "v1.2.3"). Be sure to bump this version appropriately when updating CHANGELOG.md prior to tagging.
 
-Once your Changelog updates are committed locally, submit the code changes for review targeting `main` or the relevant `release/X.x` maintenance branch.
+Once your Changelog updates are committed locally, submit the code changes for review targeting `main` or the relevant `production/X.x` maintenance branch.
 
-> Note: If a maintenance branch does not exist for the release yet you should create one by checking out the appropriate tag (eg `git checkout v1.0.0; git switch -c release/1.x; git push upstream release/1.x`). Once it exists on the upstream remote, you are able to submit patches and author releases against this branch just as if it were `main`.
+> Note: If a maintenance branch does not exist for the release yet you should create one by checking out the appropriate tag (eg `git checkout v1.0.0; git switch -c production/1.x; git push upstream production/1.x`). Once it exists on the upstream remote, you are able to submit patches and author releases against this branch just as if it were `main`.
 
 Next, author a "New Release" internally. This form will allow you to create the tag, name the release, set the tag message, and copy/paste the relevant changes into the release notes.
 
