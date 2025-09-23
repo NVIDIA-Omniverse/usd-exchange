@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Feature Request
+description: Request new or improved functionality or changes to existing functionality
+labels: ["feature"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request!
+
+  - type: dropdown
+    id: new_or_improvement
+    attributes:
+      label: Is this a new feature, an improvement, or a change to existing functionality?
+      options:
+        - New Feature
+        - Improvement
+        - Change
+    validations:
+      required: true
+
+  - type: textarea
+    id: Feature_Description
+    attributes:
+      label: Feature Description
+      description: Please provide clear description of the feature you request
+      placeholder: >
+        For new feature request, consider using the following format to describe the feature from the end-user perspective:
+          As a <persona>, I <want to>, <so that>.
+    validations:
+      required: true
+
+  - type: textarea
+    id: misc
+    attributes:
+      label: Additional context or alternatives
+      description: Add any other context, code examples, references to existing implementations, or alternatives you have considered
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/HEAD/CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow OpenUSD Exchange SDK's Code of Conduct
+          required: true
+        - label: I have searched the [open issues](https://github.com/NVIDIA-Omniverse/usd-exchange/issues) and have found no duplicates
+          required: true

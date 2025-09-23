@@ -1,21 +1,8 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 name: Bug Report
 description: File a bug report
-title: "[BUG]: "
 labels: ["bug"]
 
 body:
@@ -37,10 +24,11 @@ body:
     id: installation-method
     attributes:
       label: Did you install official release artifacts or build from source?
-      multiple: true
       options:
         - Official release artifacts
         - Built from Source
+    validations:
+      required: true
 
   - type: input
     id: usd-flavor
@@ -74,7 +62,7 @@ body:
     attributes:
       label: Operating System
       description: What Operating System / Platform are you using?
-      placeholder: "example: windows-x86_64"
+      placeholder: "example: Ubuntu 22.04 Linux x86_64"
     validations:
       required: true
 
@@ -101,12 +89,6 @@ body:
       description: Please paste relevant error and log output here
       render: shell
 
-  - type: textarea
-    id: misc
-    attributes:
-      label: Other/Misc.
-      description: Please enter any other helpful information here.
-
   - type: checkboxes
     id: terms
     attributes:
@@ -115,5 +97,5 @@ body:
       options:
         - label: I agree to follow OpenUSD Exchange SDK's Code of Conduct
           required: true
-        - label: I have searched the [open bugs](https://github.com/NVIDIA-Omniverse/usd-exchange/issues?q=is%3Aopen+is%3Aissue+label%3Abug) and have found no duplicates
+        - label: I have searched the [open issues](https://github.com/NVIDIA-Omniverse/usd-exchange/issues) and have found no duplicates
           required: true

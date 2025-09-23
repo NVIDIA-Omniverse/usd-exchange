@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Documentation
+description: Request changes or additions to documentation
+labels: ["documentation"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to improve our documentation!
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Describe the changes or additions to documentation
+      placeholder: A code snippet mentions function foo(args) but I cannot find any documentation on it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: search_locs
+    attributes:
+      label: Where have you looked?
+      placeholder: |
+       https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/latest/index.html
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/HEAD/CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow OpenUSD Exchange SDK's Code of Conduct
+          required: true
+        - label: I have searched the [open issues](https://github.com/NVIDIA-Omniverse/usd-exchange/issues) and have found no duplicates
+          required: true
