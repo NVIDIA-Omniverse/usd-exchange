@@ -272,7 +272,6 @@ def __install(
         usdLibs = ["usd_ms"]
         usdPlugins = [
             "ar",
-            "ndr",
             "sdf",
             "usd",
             "usdGeom",
@@ -288,6 +287,8 @@ def __install(
         ]
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdPlugins.append("usdSemantics")
+        if __SemVersion(usd_ver) < __SemVersion("25.08"):
+            usdPlugins.append("ndr")
     else:
         usdLibs = [
             "ar",
@@ -295,7 +296,6 @@ def __install(
             "gf",
             "js",
             "kind",
-            "ndr",
             "pcp",
             "plug",
             "sdf",
@@ -313,7 +313,6 @@ def __install(
         ]
         usdPlugins = [
             "ar",
-            "ndr",
             "sdf",
             "usd",
             "usdGeom",
@@ -325,6 +324,10 @@ def __install(
             usdLibs.append("ts")
             usdLibs.append("usdSemantics")
             usdPlugins.append("usdSemantics")
+
+        if __SemVersion(usd_ver) < __SemVersion("25.08"):
+            usdLibs.append("ndr")
+            usdPlugins.append("ndr")
 
     if installTestModules and python_ver != "0":
         # omni.asset_validator uses some OpenUSD modules that we don't otherwise require in our runtime
@@ -348,20 +351,26 @@ def __install(
     for plugin in usdPlugins:
         prebuild_dict["copy"].append([f"{usdPluginSourceDir}/{plugin}", f"{usdPluginInstallDir}/{plugin}"])
 
+    # 25.08+ uses the new oneTBB API, and the lib name on Windows was changed to tbb12
+    if __SemVersion(usd_ver) < __SemVersion("25.08"):
+        tbb_windows_name = "tbb"
+    else:
+        tbb_windows_name = "tbb12"
+
     if buildConfig == "debug":
         prebuild_dict["copy"].extend(
             [
                 # tbb ships with usd, but is named differently in release/debug
-                [usd_path + "/lib/${lib_prefix}tbb_debug${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}tbb_debug${lib_ext}*", libInstallDir],  # windows
+                [usd_path + "/lib/${lib_prefix}" + "tbb" + "_debug${lib_ext}*", libInstallDir],
+                [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "_debug${lib_ext}*", libInstallDir],  # windows
             ]
         )
     else:
         prebuild_dict["copy"].extend(
             [
                 # tbb ships with usd, but is named differently in release/debug
-                [usd_path + "/lib/${lib_prefix}tbb${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}tbb${lib_ext}*", libInstallDir],  # windows
+                [usd_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
+                [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "${lib_ext}*", libInstallDir],  # windows
             ]
         )
 

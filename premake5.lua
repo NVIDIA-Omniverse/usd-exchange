@@ -73,9 +73,15 @@ group "core"
         usdex_build.use_doctest()
         usdex_build.use_usd({"arch", "gf", "sdf", "tf", "usd", "usdGeom", "usdPhysics", "usdUtils", "vt"})
         usdex_build.use_usdex_core()
-        filter { "configurations:release" }
+        -- Select correct TBB/oneTBB library based on USD version
+        local _useOneTbb = USD_VERSION >= "25.08"
+        filter { "system:windows", "configurations:release" }
+            links { _useOneTbb and "tbb12" or "tbb" } -- required by use of TfErrorMarks
+        filter { "system:windows", "configurations:debug" }
+            links { _useOneTbb and "tbb12_debug" or "tbb_debug" } -- required by use of TfErrorMarks
+        filter { "system:linux", "configurations:release" }
             links { "tbb" } -- required by use of TfErrorMarks
-        filter { "configurations:debug" }
+        filter { "system:linux", "configurations:debug" }
             links { "tbb_debug" } -- required by use of TfErrorMarks
         filter {}
         usdex_build.executable{
