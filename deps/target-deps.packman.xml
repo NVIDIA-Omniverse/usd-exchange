@@ -21,7 +21,7 @@
 
   <!-- Optional Omniverse addons -->
   <dependency name="omni_asset_validator" linkPath="../_build/target-deps/omni_asset_validator" tags="non-redist">
-    <package name="omni.asset_validator" version="1.1.6+v1-1-6.7620.1b7aab35.gl.${platform_target_abi}" />
+    <package name="omni.asset_validator" version="1.4.2+v1-4-2.7810.abc55288.gl.${platform_target_abi}" />
   </dependency>
 
 </project>

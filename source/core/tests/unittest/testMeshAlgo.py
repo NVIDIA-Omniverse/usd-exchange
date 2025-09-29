@@ -47,6 +47,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         UsdGeom.Tokens.faceVarying: len(FACE_VERTEX_INDICES),
     }
 
+    def setUp(self):
+        super().setUp()
+        # Disable non-core validator rules
+        self.validationEngine.disable_rule(omni.asset_validator.NormalsExistChecker)
+
     def assertDefineFunctionSuccess(self, result):
         """Assert the common expectations of a successful call to definePolyMesh"""
         super().assertDefineFunctionSuccess(result)

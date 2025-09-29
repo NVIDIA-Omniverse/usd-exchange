@@ -39,6 +39,11 @@ def computeEffectiveShaderInputValue(shaderInput):
 
 class MaterialAlgoTest(usdex.test.TestCase):
 
+    def setUp(self):
+        super().setUp()
+
+        self.validationEngine.disable_rule(omni.asset_validator.NormalsExistChecker)
+
     @staticmethod
     def allowedIssuePredicates() -> List[omni.asset_validator.IssuePredicates]:
         """Return a list of callables that determine if an issue can be bypassed by tests"""
