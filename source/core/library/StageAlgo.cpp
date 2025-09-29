@@ -20,22 +20,18 @@ namespace
 #if defined(ARCH_OS_WINDOWS) && PXR_VERSION < 2405
 #pragma warning(push)
 #pragma warning(disable : 4003) // not enough arguments for function-like macro invocation
-// clang-format off
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
     ((y, "y"))
     ((z, "z"))
 );
-// clang-format on
 #pragma warning(pop)
 #else
-// clang-format off
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
     ((y, "y"))
     ((z, "z"))
 );
-// clang-format on
 #endif
 
 bool validateStageMetrics(const TfToken& upAxis, const double linearUnits, const double massUnits, std::string* reason)

@@ -34,7 +34,6 @@ namespace
 #if defined(ARCH_OS_WINDOWS) && PXR_VERSION < 2405
 #pragma warning(push)
 #pragma warning(disable : 4003) // not enough arguments for function-like macro invocation
-// clang-format off
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
     (Asset)
@@ -47,10 +46,8 @@ TF_DEFINE_PRIVATE_TOKENS(
     (Payload)
     ((Empty, ""))
 );
-// clang-format on
 #pragma warning(pop)
 #else
-// clang-format off
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
     (Asset)
@@ -63,7 +60,6 @@ TF_DEFINE_PRIVATE_TOKENS(
     (Payload)
     ((Empty, ""))
 );
-// clang-format on
 #endif
 
 bool hasDescendantModelPrims(const UsdPrim& prim)
