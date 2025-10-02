@@ -107,3 +107,5 @@ Standard: Cpp11
 ReflowComments: true
 TabWidth: 4
 UseTab: Never
+WhitespaceSensitiveMacros:
+  - "TF_DEFINE_PRIVATE_TOKENS"
