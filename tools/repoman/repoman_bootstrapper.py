@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+import contextlib
 import json
 import logging
 import os
@@ -33,10 +34,14 @@ def _pull_optional_deps():
     """
     OPT_DEPS_FILE = Path(REPO_ROOT, f"deps/repo-deps-{_opt_deps_suffix()}.packman.xml")
     if OPT_DEPS_FILE.is_file():
-        deps = packmanapi.pull(OPT_DEPS_FILE.as_posix())
-        for dep_path in deps.values():
-            if dep_path not in sys.path:
-                sys.path.append(dep_path)
+        deps = None
+        with contextlib.suppress(packmanapi.PackmanErrorFileNotFound):
+            deps = packmanapi.pull(OPT_DEPS_FILE.as_posix())
+            for dep_path in deps.values():
+                if dep_path not in sys.path:
+                    sys.path.append(dep_path)
+        if deps is None:
+            logger.debug(f"Failed to pull optional dependencies in {OPT_DEPS_FILE}. This can be normal depending on configuration and context.")
 
 
 def _path_checks():
