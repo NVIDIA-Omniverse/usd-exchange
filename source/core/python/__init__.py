@@ -113,6 +113,8 @@ __all__ = [
     "addRoughnessTextureToPreviewMaterial",
     "addMetallicTextureToPreviewMaterial",
     "addOpacityTextureToPreviewMaterial",
+    "addPrimvarShaderToPreviewMaterial",
+    "connectPrimvarShader",
     "addPreviewMaterialInterface",
     "removeMaterialInterface",
     "ColorSpace",

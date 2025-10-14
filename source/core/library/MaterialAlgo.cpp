@@ -7,12 +7,16 @@
 #include "usdex/core/NameAlgo.h"
 #include "usdex/core/StageAlgo.h"
 
+#include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/ar/resolver.h>
+#include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 #include <pxr/usd/usdShade/nodeGraph.h>
 #include <pxr/usd/usdShade/tokens.h>
 #include <pxr/usd/usdUtils/pipeline.h>
+
+#include <unordered_map>
 
 using namespace pxr;
 
@@ -27,11 +31,9 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((colorSpacesRBG, "sRGB"))
     // UsdPreviewSurface Shaders
     ((upsId, "UsdPreviewSurface"))
-    ((uvReaderId, "UsdPrimvarReader_float2"))
     ((uvTexId, "UsdUVTexture"))
     // Default shader names
     ((upsName, "PreviewSurface"))
-    ((uvReaderName, "TexCoordReader"))
     ((uvTexDiffuseName, "DiffuseTexture"))
     ((uvTexNormalsName, "NormalTexture"))
     ((uvTexORMName, "ORMTexture"))
@@ -69,34 +71,6 @@ bool isShaderType(const UsdShadeShader& shader, const TfToken& shaderId)
     return shader && shader.GetShaderId(&test) && test == shaderId;
 }
 
-// Find or create a float2 texture coordinate primvar reader
-UsdShadeShader acquireTexCoordReader(UsdShadeMaterial& material)
-{
-    SdfPath path = material.GetPath().AppendChild(_tokens->uvReaderName);
-    UsdShadeShader uvReader = UsdShadeShader::Get(material.GetPrim().GetStage(), path);
-    if (!uvReader)
-    {
-        uvReader = UsdShadeShader::Define(material.GetPrim().GetStage(), path);
-        if (!uvReader)
-        {
-            TF_RUNTIME_ERROR(
-                "Cannot add USD Preview Surface Primvar Reader shader <%s> to <%s>",
-                uvReader.GetPath().GetAsString().c_str(),
-                material.GetPath().GetAsString().c_str()
-            );
-
-            return UsdShadeShader();
-        }
-    }
-
-    // Whether the shader already existed or not, make sure that the attributes work for the primvar reader
-    uvReader.SetShaderId(_tokens->uvReaderId);
-    uvReader.CreateInput(_tokens->varname, SdfValueTypeNames->String).Set(UsdUtilsGetPrimaryUVSetName().GetString());
-    uvReader.CreateOutput(_tokens->result, SdfValueTypeNames->Float2);
-
-    return uvReader;
-}
-
 // Find or create the appropriate TextureReader
 UsdShadeShader acquireTextureReader(
     UsdShadeMaterial& material,
@@ -106,13 +80,6 @@ UsdShadeShader acquireTextureReader(
     const GfVec4f& fallback
 )
 {
-    // Make sure there is a primvar reader for the UV data ("st")
-    UsdShadeShader uvReader = ::acquireTexCoordReader(material);
-    if (!uvReader)
-    {
-        return UsdShadeShader();
-    }
-
     // Create the texture shader
     SdfPath shaderPath = material.GetPath().AppendChild(shaderName);
     UsdShadeShader texShader = UsdShadeShader::Define(material.GetPrim().GetStage(), shaderPath);
@@ -120,7 +87,13 @@ UsdShadeShader acquireTextureReader(
     texShader.CreateInput(_tokens->fallback, SdfValueTypeNames->Float4).Set(fallback);
     texShader.CreateInput(_tokens->file, SdfValueTypeNames->Asset).Set(texture);
     texShader.CreateInput(_tokens->sourceColorSpace, SdfValueTypeNames->Token).Set(getColorSpaceToken(colorSpace));
-    texShader.CreateInput(_tokens->st, SdfValueTypeNames->Float2).ConnectToSource(uvReader.GetOutput(_tokens->result));
+
+    UsdShadeInput stInput = texShader.CreateInput(_tokens->st, SdfValueTypeNames->Float2);
+    bool connected = usdex::core::connectPrimvarShader(stInput, UsdUtilsGetPrimaryUVSetName().GetString());
+    if (!connected)
+    {
+        return UsdShadeShader();
+    }
 
     return texShader;
 }
@@ -162,6 +135,66 @@ float fromLinear(float value)
         float scaled = std::pow(value, 1.0f / 2.4f);
         return (scaled * 1.055f) - 0.055f;
     }
+}
+
+bool isSupportedPrimvarType(const UsdShadeInput& shaderInput)
+{
+    static const std::vector<SdfValueTypeName> supportedTypes = {
+        SdfValueTypeNames->Color3f,  SdfValueTypeNames->Color4f, SdfValueTypeNames->Float,    SdfValueTypeNames->Float2,
+        SdfValueTypeNames->Float3,   SdfValueTypeNames->Float4,  SdfValueTypeNames->Int,      SdfValueTypeNames->String,
+        SdfValueTypeNames->Normal3f, SdfValueTypeNames->Point3f, SdfValueTypeNames->Vector3f, SdfValueTypeNames->Matrix4d
+    };
+    return std::find(supportedTypes.begin(), supportedTypes.end(), shaderInput.GetTypeName()) != supportedTypes.end();
+}
+
+//! Get the shader ID and type name for a primvar reader shader
+//!
+//! color3f/4f shader input types are converted to float3/4 types for the outputs and fallback values
+//! normal3f/point3f/vector3f/matrix4d shader input types use a "role" name for the shader ID
+//! see USD Preview Surface Shader specification: https://openusd.org/release/spec_usdpreviewsurface.html#primvar-reader
+//!
+//! @param shaderInput The input to the primvar reader shader
+//! @param outTypeName The type name of the primvar reader shader (returned by reference)
+//! @returns The shader ID for the primvar reader shader
+TfToken getPrimvarShaderId(const UsdShadeInput& shaderInput, SdfValueTypeName& outTypeName, std::string& outTypeRoleName)
+{
+    static constexpr const char* primvarReaderIdPrefix = "UsdPrimvarReader_";
+
+    static const std::unordered_map<SdfValueTypeName, SdfValueTypeName, SdfValueTypeNameHash> typeNameMap = {
+        { SdfValueTypeNames->Color3f, SdfValueTypeNames->Float3 },
+        { SdfValueTypeNames->Color4f, SdfValueTypeNames->Float4 },
+    };
+
+    static const std::unordered_map<SdfValueTypeName, const char*, SdfValueTypeNameHash> typeNameRoleMap = {
+        { SdfValueTypeNames->Normal3f, "normal" },
+        { SdfValueTypeNames->Point3f, "point" },
+        { SdfValueTypeNames->Vector3f, "vector" },
+        { SdfValueTypeNames->Matrix4d, "matrix" },
+    };
+
+    outTypeName = shaderInput.GetTypeName();
+    if (typeNameMap.find(outTypeName) != typeNameMap.end())
+    {
+        outTypeName = typeNameMap.at(outTypeName);
+    }
+
+    // Some primvar types (normal, point, vector, matrix) have unexpected shader IDs
+    outTypeRoleName = outTypeName.GetAsToken().GetString();
+    if (typeNameRoleMap.find(outTypeName) != typeNameRoleMap.end())
+    {
+        outTypeRoleName = typeNameRoleMap.at(outTypeName);
+    }
+    return TfToken(TfStringPrintf("%s%s", primvarReaderIdPrefix, outTypeRoleName.c_str()));
+}
+
+TfToken getPrimvarShaderName(const std::string& primvarName, const std::string& typeRoleName)
+{
+    static constexpr const char* primvarReaderNamePrefix = "Primvar_";
+    // Make the primvar name valid for the shader prim by first replacing any ':' with '_'
+    std::string validPrimvarName = primvarName;
+    std::replace(validPrimvarName.begin(), validPrimvarName.end(), ':', '_');
+    std::string validShaderName = TfStringPrintf("%s%s_%s", primvarReaderNamePrefix, validPrimvarName.c_str(), typeRoleName.c_str());
+    return usdex::core::getValidPrimName(validShaderName);
 }
 
 } // namespace
@@ -659,6 +692,165 @@ bool usdex::core::addOpacityTextureToPreviewMaterial(UsdShadeMaterial& material,
     surface.CreateInput(_tokens->ior, SdfValueTypeNames->Float).Set(1.0f);
     // Geometric cutouts work better with opacity threshold set to above 0
     surface.CreateInput(_tokens->opacityThreshold, SdfValueTypeNames->Float).Set(std::numeric_limits<float>::epsilon());
+
+    return true;
+}
+
+bool usdex::core::addPrimvarShaderToPreviewMaterial(
+    UsdShadeMaterial& material,
+    const std::string& surfaceInputName,
+    const std::string& primvarName,
+    const VtValue& fallbackValue
+)
+{
+    UsdShadeShader surface = usdex::core::computeEffectivePreviewSurfaceShader(material);
+    if (!isShaderType(surface, _tokens->upsId))
+    {
+        TF_WARN("Material <%s> must first be defined using definePreviewMaterial()", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    // Get the input and type name needed to create the primvar reader
+    UsdShadeInput shaderInput = surface.GetInput(TfToken(surfaceInputName));
+    if (shaderInput)
+    {
+        return usdex::core::connectPrimvarShader(shaderInput, primvarName, fallbackValue);
+    }
+    else
+    {
+        TF_WARN(
+            "Cannot add primvar <%s> to input <%s> on surface shader <%s> because there is no input with that name",
+            primvarName.c_str(),
+            surfaceInputName.c_str(),
+            surface.GetPrim().GetPath().GetAsString().c_str()
+        );
+        return false;
+    }
+}
+
+bool usdex::core::connectPrimvarShader(pxr::UsdShadeInput& shaderInput, const std::string& primvarName, const pxr::VtValue& fallbackValue)
+{
+    if (!shaderInput)
+    {
+        TF_WARN("UsdShadeInput is not valid.");
+        return false;
+    }
+    if (primvarName.empty() || primvarName != usdex::core::getValidPropertyName(primvarName))
+    {
+        TF_WARN(
+            "Cannot connect primvar <%s> to input <%s> because the primvar name is invalid",
+            primvarName.c_str(),
+            shaderInput.GetBaseName().GetText()
+        );
+        return false;
+    }
+
+    UsdShadeShader surface = UsdShadeShader(shaderInput.GetPrim());
+    if (!surface)
+    {
+        TF_WARN("UsdShadeInput <%s> is not contained within a surface shader.", shaderInput.GetBaseName().GetText());
+        return false;
+    }
+
+    if (!isSupportedPrimvarType(shaderInput))
+    {
+        TF_WARN(
+            "Cannot connect primvar <%s> to input <%s> on surface shader <%s> because the input type <%s> is not supported by UsdPreviewSurface",
+            primvarName.c_str(),
+            shaderInput.GetBaseName().GetText(),
+            surface.GetPrim().GetPath().GetAsString().c_str(),
+            shaderInput.GetTypeName().GetAsToken().GetText()
+        );
+        return false;
+    }
+
+    // This is the only functionality that we need from connectableAPIBehavior
+    if (shaderInput.GetConnectability() == UsdShadeTokens->interfaceOnly)
+    {
+        TF_WARN(
+            "Cannot connect primvar <%s> to input <%s> on surface shader <%s> because its connectability is interfaceOnly",
+            primvarName.c_str(),
+            shaderInput.GetBaseName().GetText(),
+            surface.GetPrim().GetPath().GetAsString().c_str()
+        );
+        return false;
+    }
+
+    SdfValueTypeName outputTypeName;
+    std::string primvarRoleName;
+    const TfToken shaderId = ::getPrimvarShaderId(shaderInput, outputTypeName, primvarRoleName);
+
+    // Acquire the primvar reader, named as "Primvar_$primvarName_$typeName"
+    const TfToken shaderName = ::getPrimvarShaderName(primvarName, primvarRoleName);
+    SdfPath path = surface.GetPrim().GetParent().GetPath().AppendChild(shaderName);
+
+    bool primvarReaderCreated = false;
+    UsdShadeShader primvarReader = UsdShadeShader::Get(shaderInput.GetPrim().GetStage(), path);
+    if (!primvarReader)
+    {
+        primvarReaderCreated = true;
+        primvarReader = UsdShadeShader::Define(shaderInput.GetPrim().GetStage(), path);
+        if (!primvarReader)
+        {
+            TF_WARN(
+                "Cannot add Primvar Reader shader <%s> to <%s>",
+                path.GetAsString().c_str(),
+                surface.GetPrim().GetParent().GetPath().GetAsString().c_str()
+            );
+            return false;
+        }
+    }
+
+    // Whether or not the shader already existed, make sure that the attributes work for the primvar reader
+    primvarReader.SetShaderId(shaderId);
+    primvarReader.CreateInput(_tokens->varname, SdfValueTypeNames->String).Set(primvarName);
+    UsdShadeOutput primvarOutput = primvarReader.CreateOutput(_tokens->result, outputTypeName);
+
+    // Set the fallback value if it is provided
+    if (!fallbackValue.IsEmpty())
+    {
+        if (outputTypeName.GetType() == fallbackValue.GetType())
+        {
+            primvarReader.CreateInput(_tokens->fallback, outputTypeName).Set(fallbackValue);
+        }
+        else
+        {
+            TF_WARN(
+                "Cannot set fallback on primvar reader <%s> because value type <%s> does not match input type <%s>, no fallback value will be set",
+                primvarReader.GetPath().GetAsString().c_str(),
+                fallbackValue.GetType().GetTypeName().c_str(),
+                outputTypeName.GetAsToken().GetText()
+            );
+        }
+    }
+
+    // If the output already exists with a different type we need to update the output type name manually
+    if (primvarOutput.GetTypeName() != outputTypeName)
+    {
+        TF_RUNTIME_ERROR(
+            "Cannot connect primvar <%s> to input <%s> because the existing shader output type <%s> does not match the input type <%s>",
+            primvarName.c_str(),
+            shaderInput.GetBaseName().GetText(),
+            primvarOutput.GetTypeName().GetAsToken().GetText(),
+            outputTypeName.GetAsToken().GetText()
+        );
+        return false;
+    }
+
+    // Connect the primvar reader output to the surface shader input
+    bool connected = shaderInput.ConnectToSource(primvarOutput);
+    if (!connected)
+    {
+        TF_WARN("Cannot connect primvar <%s> to input <%s>", primvarName.c_str(), shaderInput.GetBaseName().GetText());
+        // Remove the primvar reader if it was created
+        if (primvarReaderCreated)
+        {
+            primvarReader.GetPrim().GetStage()->RemovePrim(primvarReader.GetPrim().GetPath());
+        }
+        return false;
+    }
+    // Remove the authored value from the input so the connection provides the only opinion
+    shaderInput.GetAttr().Clear();
 
     return true;
 }

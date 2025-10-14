@@ -262,6 +262,36 @@ USDEX_API bool addMetallicTextureToPreviewMaterial(pxr::UsdShadeMaterial& materi
 //! @returns Whether or not the texture was added to the material
 USDEX_API bool addOpacityTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
 
+//! Adds a primvar reader shader to the material prim and connects it to a surface input.
+//!
+//! It is expected that the material was created by `definePreviewMaterial()`
+//!
+//! @param material The material prim
+//! @param surfaceInputName The name of the input on the surface shader (not including the `inputs:` prefix, eg. `diffuseColor`)
+//! @param primvarName The name of the primvar to read (not including the `primvars:` prefix, eg. `paintColor`)
+//! @param fallbackValue An optional fallback value to use if the primvar is not found
+//! @returns Whether or not the primvar shader was added to the material
+USDEX_API bool addPrimvarShaderToPreviewMaterial(
+    pxr::UsdShadeMaterial& material,
+    const std::string& surfaceInputName,
+    const std::string& primvarName,
+    const pxr::VtValue& fallbackValue = pxr::VtValue()
+);
+
+//! Connects a surface input to a primvar reader shader.
+//!
+//! A primvar reader shader will be created if it does not already exist.
+//!
+//! @param shaderInput The surface input to connect the primvar reader to
+//! @param primvarName The name of the primvar to read (not including the `primvars:` prefix, eg. `paintColor`)
+//! @param fallbackValue An optional fallback value to use if the primvar is not found
+//! @returns Whether or not the primvar shader was connected to the surface input
+USDEX_API bool connectPrimvarShader(
+    pxr::UsdShadeInput& shaderInput,
+    const std::string& primvarName,
+    const pxr::VtValue& fallbackValue = pxr::VtValue()
+);
+
 //! Adds `UsdShadeInputs` to the material prim to create an "interface" to the underlying Preview Shader network.
 //!
 //! All non-default-value `UsdShadeInputs` on the effective surface shader for the universal render context will be "promoted" to the

@@ -297,6 +297,65 @@ void bindMaterialAlgo(module& m)
     );
 
     m.def(
+        "addPrimvarShaderToPreviewMaterial",
+        [](UsdShadeMaterial& material, const std::string& surfaceInputName, const std::string& primvarName, const VtValue& fallbackValue)
+        {
+            VtValue castValue = fallbackValue;
+            if (fallbackValue.GetType() == SdfValueTypeNames->Double.GetType())
+            {
+                castValue = VtValue::Cast<float>(fallbackValue);
+            }
+            return addPrimvarShaderToPreviewMaterial(material, surfaceInputName, primvarName, castValue);
+        },
+        arg("material"),
+        arg("surfaceInputName"),
+        arg("primvarName"),
+        arg("fallbackValue") = nullptr,
+        R"(
+            Adds a Primvar Reader shader to the preview material and connects it to a surface input.
+
+            It is expected that the material was created by ``definePreviewMaterial()``.
+
+            Args:
+                - material: The material prim
+                - surfaceInputName: The name of the input on the surface shader (not including the ``inputs:`` prefix, eg. ``diffuseColor``)
+                - primvarName: The name of the primvar to read (not including the ``primvars:`` prefix, eg. ``paintColor``)
+                - fallbackValue: An optional fallback value to use if the primvar is not found
+            Returns:
+                Whether the primvar shader was successfully added and connected.
+        )"
+    );
+
+    m.def(
+        "connectPrimvarShader",
+        [](UsdShadeInput& shaderInput, const std::string& primvarName, const VtValue& fallbackValue)
+        {
+            VtValue castValue = fallbackValue;
+            if (fallbackValue.GetType() == SdfValueTypeNames->Double.GetType())
+            {
+                castValue = VtValue::Cast<float>(fallbackValue);
+            }
+            return connectPrimvarShader(shaderInput, primvarName, castValue);
+        },
+        arg("shaderInput"),
+        arg("primvarName"),
+        arg("fallbackValue") = nullptr,
+        R"(
+            Connects a surface input to a primvar reader shader.
+
+            A primvar reader shader will be created if it does not already exist.
+
+            Args:
+                shaderInput: The surface input (``UsdShade.Input``) to connect the primvar reader to
+                primvarName: The name of the primvar to read (not including the ``primvars:`` prefix, eg. ``paintColor``)
+                fallbackValue: An optional fallback value to use if the primvar is not found
+
+            Returns:
+                Whether or not the primvar shader was connected to the surface input
+        )"
+    );
+
+    m.def(
         "addPreviewMaterialInterface",
         &addPreviewMaterialInterface,
         arg("material"),
