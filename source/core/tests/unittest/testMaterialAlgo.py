@@ -5,11 +5,12 @@
 import os
 import pathlib
 import tempfile
-from typing import List, Tuple
+import unittest
+from typing import Any, List, Tuple
 
 import usdex.core
 import usdex.test
-from pxr import Gf, Sdf, Tf, Usd, UsdGeom, UsdShade, UsdUtils
+from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdShade, UsdUtils
 
 
 class MaterialAlgoTest(usdex.test.TestCase):
@@ -613,7 +614,7 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         fallbackColor: Gf.Vec3f,
         connectionInfo: List[Tuple[str, Sdf.ValueTypeName, str]],
     ):
-        uvReader = UsdShade.Shader(material.GetPrim().GetChild("TexCoordReader"))
+        uvReader = UsdShade.Shader(material.GetPrim().GetChild("Primvar_st_float2"))
         self.assertTrue(uvReader)
         self.assertEqual(uvReader.GetShaderId(), "UsdPrimvarReader_float2")
         self.assertEqual(uvReader.GetInput("varname").GetAttr().Get(), UsdUtils.GetPrimaryUVSetName())
@@ -649,6 +650,51 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
             self.assertFalse(surface.GetInput(inputName).GetAttr().HasAuthoredValue())
             self.assertEqual(len(surface.GetInput(inputName).GetValueProducingAttributes()), 1)
             self.assertEqual(surface.GetInput(inputName).GetValueProducingAttributes()[0], textureReader.GetOutput(outputName).GetAttr())
+
+    def assertValidPreviewMaterialPrimvarNetwork(
+        self,
+        material: UsdShade.Material,
+        primvarInfo: List[Tuple[str, str, Any]],  # inputName, primvarName, fallbackValue
+    ):
+        surfaceShader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertTrue(surfaceShader)
+        self.assertEqual(surfaceShader.GetPrim().GetName(), "PreviewSurface")
+        self.assertEqual(surfaceShader.GetShaderId(), "UsdPreviewSurface")
+
+        # verify the primvarInfo
+        for inputName, primvarName, fallbackValue in primvarInfo:
+            input = surfaceShader.GetInput(inputName)
+            outputName = "result"
+            outputTypeName = input.GetTypeName()
+            if outputTypeName == Sdf.ValueTypeNames.Color3f:
+                outputTypeName = Sdf.ValueTypeNames.Float3
+
+            # Make the primvar name valid for the shader prim by first replacing any ':' with '_'
+            validPrimvarName = primvarName.replace(":", "_")
+            primvarReaderName = usdex.core.getValidPrimName(f"Primvar_{validPrimvarName}_{outputTypeName}")
+            primvarReader = UsdShade.Shader(material.GetPrim().GetChild(primvarReaderName))
+            self.assertTrue(primvarReader)
+            self.assertEqual(primvarReader.GetShaderId(), f"UsdPrimvarReader_{outputTypeName}")
+            self.assertEqual(str(primvarReader.GetOutput(outputName).GetTypeName()), str(outputTypeName))
+            self.assertEqual(primvarReader.GetInput("varname").GetAttr().Get(), primvarName)
+            if fallbackValue:
+                self.assertEqual(primvarReader.GetInput("fallback").GetTypeName(), outputTypeName)
+                self.assertAlmostEqual(primvarReader.GetInput("fallback").GetAttr().Get(), fallbackValue)
+            else:
+                self.assertFalse(primvarReader.GetInput("fallback"))
+
+            self.assertTrue(input.HasConnectedSource())
+            source, sourceAttr, sourceType = input.GetConnectedSource()
+            self.assertEqual(sourceType, UsdShade.AttributeType.Output)
+            self.assertEqual(
+                source.GetOutput(sourceAttr).GetAttr(),
+                primvarReader.GetOutput(outputName).GetAttr(),
+                msg=f"Incorrect connection for {inputName} ({input.GetTypeName()}) -> {outputName}",
+            )
+            # the only opinion is from the connection
+            self.assertFalse(input.GetAttr().HasAuthoredValue())
+            self.assertEqual(len(input.GetValueProducingAttributes()), 1)
+            self.assertEqual(input.GetValueProducingAttributes()[0], primvarReader.GetOutput(outputName).GetAttr())
 
     def testPreviewMaterialShaders(self):
         stage = Usd.Stage.CreateInMemory()
@@ -874,8 +920,6 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         stage.GetRootLayer().subLayerPaths.append(subDirIdentifier)
         stage.SetEditTarget(Usd.EditTarget(subLayer))
 
-        layerPath = pathlib.Path(subDirIdentifier).parent
-
         # ../N.png - parent dir relative
         # ../textures/N.png - subdir of parent dir relative
         textureAssetPaths = [
@@ -1032,6 +1076,251 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
 
         self.assertIsValidUsd(stage)
 
+    def testAddPrimvarShaderToInvalidMaterial(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # check invalid material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(UsdShade.Material(), "diffuseColor", "perInstanceColor")
+        self.assertFalse(result)
+
+        # check with a non-preview material
+        material = usdex.core.createMaterial(materials, "NonPreviewMaterial")
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "perInstanceColor")
+        self.assertFalse(result)
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShader(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "perInstanceColor")
+        self.assertTrue(result)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "perInstanceColor", None),
+            ],
+        )
+
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "roughness", "perInstanceRoughness")
+        self.assertTrue(result)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "perInstanceColor", None),
+                ("roughness", "perInstanceRoughness", None),
+            ],
+        )
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderWithDiffuseTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "perInstanceColor")
+        self.assertTrue(result)
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "roughness", "perInstanceRoughness")
+        self.assertTrue(result)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "perInstanceColor", None),
+                ("roughness", "perInstanceRoughness", None),
+            ],
+        )
+
+        # Check that a diffuse texture can now be assigned
+        diffuseTexture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
+        result = usdex.core.addDiffuseTextureToPreviewMaterial(material, diffuseTexture)
+        self.assertTrue(result)
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [("roughness", "perInstanceRoughness", None)],
+        )
+        self.assertValidPreviewMaterialTextureNetwork(
+            material,
+            diffuseTexture,
+            textureReaderName="DiffuseTexture",
+            colorSpace=usdex.core.ColorSpace.eAuto,
+            fallbackColor=Gf.Vec3f(0.0, 0.0, 0.0),  # default fallback
+            connectionInfo=[("diffuseColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+        )
+
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "perInstanceColor")
+        self.assertTrue(result)
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "perInstanceColor", None),
+                ("roughness", "perInstanceRoughness", None),
+            ],
+        )
+
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderChangingOutputType(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "randomPrimvar")
+        self.assertTrue(result)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "randomPrimvar", None),
+            ],
+        )
+
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "roughness", "randomPrimvar")
+        self.assertTrue(result)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "randomPrimvar", None),
+                ("roughness", "randomPrimvar", None),
+            ],
+        )
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderWithFallbackValue(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        fallbackColors = [None, Gf.Vec3f(0.1, 0.1, 0.1), Gf.Vec3f(0.4, 0.5, 0.6)]
+        fallbackRoughnesses = [None, 0.88, 0.3]
+
+        for fallbackColor, fallbackRoughness in zip(fallbackColors, fallbackRoughnesses):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "perInstanceColor", fallbackColor)
+            self.assertTrue(result)
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "roughness", "perInstanceRoughness", fallbackRoughness)
+            self.assertTrue(result)
+
+            self.assertValidPreviewMaterialPrimvarNetwork(
+                material,
+                [
+                    ("diffuseColor", "perInstanceColor", fallbackColor),
+                    ("roughness", "perInstanceRoughness", fallbackRoughness),
+                ],
+            )
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot set fallback.*does not match input type.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", "perInstanceColor", fallbackRoughnesses[-1])
+            self.assertTrue(result)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot set fallback.*does not match input type.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "roughness", "perInstanceRoughness", fallbackColors[-1])
+            self.assertTrue(result)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", "perInstanceColor", fallbackColors[-1]),
+                ("roughness", "perInstanceRoughness", fallbackRoughnesses[-1]),
+            ],
+        )
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderInvalidInputs(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot add primvar.*on surface shader.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "invalidInput", "perInstanceColor")
+            self.assertFalse(result)
+
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        shaderInput = shader.CreateInput("useSpecularWorkflow", Sdf.ValueTypeNames.Int)
+        shaderInput.Set(0)
+        shaderInput.SetConnectability(UsdShade.Tokens.interfaceOnly)
+
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*connectability is interfaceOnly.*")]
+        ):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "useSpecularWorkflow", "perInstanceSpec")
+            self.assertFalse(result)
+
+        # verify that the connectivity check didn't create the primvar reader
+        self.assertFalse(material.GetPrim().GetChild("Primvar_perInstanceSpec_int"))
+
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderInvalidNames(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        primvarName = "primvars:invalid:prim:name"
+        result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "diffuseColor", primvarName)
+        self.assertTrue(result)
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", primvarName, None),
+            ],
+        )
+
+        # Get the number of shaders in the material
+        numShaders = len(material.GetPrim().GetChildren())
+
+        invalidPrimvarName = "primvars:invalid:prim:n@me"
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*the primvar name is invalid.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "metallic", invalidPrimvarName)
+            self.assertFalse(result)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*the primvar name is invalid.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "metallic", "")
+            self.assertFalse(result)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot add primvar.*there is no input with that name.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "", primvarName)
+            self.assertFalse(result)
+
+        # Verify that the number of shaders in the material is the same
+        self.assertEqual(len(material.GetPrim().GetChildren()), numShaders)
+
+        self.assertValidPreviewMaterialPrimvarNetwork(
+            material,
+            [
+                ("diffuseColor", primvarName, None),
+            ],
+        )
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderUnsupportedUsdPreviewSurfaceInputType(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        shaderInput = shader.CreateInput("highPrecisionDouble", Sdf.ValueTypeNames.Double)
+        self.assertTrue(shaderInput)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<double> is not supported.*")]):
+            result = usdex.core.addPrimvarShaderToPreviewMaterial(material, "highPrecisionDouble", "paintHighPrecisionDouble")
+            self.assertFalse(result)
+
     def testTexturesShareTexCoordReader(self):
         stage = Usd.Stage.CreateInMemory()
         usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
@@ -1076,7 +1365,7 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         textureReaders = findTextureReaders(stage)
         self.assertEqual(len(textureReaders), 1)
         # assertValidPreviewMaterialTextureNetwork will have already ensured both textures are driven by TexCoordReader
-        self.assertEqual(textureReaders[0].GetPrim(), material.GetPrim().GetChild("TexCoordReader"))
+        self.assertEqual(textureReaders[0].GetPrim(), material.GetPrim().GetChild("Primvar_st_float2"))
 
     def testDefinePreviewMaterialPrimOverload(self):
         stage = Usd.Stage.CreateInMemory()
@@ -1222,3 +1511,192 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         ):
             material = usdex.core.definePreviewMaterial(xformPrim, color)
         self.assertFalse(material)
+
+
+class ConnectPrimvarShaderTest(usdex.test.TestCase):
+
+    # input sdfTypeName: (fallback/result SdfTypeName, primvarReaderRoleName, fallbackValue)
+    typeMappings = {
+        Sdf.ValueTypeNames.Float: (Sdf.ValueTypeNames.Float, "float", 0.8),
+        Sdf.ValueTypeNames.Float2: (Sdf.ValueTypeNames.Float2, "float2", Gf.Vec2f(0.1, 0.2)),
+        Sdf.ValueTypeNames.Float3: (Sdf.ValueTypeNames.Float3, "float3", Gf.Vec3f(0.3, 0.4, 0.5)),
+        Sdf.ValueTypeNames.Float4: (Sdf.ValueTypeNames.Float4, "float4", Gf.Vec4f(0.6, 0.7, 0.8, 0.9)),
+        Sdf.ValueTypeNames.Int: (Sdf.ValueTypeNames.Int, "int", 1),
+        Sdf.ValueTypeNames.String: (Sdf.ValueTypeNames.String, "string", "test"),
+        Sdf.ValueTypeNames.Normal3f: (Sdf.ValueTypeNames.Normal3f, "normal", Gf.Vec3f(0.1, 0.2, 0.3)),
+        Sdf.ValueTypeNames.Point3f: (Sdf.ValueTypeNames.Point3f, "point", Gf.Vec3f(0.4, 0.5, 0.6)),
+        Sdf.ValueTypeNames.Vector3f: (Sdf.ValueTypeNames.Vector3f, "vector", Gf.Vec3f(0.7, 0.8, 0.9)),
+        Sdf.ValueTypeNames.Matrix4d: (
+            Sdf.ValueTypeNames.Matrix4d,
+            "matrix",
+            Gf.Matrix4d(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+        ),
+        Sdf.ValueTypeNames.Color3f: (Sdf.ValueTypeNames.Float3, "float3", Gf.Vec3f(0.1, 0.2, 0.3)),
+        Sdf.ValueTypeNames.Color4f: (Sdf.ValueTypeNames.Float4, "float4", Gf.Vec4f(0.4, 0.5, 0.6, 0.7)),
+    }
+
+    def getAllShaderNames(self):
+        if hasattr(Sdr.Registry(), "GetShaderNodeNames"):
+            return Sdr.Registry().GetShaderNodeNames()
+        else:
+            return Sdr.Registry().GetNodeNames()
+
+    def setUp(self):
+        super().setUp()
+        self.stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(self.stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        self.materials = UsdGeom.Scope.Define(
+            self.stage, self.stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())
+        ).GetPrim()
+        self.material = UsdShade.Material.Define(self.stage, self.materials.GetPath().AppendChild("TestMaterial"))
+        self.shader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestShader"))
+        self.shader.SetShaderId("TestShader")
+
+    def assertValidShaderPrimvarNetwork(
+        self,
+        shader: UsdShade.Shader,
+        primvarInfo: List[Tuple[str, str, Any]],  # inputName, primvarName, fallbackValue
+    ):
+        self.assertTrue(shader)
+
+        # verify the primvarInfo
+        for inputName, primvarName, fallbackValue in primvarInfo:
+            input = shader.GetInput(inputName)
+            outputName = "result"
+
+            # check if the input type is in the typeMappings
+            if input.GetTypeName() in self.typeMappings:
+                outputTypeName, primvarRoleName, setFallbackValue = self.typeMappings[input.GetTypeName()]
+            else:
+                outputTypeName = input.GetTypeName()
+                primvarRoleName = input.GetTypeName()
+
+            # Make the primvar name valid for the shader prim by first replacing any ':' with '_'
+            validPrimvarName = primvarName.replace(":", "_")
+            primvarReaderName = usdex.core.getValidPrimName(f"Primvar_{validPrimvarName}_{primvarRoleName}")
+            primvarReader = UsdShade.Shader(shader.GetPrim().GetParent().GetChild(primvarReaderName))
+            self.assertTrue(primvarReader)
+            self.assertEqual(primvarReader.GetShaderId(), f"UsdPrimvarReader_{primvarRoleName}")
+            self.assertEqual(str(primvarReader.GetOutput(outputName).GetTypeName()), str(outputTypeName))
+            self.assertEqual(primvarReader.GetInput("varname").GetAttr().Get(), primvarName)
+            if fallbackValue is not None:
+                self.assertEqual(primvarReader.GetInput("fallback").GetTypeName(), outputTypeName)
+                self.assertAlmostEqual(primvarReader.GetInput("fallback").GetAttr().Get(), fallbackValue)
+            else:
+                self.assertFalse(primvarReader.GetInput("fallback"))
+
+            self.assertTrue(input.HasConnectedSource())
+            source, sourceAttr, sourceType = input.GetConnectedSource()
+            self.assertEqual(sourceType, UsdShade.AttributeType.Output)
+            self.assertEqual(
+                source.GetOutput(sourceAttr).GetAttr(),
+                primvarReader.GetOutput(outputName).GetAttr(),
+                msg=f"Incorrect connection for {inputName} ({input.GetTypeName()}) -> {outputName}",
+            )
+            # the only opinion is from the connection
+            self.assertFalse(input.GetAttr().HasAuthoredValue())
+            self.assertEqual(len(input.GetValueProducingAttributes()), 1)
+            self.assertEqual(input.GetValueProducingAttributes()[0], primvarReader.GetOutput(outputName).GetAttr())
+
+    def testConnect(self):
+        shaderInput = self.shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f)
+        result = usdex.core.connectPrimvarShader(shaderInput, "paintColor", Gf.Vec3f(0.1, 0.2, 0.3))
+        self.assertTrue(result)
+        self.assertValidShaderPrimvarNetwork(
+            self.shader,
+            [("diffuseColor", "paintColor", Gf.Vec3f(0.1, 0.2, 0.3))],
+        )
+
+        # Check with a primvar name that is invalid for a prim name (contains a `:`)
+        shaderInput = self.shader.CreateInput("roughness", Sdf.ValueTypeNames.Float)
+        result = usdex.core.connectPrimvarShader(shaderInput, "paint:Roughness")
+        self.assertTrue(result)
+        self.assertValidShaderPrimvarNetwork(
+            self.shader,
+            [
+                ("diffuseColor", "paintColor", Gf.Vec3f(0.1, 0.2, 0.3)),
+                ("roughness", "paint:Roughness", None),
+            ],
+        )
+        self.assertIsValidUsd(self.stage)
+
+    def testInvalidInput(self):
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*UsdShadeInput is not valid.*")]):
+            result = usdex.core.connectPrimvarShader(UsdShade.Input(), "paintColor")
+            self.assertFalse(result)
+        self.assertIsValidUsd(self.stage)
+
+    def testInvalidNames(self):
+        shaderInput = self.shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*the primvar name is invalid.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "")
+            self.assertFalse(result)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*the primvar name is invalid.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "inv@lidName")
+            self.assertFalse(result)
+        self.assertIsValidUsd(self.stage)
+
+    def testAllInputTypes(self):
+        # Test with all input types mentioned in the USD Preview Surface spec: https://openusd.org/release/spec_usdpreviewsurface.html#primvar-reader
+        connectionData = []
+        for inputType in self.typeMappings.keys():
+            connectionType, primvarRoleName, fallbackValue = self.typeMappings[inputType]
+            shaderInput = self.shader.CreateInput(f"shaderInput_{inputType}", inputType)
+            result = usdex.core.connectPrimvarShader(shaderInput, f"pv_{inputType}", fallbackValue)
+            self.assertTrue(result)
+            connectionData.append((f"shaderInput_{inputType}", f"pv_{inputType}", fallbackValue))
+
+        self.assertValidShaderPrimvarNetwork(
+            self.shader,
+            connectionData,
+        )
+        self.assertIsValidUsd(self.stage)
+
+    def testAllInputTypesWithSdrRegistry(self):
+        # To enable this test, add the UsdShaders plugin using this repo.toml repo_test.env_vars setting:
+        # [ "PXR_PLUGINPATH_NAME", "${root}/_build/target-deps/usd/release/plugin/usd/usdShaders/resources" ],
+
+        if "UsdPreviewSurface" not in self.getAllShaderNames():
+            self.skipTest("Skipping until the UsdShaders plugin is available")
+
+        #  Run the test that creates all of the currently supported USD Preview Surface input types
+        self.testAllInputTypes()
+
+        shaderIdNames = self.getAllShaderNames()
+        for prim in self.material.GetPrim().GetChildren():
+            shader = UsdShade.Shader(prim)
+            if "PrimvarReader_" not in shader.GetShaderId():
+                continue
+
+            self.assertIn(shader.GetShaderId(), shaderIdNames)
+
+            # Check that "fallback" and "result" are the correct types
+            fallback = shader.GetInput("fallback")
+            result = shader.GetOutput("result")
+
+            shaderNodeDef = Sdr.Registry().GetShaderNodeByIdentifier(shader.GetShaderId())
+            inputProperty = shaderNodeDef.GetInput("fallback")
+            self.assertTrue(inputProperty)
+            outputProperty = shaderNodeDef.GetOutput("result")
+            self.assertTrue(outputProperty)
+
+            self.assertEqual(fallback.GetTypeName(), inputProperty.GetTypeAsSdfType().GetSdfType())
+            self.assertEqual(result.GetTypeName(), outputProperty.GetTypeAsSdfType().GetSdfType())
+
+    def testOverwriteOutputType(self):
+        shaderInput = self.shader.CreateInput("roughness", Sdf.ValueTypeNames.Float)
+        shaderPath = self.shader.GetPrim().GetParent().GetPath().AppendChild("Primvar_paintRoughness_float")
+        primvarShader = UsdShade.Shader.Define(self.stage, shaderPath)
+
+        # Set the output type to a different type to verify it is overwritten
+        primvarShader.CreateOutput("result", Sdf.ValueTypeNames.String)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*existing shader.*does not match the input type.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintRoughness")
+            self.assertFalse(result)
+
+    def testUnsupportedUsdPreviewSurfaceInputType(self):
+        shaderInput = self.shader.CreateInput("highPrecisionDouble", Sdf.ValueTypeNames.Double)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<double> is not supported.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintHighPrecisionDouble")
+            self.assertFalse(result)
