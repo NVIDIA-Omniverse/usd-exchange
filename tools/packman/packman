@@ -27,7 +27,7 @@ else
 	PM_CURL_SILENT="-s -S"
 	PM_WGET_QUIET="--quiet"
 fi
-export PM_PACKMAN_VERSION=7.31
+export PM_PACKMAN_VERSION=7.33
 
 
 cleanup() {
@@ -101,7 +101,7 @@ main() {
             if [ $exit_code -eq 0 ]; then
                 return 0
             fi
-
+            
             if [ $TRIES -lt $MAX_TRIES ]; then
                 echo "Attempt $TRIES failed. Retrying in $DELAY seconds ..."
                 sleep $DELAY
@@ -142,7 +142,7 @@ main() {
     {
         PLATFORM=`uname`
         PROCESSOR=`uname -m`
-        PYTHON_VERSION=3.10.18-nv1
+        PYTHON_VERSION=3.10.19-nv1
 
         if [ $PLATFORM == 'Darwin' ]; then
             PYTHON_PACKAGE=3.10.5-1-macos-x86_64
@@ -220,7 +220,7 @@ main() {
             fi
         done < "$PM_VAR_PATH"
     fi
-
+        
     # Return success
     return 0
 }
