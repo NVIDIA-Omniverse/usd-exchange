@@ -1,22 +1,62 @@
-# 2.1.0-a3
+# 2.1.0-rc1
 
 ## Core
 
 ### Features
 
+- Added USD 25.08 support
 - Added convenience functions for defining basic Gprims (plane, sphere, cube, cone, cylinder, capsule)
 - Added Kind configuration helpers for Components and Assemblies
+- Added Primvar Shader helpers for preview materials
+
+### Fixes
+
+- Fixed `isEditablePrimLocation()` to prevent authoring new children under instanced prims or their instance proxy descendants
+
+## Pybind
+
+### Features
+
+- Added pybind11 interoperability for `UsdGeom.Sphere`, `UsdGeom.Plane`, `UsdGeom.Cube`, `UsdGeom.Cone`, `UsdGeom.Cylinder`, `UsdGeom.Cylinder_1`, `UsdGeom.Capsule`, and `UsdGeom.Capsule_1`
 
 ## Dev Tools
 
 ### Features
 
 - Added `usdex.rtx` and `UsdSemantics` to the `usd-exchange` wheel
+- Added USD 25.08 support via `install_usdex`
+  - USD 25.08+ flavors use oneTBB
+  - The python wheels remain on USD 25.05
 - Added Linux ARM (aarch64) support for USD 25.02+
+  - Available via the python wheels and `install_usdex`
 
 ### Fixes
 
 - Fixed code-signing of Windows wheels
+- Fixed `install_usdex` bug todo with optional repo_tool dependencies
+
+## Documentation
+
+- Fixed Try the Python Samples guide to use a virtual environment & python wheels
+
+## Dependencies
+
+### Runtime Deps
+
+- OpenUSD 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
+- Omni Asset Validator 1.4.2
+- Python 3.12.11, 3.11.12, 3.10.18 (default)
+- pybind 2.11.1
+
+### Dev Tools
+
+- packman 7.33
+- repo_tools (all matching latest public)
+- doctest 2.4.5
+- cxxopts 2.2.0
+- Premake 5.0.0-beta4
+- GCC 11.4.0
+- MSVC 2019-16.11
 
 # 2.0.1
 
