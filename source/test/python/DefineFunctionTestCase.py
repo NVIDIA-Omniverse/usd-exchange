@@ -232,8 +232,10 @@ class DefineFunctionTestCase(TestCase):
         with ScopedDiagnosticChecker(
             self,
             [
-                (Tf.TF_DIAGNOSTIC_CODING_ERROR_TYPE, ".*authoring to an instance proxy is not allowed"),
-                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, '.*at "/World/Instance/Instanced"'),
+                (
+                    Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
+                    ".*invalid location.*/World/Instance/Instanced.*descendant of instance.*authoring is not allowed",
+                ),
             ],
         ):
             result = self.defineFunc(stage, path, *self.requiredArgs)
@@ -244,8 +246,10 @@ class DefineFunctionTestCase(TestCase):
         with ScopedDiagnosticChecker(
             self,
             [
-                (Tf.TF_DIAGNOSTIC_CODING_ERROR_TYPE, ".*authoring to an instance proxy is not allowed"),
-                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, '.*at "/World/Instance/Instanced/Prim"'),
+                (
+                    Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
+                    ".*invalid location.*/World/Instance/Instanced/Prim.*descendant of instance.*authoring is not allowed",
+                ),
             ],
         ):
             result = self.defineFunc(stage, path, *self.requiredArgs)
@@ -305,8 +309,7 @@ class DefineFunctionTestCase(TestCase):
         with ScopedDiagnosticChecker(
             self,
             [
-                (Tf.TF_DIAGNOSTIC_CODING_ERROR_TYPE, ".*authoring to an instance proxy is not allowed"),
-                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, '.*at "/World/Instance/Instanced"'),
+                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*invalid location.*/World/Instance.*an instance, authoring is not allowed"),
             ],
         ):
             result = self.defineFunc(parent, name, *self.requiredArgs)

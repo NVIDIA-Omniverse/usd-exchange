@@ -311,6 +311,47 @@ bool usdex::core::isEditablePrimLocation(const UsdStagePtr stage, const SdfPath&
         return false;
     }
 
+    // Check if the path is the descendant of an instance
+    // Walk up the path hierarchy until we reach "/"
+    SdfPath currentPath = path.GetParentPath();
+    while (currentPath != SdfPath::AbsoluteRootPath())
+    {
+        const UsdPrim currentPrim = stage->GetPrimAtPath(currentPath);
+        if (currentPrim)
+        {
+            if (currentPrim.IsInstance())
+            {
+                if (reason != nullptr)
+                {
+                    *reason = TfStringPrintf(
+                        "\"%s\" is a descendant of instance \"%s\", authoring is not allowed.",
+                        path.GetAsString().c_str(),
+                        currentPath.GetAsString().c_str()
+                    );
+                }
+                return false;
+            }
+            else if (currentPrim.IsInstanceProxy())
+            {
+                if (reason != nullptr)
+                {
+                    *reason = TfStringPrintf(
+                        "\"%s\" is a descendant of instance proxy \"%s\", authoring is not allowed.",
+                        path.GetAsString().c_str(),
+                        currentPath.GetAsString().c_str()
+                    );
+                }
+                return false;
+            }
+            else
+            {
+                // If we found a prim that is neither an instance nor an instance proxy,
+                // then the hierarchy above it is safe and we can return true
+                return true;
+            }
+        }
+        currentPath = currentPath.GetParentPath();
+    }
     return true;
 }
 
@@ -323,6 +364,16 @@ bool usdex::core::isEditablePrimLocation(const UsdPrim& prim, const std::string&
         if (reason != nullptr)
         {
             *reason = "Invalid UsdPrim";
+        }
+        return false;
+    }
+
+    // The parent prim must not be an instance
+    if (prim.IsInstance())
+    {
+        if (reason != nullptr)
+        {
+            *reason = TfStringPrintf("\"%s\" is an instance, authoring is not allowed.", prim.GetPath().GetAsString().c_str());
         }
         return false;
     }
