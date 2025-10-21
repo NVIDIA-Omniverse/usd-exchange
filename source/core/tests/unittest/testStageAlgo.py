@@ -710,16 +710,32 @@ class LocationEditableTestCase(usdex.test.TestCase):
         self.assertFalse(result)
         self.assertRegex(reason, ".*is not a valid absolute prim path")
 
-        # if the prim exists it cannot be an Instance Proxy
         stage.CreateClassPrim("/Prototypes")
         UsdGeom.Xform.Define(stage, "/Prototypes/Prototype")
         UsdGeom.Xform.Define(stage, "/Prototypes/Prototype/InstanceProxyChild")
         xformPrim = UsdGeom.Xform.Define(stage, "/World/Instance").GetPrim()
         xformPrim.GetReferences().AddInternalReference(Sdf.Path("/Prototypes/Prototype"))
         xformPrim.SetInstanceable(True)
+
+        # if the prim exists it cannot be an Instance Proxy
         result, reason = usdex.core.isEditablePrimLocation(stage, f"{xformPrim.GetPath()}/InstanceProxyChild")
         self.assertFalse(result)
         self.assertRegex(reason, ".*is an instance proxy, authoring is not allowed")
+
+        # if the new prim is a descendant of an Instance Proxy it cannot be created
+        result, reason = usdex.core.isEditablePrimLocation(stage, f"{xformPrim.GetPath()}/InstanceProxyChild/NewGrandChild")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*descendant of instance proxy.*authoring is not allowed")
+
+        # if the new prim is a descendant of an Instance it cannot be created
+        result, reason = usdex.core.isEditablePrimLocation(stage, f"{xformPrim.GetPath()}/NewChild")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*descendant of instance.*authoring is not allowed")
+
+        # if the new prim is a descendant of an Instance (even if its parent doesn't exist) it cannot be created
+        result, reason = usdex.core.isEditablePrimLocation(stage, f"{xformPrim.GetPath()}/NewChild/NewGrandChild")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*descendant of instance.*authoring is not allowed")
 
     def testIsEditableLocationFromPrimName(self):
         stage = Usd.Stage.CreateInMemory()
@@ -739,20 +755,26 @@ class LocationEditableTestCase(usdex.test.TestCase):
         self.assertFalse(result)
         self.assertRegex(reason, ".*is not a valid prim name")
 
-        # if the child exists it cannot be an Instance Proxy
         stage.CreateClassPrim("/Prototypes")
         UsdGeom.Xform.Define(stage, "/Prototypes/Prototype")
         UsdGeom.Xform.Define(stage, "/Prototypes/Prototype/InstanceProxyChild")
         xformPrim = UsdGeom.Xform.Define(stage, "/World/Instance").GetPrim()
         xformPrim.GetReferences().AddInternalReference(Sdf.Path("/Prototypes/Prototype"))
         xformPrim.SetInstanceable(True)
+
+        # if the parent is an Instance the existing child cannot be edited
         result, reason = usdex.core.isEditablePrimLocation(xformPrim, "InstanceProxyChild")
         self.assertFalse(result)
-        self.assertRegex(reason, ".*is an instance proxy, authoring is not allowed")
+        self.assertRegex(reason, ".*is an instance, authoring is not allowed")
 
-        # the parent cannot be an Instance Proxy either
+        # if the parent is an Instance the new child cannot be created
+        result, reason = usdex.core.isEditablePrimLocation(xformPrim, "NewChild")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*is an instance, authoring is not allowed")
+
+        # if the parent is an Instance Proxy the new grandchild cannot be created
         instanceProxyChild = stage.GetPrimAtPath(f"{xformPrim.GetPath()}/InstanceProxyChild")
-        result, reason = usdex.core.isEditablePrimLocation(instanceProxyChild, "grandchild")
+        result, reason = usdex.core.isEditablePrimLocation(instanceProxyChild, "Grandchild")
         self.assertFalse(result)
         self.assertRegex(reason, ".*is an instance proxy, authoring is not allowed")
 
@@ -774,3 +796,69 @@ class LocationEditableTestCase(usdex.test.TestCase):
         result, reason = usdex.core.isEditablePrimLocation(instanceProxyChild)
         self.assertFalse(result)
         self.assertRegex(reason, ".*is an instance proxy, authoring is not allowed")
+
+    def testVisibleInstanceRoot(self):
+        # In a situation where you have cars A & B. A is the “prototype”, but visible, B is referencing A.
+        # Both car prims have “Instanceable” checked (though A really shouldn't because it doesn't mean anything).
+        # Which prims have IsPrototype() and IsInstance() true?
+        # Can you still edit A (actually AND does the function allow you to)? (Yes, you can still edit A)
+        # For documentation in these matters: https://openusd.org/release/api/_usd__page__scenegraph_instancing.html
+        stage = Usd.Stage.CreateInMemory()
+        carA = UsdGeom.Xform.Define(stage, "/CarA").GetPrim()
+        carA_Sphere = usdex.core.defineSphere(carA.GetPrim(), "Sphere", 0.5)
+        carA.SetInstanceable(True)  # Prototype and visible
+
+        carB = UsdGeom.Xform.Define(stage, "/CarB").GetPrim()
+        carB.GetReferences().AddInternalReference(Sdf.Path("/CarA"))
+        carB.SetInstanceable(True)  # Referencing prototype and visible
+
+        # CarA is not an instance, it is the source prim, or prototype definition.
+        # IsPrototype() is false because the prototype is hidden and synthetic in this case
+        # IsInstance() is false because it is not referencing another prim (no external composition arc)
+        self.assertFalse(carA.IsPrototype())
+        self.assertFalse(carA.IsInstance())
+        result, reason = usdex.core.isEditablePrimLocation(carA, "NewChild")
+        self.assertTrue(result)
+        self.assertEqual(reason, "")
+
+        result, reason = usdex.core.isEditablePrimLocation(stage, f"{carA.GetPath()}/NewChild")
+        self.assertTrue(result)
+        self.assertEqual(reason, "")
+
+        # confirm that we can define a new prim under CarA
+        newSphere = usdex.core.defineSphere(carA, "NewSphere", 1.0)
+        self.assertTrue(newSphere)
+
+        # CarB is an instance because it has the instanceable flag set and an external composition arc
+        # IsPrototype() is false and IsInstance() is true
+        self.assertFalse(carB.IsInPrototype())
+        self.assertTrue(carB.IsInstance())
+        result, reason = usdex.core.isEditablePrimLocation(carB, "NewChild")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*is an instance, authoring is not allowed")
+
+        result, reason = usdex.core.isEditablePrimLocation(stage, f"{carB.GetPath()}/NewChild")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*is a descendant of instance.*authoring is not allowed")
+
+        result, reason = usdex.core.isEditablePrimLocation(carB, "Sphere")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*is an instance, authoring is not allowed")
+
+        result, reason = usdex.core.isEditablePrimLocation(stage, f"{carB.GetPath()}/Sphere")
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*is an instance proxy.*authoring is not allowed")
+
+        # confirm that we shouldn't be able to define a new prim under CarB
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to define.*invalid location.*")]):
+            newSphere = usdex.core.defineSphere(carB.GetPrim(), "NewSphere", 1.0)
+            self.assertFalse(newSphere)
+
+        # let's find the actual prototype prim that CarB is referencing
+        # it is the "Implicit Prototype Root", hidden and synthetic
+        # it will be implementation-specific, but something like "/__Prototype_1"
+        self.assertTrue(carB.GetPrototype().IsPrototype())
+
+        # show that the Instance prim has no children, the prototype holds the children
+        self.assertEqual(len(carB.GetChildren()), 0)
+        self.assertEqual(len(carB.GetPrim().GetPrototype().GetChildren()), 2)  # Sphere and NewSphere
