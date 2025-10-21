@@ -84,13 +84,7 @@ For command line argument help, use `--help`
 
 ## Run the Python Samples
 
-After [building the Samples](#build-the-samples), you can run the individual python samples.
-
-```{important}
-Even if you installed a python virtual environment as suggested in [Getting Started](./getting-started.md#installation), you still need to build the samples and use the `python.sh|bat` scripts at the root of the Samples repository.
-
-In the future, the python samples may be adapted to work with the wheels directly.
-```
+Setup and activate a virtual environment for USD Exchange as suggested in [Getting Started](./getting-started.md#installation). Run the samples within the virtual environment:
 
 ``````{card}
 
@@ -99,24 +93,24 @@ In the future, the python samples may be adapted to work with the wheels directl
 ````{tab-item} Linux
 :sync: linux
 
-Use the `python.sh` script to execute each program with a pre-configured environment.
-
+For command line argument help, use `--help`
 ```bash
-./python.sh source/createStage/createStage.py
+python source/python/createStage.py
 ```
 ````
 
 ````{tab-item} Windows
 :sync: windows
 
-Use the `python.bat` script to execute each program with a pre-configured environment.
+For command line argument help, use `--help`
 
 ```powershell
-.\python.bat source/createStage/createStage.py
+python source\python\createStage.py
 ```
 ````
 
 `````
+``````
 
 ## Experiment
 
