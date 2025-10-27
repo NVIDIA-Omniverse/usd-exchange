@@ -6,7 +6,7 @@
     <package name="repo_build" version="1.16.0" />
   </dependency>
   <dependency name="repo_usd" linkPath="../_repo/deps/repo_usd">
-    <package name="repo_usd" version="5.0.18" />
+    <package name="repo_usd" version="5.0.19" />
   </dependency>
   <dependency name="repo_test" linkPath="../_repo/deps/repo_test">
     <package name="repo_test" version="2.40.4" />

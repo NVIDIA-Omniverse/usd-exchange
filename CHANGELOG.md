@@ -1,4 +1,4 @@
-# 2.1.0-rc1
+# 2.1.0-rc2
 
 ## Core
 
@@ -45,7 +45,7 @@
 
 - OpenUSD 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
 - Omni Asset Validator 1.4.2
-- Python 3.12.11, 3.11.12, 3.10.18 (default)
+- Python 3.12.12, 3.11.14, 3.10.19 (default)
 - pybind 2.11.1
 
 ### Dev Tools
