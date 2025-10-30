@@ -388,6 +388,36 @@ USDEX_API pxr::UsdPhysicsSphericalJoint definePhysicsSphericalJoint(
 //! @param axis The axis of the joint.
 USDEX_API void alignPhysicsJoint(pxr::UsdPhysicsJoint joint, const JointFrame& frame, const pxr::GfVec3f& axis = pxr::GfVec3f(1.0f, 0.0f, 0.0f));
 
+//! Connects an existing joint to the specified body prims and realigns the joint frame accordingly.
+//!
+//! If the joint was previously targetting different bodies, they will be replaced with relationships to the new bodies.
+//!
+//! If either `body0` or `body1` is an invalid prim, the corresponding body relationship on the joint will be cleared and the joint will
+//! be connected between the valid body and the world.
+//!
+//! The Joint's local position & orientation relative to the new bodies will be authored
+//! to align to the specified position, orientation, and axis.
+//!
+//! The `axis` specifies the primary axis for rotation or translation, based on the local joint orientation relative to each body.
+//!
+//!   - To rotate or translate about the X-axis, specify (1, 0, 0). To operate in the opposite direction, specify (-1, 0, 0).
+//!   - To rotate or translate about about the Y-axis, specify (0, 1, 0). To operate in the opposite direction, specify (0, -1, 0).
+//!   - To rotate or translate about about the Z-axis, specify (0, 0, 1). To operate in the opposite direction, specify (0, 0, -1).
+//!   - Any other direction will be aligned to X-axis via a local rotation or translation for both bodies.
+//!
+//! @param joint The joint to align
+//! @param body0 The first body of the joint
+//! @param body1 The second body of the joint
+//! @param frame The position and rotation of the joint in the specified coordinate system.
+//! @param axis The axis of the joint.
+USDEX_API void connectPhysicsJoint(
+    pxr::UsdPhysicsJoint joint,
+    const pxr::UsdPrim& body0,
+    const pxr::UsdPrim& body1,
+    const JointFrame& frame,
+    const pxr::GfVec3f& axis = pxr::GfVec3f(1.0f, 0.0f, 0.0f)
+);
+
 //! @}
 
 } // namespace usdex::core

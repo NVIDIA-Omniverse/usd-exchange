@@ -168,9 +168,9 @@ void bindNameAlgo(module& m)
 
                 An invalid token is returned on failure.
 
-                Args:
-                    parent: The parent prim path
-                    name: Preferred name
+                Parameters:
+                    - **parent** - The parent prim path
+                    - **name** - Preferred name
 
                 Returns:
                     Valid and unique name token
@@ -187,9 +187,9 @@ void bindNameAlgo(module& m)
 
                 An invalid token is returned on failure.
 
-                Args:
-                    parent: The parent prim
-                    name: Preferred name
+                Parameters:
+                    - **parent** - The parent prim
+                    - **name** - Preferred name
 
                 Returns:
                     Valid and unique name token
@@ -206,9 +206,9 @@ void bindNameAlgo(module& m)
 
                 An invalid token is returned on failure.
 
-                Args:
-                    parent: The parent prim spec
-                    name: Preferred name
+                Parameters:
+                    - **parent** - The parent prim spec
+                    - **name** - Preferred name
 
                 Returns:
                     Valid and unique name token
@@ -223,9 +223,9 @@ void bindNameAlgo(module& m)
             R"(
                 Make a list of names valid and unique for use as the names of a children of the given prim.
 
-                Args:
-                    parent: The parent prim path
-                    names: Preferred names
+                Parameters:
+                    - **parent** - The parent prim path
+                    - **names** - Preferred names
 
                 Returns:
                     A vector of Valid and unique name tokens ordered to match the preferred names
@@ -240,9 +240,9 @@ void bindNameAlgo(module& m)
             R"(
                 Make a list of names valid and unique for use as the names of a children of the given prim.
 
-                Args:
-                    parent: The parent prim
-                    names: Preferred names
+                Parameters:
+                    - **parent** - The parent prim
+                    - **names** - Preferred names
 
                 Returns:
                     A vector of Valid and unique name tokens ordered to match the preferred names
@@ -257,9 +257,9 @@ void bindNameAlgo(module& m)
             R"(
                 Make a list of names valid and unique for use as the names of a children of the given prim.
 
-                Args:
-                    parent: The parent prim spec
-                    names: Preferred names
+                Parameters:
+                    - **parent** - The parent prim spec
+                    - **names** - Preferred names
 
                 Returns:
                     A vector of Valid and unique name tokens ordered to match the preferred names
@@ -276,9 +276,9 @@ void bindNameAlgo(module& m)
 
                 An invalid token is returned on failure.
 
-                Args:
-                    parent: The parent prim path
-                    name: Preferred name
+                Parameters:
+                    - **parent** - The parent prim path
+                    - **name** - Preferred name
 
                 Returns:
                     Valid and unique name token
@@ -295,9 +295,9 @@ void bindNameAlgo(module& m)
 
                 An invalid token is returned on failure.
 
-                Args:
-                    parent: The parent prim
-                    name: Preferred name
+                Parameters:
+                    - **parent** - The parent prim
+                    - **name** - Preferred name
 
                 Returns:
                     Valid and unique name token
@@ -314,9 +314,9 @@ void bindNameAlgo(module& m)
 
                 An invalid token is returned on failure.
 
-                Args:
-                    parent: The parent prim spec
-                    name: Preferred name
+                Parameters:
+                    - **parent** - The parent prim spec
+                    - **name** - Preferred name
 
                 Returns:
                     Valid and unique name token
@@ -331,9 +331,9 @@ void bindNameAlgo(module& m)
             R"(
                 Make a list of names valid and unique for use as the names of properties on the given prim.
 
-                Args:
-                    parent: The parent prim path
-                    names: Preferred names
+                Parameters:
+                    - **parent** - The parent prim path
+                    - **names** - Preferred names
 
                 Returns:
                     A vector of Valid and unique name tokens ordered to match the preferred names
@@ -348,9 +348,9 @@ void bindNameAlgo(module& m)
             R"(
                 Make a list of names valid and unique for use as the names of properties on the given prim.
 
-                Args:
-                    parent: The parent prim
-                    names: Preferred names
+                Parameters:
+                    - **parent** - The parent prim
+                    - **names** - Preferred names
 
                 Returns:
                     A vector of Valid and unique name tokens ordered to match the preferred names
@@ -365,9 +365,9 @@ void bindNameAlgo(module& m)
             R"(
                 Make a list of names valid and unique for use as the names of properties on the given prim.
 
-                Args:
-                    parent: The parent prim spec
-                    names: Preferred names
+                Parameters:
+                    - **parent** - The parent prim spec
+                    - **names** - Preferred names
 
                 Returns:
                     A vector of Valid and unique name tokens ordered to match the preferred names
@@ -381,8 +381,9 @@ void bindNameAlgo(module& m)
             R"(
                 Update the reserved child names for a prim to include existing children.
 
-                Args:
-                    parent: The parent prim
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -393,8 +394,9 @@ void bindNameAlgo(module& m)
             R"(
                 Update the reserved child names for a prim to include existing children.
 
-                Args:
-                    parent: The parent prim spec
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -405,8 +407,9 @@ void bindNameAlgo(module& m)
             R"(
                 Update the reserved property names for a prim to include existing properties.
 
-                Args:
-                    parent: The parent prim
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -417,8 +420,9 @@ void bindNameAlgo(module& m)
             R"(
                 Update the reserved property names for a prim to include existing properties.
 
-                Args:
-                    parent: The parent prim spec
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -429,8 +433,9 @@ void bindNameAlgo(module& m)
             R"(
                 Update the reserved child and property names for a prim to include existing children and properties.
 
-                Args:
-                    parent: The parent prim
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -441,8 +446,9 @@ void bindNameAlgo(module& m)
             R"(
                 Update the reserved child and property names for a prim to include existing children and properties.
 
-                Args:
-                    parent: The parent prim spec
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -453,8 +459,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved child names for a prim.
 
-                Args:
-                    parent: The parent prim path
+                Parameters:
+                    - **parent** - The parent prim path
+
             )"
         )
 
@@ -465,8 +472,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved child names for a prim.
 
-                Args:
-                    parent: The parent prim path
+                Parameters:
+                    - **parent** - The parent prim path
+
             )"
         )
 
@@ -477,8 +485,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved child names for a prim.
 
-                Args:
-                    parent: The parent prim path
+                Parameters:
+                    - **parent** - The parent prim path
+
             )"
         )
 
@@ -489,8 +498,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved property names for a prim.
 
-                Args:
-                    parent: The parent prim path
+                Parameters:
+                    - **parent** - The parent prim path
+
             )"
         )
 
@@ -501,8 +511,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved property names for a prim.
 
-                Args:
-                    parent: The parent prim
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -513,8 +524,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved property names for a prim.
 
-                Args:
-                    parent: The parent prim spec
+                Parameters:
+                    - **parent** - The parent prim spec
+
             )"
         )
 
@@ -525,8 +537,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved prim and property names for a prim.
 
-                Args:
-                    parent: The parent prim path
+                Parameters:
+                    - **parent** - The parent prim path
+
             )"
         )
 
@@ -537,8 +550,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved prim and property names for a prim.
 
-                Args:
-                    parent: The parent prim
+                Parameters:
+                    - **parent** - The parent prim
+
             )"
         )
 
@@ -549,8 +563,9 @@ void bindNameAlgo(module& m)
             R"(
                 Clear the reserved prim and property names for a prim.
 
-                Args:
-                    parent: The parent prim spec
+                Parameters:
+                    - **parent** - The parent prim spec
+
             )"
         );
 

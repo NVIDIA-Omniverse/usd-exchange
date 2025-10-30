@@ -809,3 +809,71 @@ void usdex::core::alignPhysicsJoint(UsdPhysicsJoint joint, const usdex::core::Jo
     // Set the physics joint.
     setPhysicsJoint(joint, body0, body1, frame, axis);
 }
+
+void usdex::core::connectPhysicsJoint(
+    UsdPhysicsJoint joint,
+    const pxr::UsdPrim& body0,
+    const pxr::UsdPrim& body1,
+    const usdex::core::JointFrame& frame,
+    const GfVec3f& axis
+)
+{
+    if (!body0 && frame.space == usdex::core::JointFrame::Space::Body0)
+    {
+        TF_RUNTIME_ERROR("Body0 is not specified for PhysicsJoint at \"%s\"", joint.GetPrim().GetPath().GetAsString().c_str());
+        return;
+    }
+    if (!body1 && frame.space == usdex::core::JointFrame::Space::Body1)
+    {
+        TF_RUNTIME_ERROR("Body1 is not specified for PhysicsJoint at \"%s\"", joint.GetPrim().GetPath().GetAsString().c_str());
+        return;
+    }
+
+    const SdfPath path = joint.GetPrim().GetPath();
+
+    if (!body0 && !body1)
+    {
+        TF_RUNTIME_ERROR("Body0 and Body1 are not specified for PhysicsJoint at \"%s\"", path.GetAsString().c_str());
+        return;
+    }
+
+    // Specifies the bodies to be connected to the joint.
+    if (body0)
+    {
+        if (!joint.GetBody0Rel().SetTargets(SdfPathVector({ body0.GetPath() })))
+        {
+            TF_RUNTIME_ERROR(
+                "Unable to set body0( \"%s\" ) for PhysicsJoint at \"%s\"",
+                body0.GetPath().GetAsString().c_str(),
+                path.GetAsString().c_str()
+            );
+            return;
+        }
+    }
+    else if (!joint.GetBody0Rel().ClearTargets(true /* removeSpec */))
+    {
+        TF_RUNTIME_ERROR("Unable to clear body0 relationships for PhysicsJoint at \"%s\"", path.GetAsString().c_str());
+        return;
+    }
+
+    if (body1)
+    {
+        if (!joint.GetBody1Rel().SetTargets(SdfPathVector({ body1.GetPath() })))
+        {
+            TF_RUNTIME_ERROR(
+                "Unable to set body1( \"%s\" ) for PhysicsJoint at \"%s\"",
+                body1.GetPath().GetAsString().c_str(),
+                path.GetAsString().c_str()
+            );
+            return;
+        }
+    }
+    else if (!joint.GetBody1Rel().ClearTargets(true /* removeSpec */))
+    {
+        TF_RUNTIME_ERROR("Unable to clear body1 relationships for PhysicsJoint at \"%s\"", path.GetAsString().c_str());
+        return;
+    }
+
+    // Set the physics joint.
+    setPhysicsJoint(joint, body0, body1, frame, axis);
+}

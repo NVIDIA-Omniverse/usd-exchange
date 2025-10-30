@@ -145,12 +145,12 @@ void bindMaterialAlgo(module& m)
 
             This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
 
-            Args:
-                prim: Prim to define the material on. The prim's type will be set to ``UsdShade.Material``.
-                color: The diffuse color of the Material
-                opacity: The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
-                roughness: The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
-                metallic: The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+            Parameters:
+                - **prim** - Prim to define the material on. The prim's type will be set to ``UsdShade.Material``.
+                - **color** - The diffuse color of the Material
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **metallic** - The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
 
             Returns:
                 The newly defined ``UsdShade.Material``. Returns an Invalid object on error.

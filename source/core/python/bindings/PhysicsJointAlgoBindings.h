@@ -480,7 +480,7 @@ void bindPhysicsJointAlgo(module& m)
 
     m.def(
         "alignPhysicsJoint",
-        overload_cast<UsdPhysicsJoint, const JointFrame&, const GfVec3f&>(&alignPhysicsJoint),
+        &alignPhysicsJoint,
         arg("joint"),
         arg("frame"),
         arg("axis"),
@@ -497,10 +497,46 @@ void bindPhysicsJointAlgo(module& m)
             - To rotate or translate about about the Z-axis, specify (0, 0, 1). To operate in the opposite direction, specify (0, 0, -1).
             - Any other direction will be aligned to X-axis via a local rotation or translation for both bodies.
 
-            Parameters:
-                - **joint** - The joint to align
-                - **frame** - Specifies the position and rotation of the joint in the specified coordinate system.
-                - **axis** - The axis of the joint.
+            Args:
+                joint: The joint to align
+                frame: Specifies the position and rotation of the joint in the specified coordinate system.
+                axis: The axis of the joint.
+
+        )"
+    );
+
+    m.def(
+        "connectPhysicsJoint",
+        &connectPhysicsJoint,
+        arg("joint"),
+        arg("body0"),
+        arg("body1"),
+        arg("frame"),
+        arg("axis"),
+        R"(
+            Connects an existing joint to the specified body prims and realigns the joint frame accordingly.
+
+            If the joint was previously targetting different bodies, they will be replaced with relationships to the new bodies.
+
+            The Joint's local position & orientation relative to the new bodies will be authored
+            to align to the specified position, orientation, and axis.
+            If either ``body0`` or ``body1`` is an invalid prim, the corresponding body relationship on the joint will be cleared and the joint will
+            be connected between the valid body and the world.
+
+            The ``axis`` specifies the primary axis for rotation or translation, based on the local joint orientation relative to each body.
+
+            - To rotate or translate about about the X-axis, specify (1, 0, 0). To operate in the opposite direction, specify (-1, 0, 0).
+            - To rotate or translate about about the Y-axis, specify (0, 1, 0). To operate in the opposite direction, specify (0, -1, 0).
+            - To rotate or translate about about the Z-axis, specify (0, 0, 1). To operate in the opposite direction, specify (0, 0, -1).
+            - Any other direction will be aligned to X-axis via a local rotation or translation for both bodies.
+
+            Args:
+                joint: The joint to align
+                body0: The first body of the joint
+                body1: The second body of the joint
+                frame: Specifies the position and rotation of the joint in the specified coordinate system.
+                axis: The axis of the joint.
+
         )"
     );
 }

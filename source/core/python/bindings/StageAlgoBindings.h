@@ -44,13 +44,13 @@ void bindStageAlgo(module& m)
             The root layer will be annotated with authoring metadata, unless previously annotated. This is to preserve
             authoring metadata on referenced layers that came from other applications. See ``setLayerAuthoringMetadata`` for more details.
 
-            Args:
-                stage: The stage to be configured.
-                defaultPrimName: Name of the default root prim.
-                upAxis: The up axis for all the geometry contained in the stage.
-                linearUnits: The meters per unit for all linear measurements in the stage.
-                massUnits: The kilograms per unit for all mass measurements in the stage.
-                authoringMetadata: The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
+            Parameters:
+                - **stage** - The stage to be configured.
+                - **defaultPrimName** - Name of the default root prim.
+                - **upAxis** - The up axis for all the geometry contained in the stage.
+                - **linearUnits** - The meters per unit for all linear measurements in the stage.
+                - **massUnits** - The kilograms per unit for all mass measurements in the stage.
+                - **authoringMetadata** - The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
 
             Returns:
                 A bool indicating if the metadata was successfully authored.
@@ -72,12 +72,12 @@ void bindStageAlgo(module& m)
 
             This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
 
-            Args:
-                stage: The stage to be configured.
-                defaultPrimName: Name of the default root prim.
-                upAxis: The up axis for all the geometry contained in the stage.
-                linearUnits: The meters per unit for all linear measurements in the stage.
-                authoringMetadata: The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
+           Parameters:
+                - **stage** - The stage to be configured.
+                - **defaultPrimName** - Name of the default root prim.
+                - **upAxis** - The up axis for all the geometry contained in the stage.
+                - **linearUnits** - The meters per unit for all linear measurements in the stage.
+                - **authoringMetadata** - The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
 
             Returns:
                 A bool indicating if the metadata was successfully authored.

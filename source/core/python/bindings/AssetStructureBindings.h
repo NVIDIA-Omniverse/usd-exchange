@@ -98,7 +98,7 @@ void bindAssetStructure(module& m)
             follows USD best practices for components.
 
             Args:
-                - prim: The prim to configure as a component. This prim and all its descendants will be processed.
+                prim: The prim to configure as a component. This prim and all its descendants will be processed.
 
             Returns:
                 True if the component hierarchy was successfully configured, false otherwise.
@@ -121,7 +121,7 @@ void bindAssetStructure(module& m)
             to ensure the model hierarchy follows USD best practices for assemblies.
 
             Args:
-                - prim: The prim to configure as an assembly. This prim and all its descendants will be processed.
+                prim: The prim to configure as an assembly. This prim and all its descendants will be processed.
 
             Returns:
                 True if the assembly hierarchy was successfully configured, false otherwise.

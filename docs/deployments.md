@@ -78,7 +78,7 @@ For production environments, pin specific versions:
 
 ```bash
 # requirements.txt
-usd-exchange==2.0.0
+usd-exchange==${repo_docs_version}
 ```
 
 ```bash
@@ -132,7 +132,7 @@ docker run usdex_image
 Output:
 ```
 OpenUSD: (0, 25, 5)
-OpenUSD Exchange: 2.0.0
+OpenUSD Exchange: ${repo_docs_version}
 ```
 
 ```{eval-rst}

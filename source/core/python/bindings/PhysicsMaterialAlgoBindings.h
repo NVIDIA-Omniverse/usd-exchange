@@ -109,9 +109,7 @@ void bindPhysicsMaterialAlgo(module& m)
 
     m.def(
         "addPhysicsToMaterial",
-        overload_cast<UsdShadeMaterial&, const float, const std::optional<float>, const std::optional<float>, const std::optional<float>>(
-            &addPhysicsToMaterial
-        ),
+        &addPhysicsToMaterial,
         arg("material"),
         arg("dynamicFriction"),
         arg("staticFriction") = nullptr,
@@ -122,15 +120,16 @@ void bindPhysicsMaterialAlgo(module& m)
 
             Used to apply ``UsdPhysics.MaterialAPI`` and related properties to an existing ``UsdShade.Material`` (e.g. a visual material).
 
-            @note When mixing visual and physical materials, be sure use both ``usdex.core.bindMaterial`` and ``usdex.core.bindPhysicsMaterial`` on the target geometry, to ensure the
-            material is used in both rendering and simulation contexts.
+            Note:
+                When mixing visual and physical materials, be sure use both ``usdex.core.bindMaterial`` and ``usdex.core.bindPhysicsMaterial`` on the target geometry, to ensure the
+                material is used in both rendering and simulation contexts.
 
-            Parameters:
-                - **material** - The material to add the physics material parameters to
-                - **dynamicFriction** - The dynamic friction of the material
-                - **staticFriction** - The static friction of the material
-                - **restitution** - The restitution of the material
-                - **density** - The density of the material
+            Args:
+                material: The material to add the physics material parameters to
+                dynamicFriction: The dynamic friction of the material
+                staticFriction: The static friction of the material
+                restitution: The restitution of the material
+                density: The density of the material
 
             Returns:
                 ``True`` if the physics material parameters were successfully added to the material, ``False`` otherwise.
@@ -139,7 +138,7 @@ void bindPhysicsMaterialAlgo(module& m)
 
     m.def(
         "bindPhysicsMaterial",
-        overload_cast<UsdPrim, const UsdShadeMaterial&>(&bindPhysicsMaterial),
+        &bindPhysicsMaterial,
         arg("prim"),
         arg("material"),
         R"(
@@ -156,6 +155,10 @@ void bindPhysicsMaterialAlgo(module& m)
             Note:
                 We cannot bind materials to prims across different instance boundaries.
                 This function returns an error if ``prim`` and ``material`` are not placed in an editable location.
+
+            Args:
+                prim: The prim to bind the material to
+                material: The physics material to bind to the prim
 
             Returns:
                 ``True`` if the material was successfully bound to the target prim, ``False`` otherwise.

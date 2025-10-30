@@ -101,7 +101,7 @@ This tool can be invoked from a clone of the [GitHub repository](https://github.
 
 ### Install usdex_core
 
-By default, the tool will install the core library and module from OpenUSD Exchange SDK. For example, to download & assemble a USD 24.05 & Python 3.11 compatible binaries for OpenUSD Exchange v2.0.0 call:
+By default, the tool will install the core library and module from OpenUSD Exchange SDK. For example, to download & assemble a USD 24.05 & Python 3.11 compatible binaries for OpenUSD Exchange v${repo_docs_version} call:
 
 ``````{card}
 `````{tab-set}
@@ -109,20 +109,20 @@ By default, the tool will install the core library and module from OpenUSD Excha
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --usd-version 24.05 --python-version 3.11 --version 2.0.0
+./repo.sh install_usdex --usd-version 24.05 --python-version 3.11 --version ${repo_docs_version}
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --usd-version 24.05 --python-version 3.11 --version 2.0.0
+.\repo.bat install_usdex --usd-version 24.05 --python-version 3.11 --version ${repo_docs_version}
 ```
 ````
 `````
 ``````
 
-Similarly, to download & assemble a minimal monolithic USD 24.11, with no python support, for OpenUSD Exchange v2.0.0 call:
+Similarly, to download & assemble a minimal monolithic USD 24.11, with no python support, for OpenUSD Exchange v${repo_docs_version} call:
 
 ``````{card}
 `````{tab-set}
@@ -130,14 +130,14 @@ Similarly, to download & assemble a minimal monolithic USD 24.11, with no python
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --usd-flavor usd-minimal --usd-version 24.11 --python-version 0 --version 2.0.0
+./repo.sh install_usdex --usd-flavor usd-minimal --usd-version 24.11 --python-version 0 --version ${repo_docs_version}
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --usd-flavor usd-minimal --usd-version 24.11 --python-version 0 --version 2.0.0
+.\repo.bat install_usdex --usd-flavor usd-minimal --usd-version 24.11 --python-version 0 --version ${repo_docs_version}
 ```
 ````
 `````
@@ -155,14 +155,14 @@ For example, to add on `usdSkel` and `usdVol` call:
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --version 2.0.0 --install-extra-plugins usdSkel usdVol
+./repo.sh install_usdex --version ${repo_docs_version} --install-extra-plugins usdSkel usdVol
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --version 2.0.0 --install-extra-plugins usdSkel usdVol
+.\repo.bat install_usdex --version ${repo_docs_version} --install-extra-plugins usdSkel usdVol
 ```
 ````
 `````
@@ -178,14 +178,14 @@ If you are interested in RTX Rendering via NVIDIA Omniverse, you may want to use
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --version 2.0.0 --install-rtx
+./repo.sh install_usdex --version ${repo_docs_version} --install-rtx
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --version 2.0.0 --install-rtx
+.\repo.bat install_usdex --version ${repo_docs_version} --install-rtx
 ```
 ````
 `````
@@ -201,14 +201,14 @@ If you would like to use our [`usdex.test` python module](./python-usdex-test.rs
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --version 2.0.0 --install-test
+./repo.sh install_usdex --version ${repo_docs_version} --install-test
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --version 2.0.0 --install-test
+.\repo.bat install_usdex --version ${repo_docs_version} --install-test
 ```
 ````
 `````

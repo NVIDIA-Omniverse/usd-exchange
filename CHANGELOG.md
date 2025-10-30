@@ -1,4 +1,4 @@
-# 2.1.0-rc2
+# 2.1.0-rc3
 
 ## Core
 
@@ -8,6 +8,7 @@
 - Added convenience functions for defining basic Gprims (plane, sphere, cube, cone, cylinder, capsule)
 - Added Kind configuration helpers for Components and Assemblies
 - Added Primvar Shader helpers for preview materials
+- Added `connectPhysicsJoint` for connecting & re-aligning a pre-defined joint to new bodies
 
 ### Fixes
 
