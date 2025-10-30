@@ -7,7 +7,7 @@ from typing import List, Tuple
 import omni.asset_validator
 import usdex.core
 import usdex.test
-from pxr import Gf, Usd, UsdGeom, UsdPhysics
+from pxr import Gf, Tf, Usd, UsdGeom, UsdPhysics
 
 
 class PhysicsJointAlgoTest(usdex.test.TestCase):
@@ -1578,3 +1578,306 @@ class PhysicsJointAlgoTest_SphericalJoint(PhysicsJointAlgoTest, usdex.test.Defin
         localPos1 = Gf.Vec3f(0.000044151413, 0.0030490516, -5.500812)
         localRot1 = Gf.Quatf(1.0, Gf.Vec3f(0.000029394923, -0.000015000849, -0.0000019334022))
         self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.z, None, None, coneAngle0Limit, coneAngle1Limit)
+
+    # Test to swap referenced bodies.
+    def testSwapReferencedBodies(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+
+        # Create capsules.
+        # The capsules are aligned along the Z axis.
+        capsule0_path = f"/{self.defaultPrimName}/capsule0"
+        capsule1_path = f"/{self.defaultPrimName}/capsule1"
+        capsule2_path = f"/{self.defaultPrimName}/capsule2"
+        capsule_radius = 1.0
+        capsule_height = 8.0
+        capsule_axis = UsdGeom.Tokens.z
+        capsule_margin = 1.0
+
+        pz = 0.0
+        capsule_translation = Gf.Vec3d(0.0, 0.0, pz)
+        capsule_rotationXYZ = Gf.Vec3f(0, 0, 0)
+        capsule0_prim = self.createCapsule(
+            stage, capsule0_path, capsule_radius, capsule_height, capsule_axis, Gf.Vec3f(0.0, 1.0, 0.0), capsule_translation, capsule_rotationXYZ
+        )
+
+        pz += capsule_height + capsule_radius * 2.0 + capsule_margin
+        capsule_translation = Gf.Vec3d(0.0, 0.0, pz)
+        capsule1_prim = self.createCapsule(
+            stage, capsule1_path, capsule_radius, capsule_height, capsule_axis, Gf.Vec3f(0.0, 1.0, 0.0), capsule_translation, capsule_rotationXYZ
+        )
+
+        # For testing replacement.
+        capsule2_prim = self.createCapsule(
+            stage, capsule2_path, capsule_radius, capsule_height, capsule_axis, Gf.Vec3f(0.0, 1.0, 0.0), capsule_translation, capsule_rotationXYZ
+        )
+
+        # Apply collision and rigidbody.
+        UsdPhysics.CollisionAPI.Apply(capsule0_prim)
+        rigidbodyAPI = UsdPhysics.RigidBodyAPI.Apply(capsule0_prim)
+
+        # Specify kinematics to prevent the root rigid body from free-falling during playback.
+        rigidbodyAPI.CreateKinematicEnabledAttr(True)
+
+        UsdPhysics.CollisionAPI.Apply(capsule1_prim)
+        UsdPhysics.RigidBodyAPI.Apply(capsule1_prim)
+
+        UsdPhysics.RigidBodyAPI.Apply(capsule2_prim)
+
+        # Create a revolute joint.
+        axis = Gf.Vec3f(1.0, 0.0, 0.0)
+        lower_limit = -20.0
+        upper_limit = 35.0
+
+        xform_cache = UsdGeom.XformCache()
+        capsule0_worldTransform = xform_cache.GetLocalToWorldTransform(capsule0_prim)
+        capsule1_worldTransform = xform_cache.GetLocalToWorldTransform(capsule1_prim)
+        capsule0_worldPosition = capsule0_worldTransform.ExtractTranslation()
+        capsule1_worldPosition = capsule1_worldTransform.ExtractTranslation()
+        joint_position = (capsule0_worldPosition + capsule1_worldPosition) / 2.0
+        joint_orientation = Gf.Quatd.GetIdentity()
+        jointFrame = usdex.core.JointFrame(usdex.core.JointFrame.Space.World, joint_position, joint_orientation)
+
+        joint_path = f"/{self.defaultPrimName}/revolute_joint"
+        joint = usdex.core.definePhysicsRevoluteJoint(stage, joint_path, capsule0_prim, capsule1_prim, jointFrame, axis, lower_limit, upper_limit)
+
+        self.assertTrue(joint)
+        self.assertIsValidUsd(stage)
+
+        axis = Gf.Vec3f(-1.0, 0.0, 0.0)
+        new_lower_limit = -40.0
+        new_upper_limit = 15.0
+        jointFrame = usdex.core.JointFrame(usdex.core.JointFrame.Space.Body1, Gf.Vec3d(0, 0, -5.75), joint_orientation)
+
+        # Change parameters.
+        # Replace capsule1_prim with capsule2_prim in body1.
+        usdex.core.connectPhysicsJoint(joint, capsule0_prim, capsule2_prim, jointFrame, axis)
+        joint.GetLowerLimitAttr().Set(new_lower_limit)
+        joint.GetUpperLimitAttr().Set(new_upper_limit)
+        self.assertTrue(joint)
+        self.assertIsValidUsd(stage)
+
+        body0_targets = joint.GetBody0Rel().GetTargets()
+        body1_targets = joint.GetBody1Rel().GetTargets()
+        self.assertEqual(len(body0_targets), 1)
+        self.assertEqual(len(body1_targets), 1)
+        self.assertEqual(body0_targets[0], capsule0_prim.GetPath())
+        self.assertEqual(body1_targets[0], capsule2_prim.GetPath())
+
+        # Check the joint parameters.
+        localPos0 = Gf.Vec3f(0, 0, 5.25)
+        localRot0 = Gf.Quatf(0, 0, -1, 0)
+        localPos1 = Gf.Vec3f(0, 0, -5.75)
+        localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, new_lower_limit, new_upper_limit)
+
+        # Specify an empty prim for body0.
+        usdex.core.connectPhysicsJoint(joint, Usd.Prim(), capsule1_prim, jointFrame, axis)
+        self.assertEqual(len(joint.GetBody0Rel().GetTargets()), 0)
+
+        localPos0 = Gf.Vec3f(0, 0, 5.25)
+        localRot0 = Gf.Quatf(0, 0, -1, 0)
+        localPos1 = Gf.Vec3f(0, 0, -5.75)
+        localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, new_lower_limit, new_upper_limit)
+
+        # Specify an empty prim for body1.
+        jointFrame.space = usdex.core.JointFrame.Space.Body0
+        usdex.core.connectPhysicsJoint(joint, capsule0_prim, Usd.Prim(), jointFrame, axis)
+        self.assertEqual(len(joint.GetBody1Rel().GetTargets()), 0)
+
+        localPos0 = Gf.Vec3f(0, 0, -5.75)
+        localRot0 = Gf.Quatf(0, 0, -1, 0)
+        localPos1 = Gf.Vec3f(0, 0, -5.75)
+        localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, new_lower_limit, new_upper_limit)
+
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Body0 and Body1 are not specified for PhysicsJoint at")]
+        ):
+            jointFrame.space = usdex.core.JointFrame.Space.World
+            usdex.core.connectPhysicsJoint(joint, Usd.Prim(), Usd.Prim(), jointFrame, axis)
+
+    def testSwapReferencedBodiesWithMultiLayers(self):
+        output_dir = self.tmpDir()
+
+        stage = Usd.Stage.CreateNew(f"{output_dir}/physics_joint_multi_layer_test.usda")
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+
+        # Geometry and physics prims stored separately in separate layers.
+        class Tokens:
+            Asset = usdex.core.getAssetToken()
+            Contents = usdex.core.getContentsToken()
+            Geometry = usdex.core.getGeometryToken()
+            Physics = usdex.core.getPhysicsToken()
+
+        content: dict[Tokens, Usd.Stage] = {}
+
+        content[Tokens.Asset] = stage
+        root: Usd.Prim = usdex.core.defineXform(stage, stage.GetDefaultPrim().GetPath()).GetPrim()
+
+        # setup the root layer of the payload
+        content[Tokens.Contents] = usdex.core.createAssetPayload(stage)
+
+        # setup a content layer for referenced meshes
+        content[Tokens.Geometry] = usdex.core.addAssetContent(content[Tokens.Contents], Tokens.Geometry, format="usda")
+
+        # setup a content layer for physics
+        content[Tokens.Physics] = usdex.core.addAssetContent(content[Tokens.Contents], Tokens.Physics, format="usda")
+
+        geo_scope = content[Tokens.Geometry].GetDefaultPrim().GetChild(Tokens.Geometry).GetPrim()
+        physics_scope = content[Tokens.Physics].GetDefaultPrim().GetChild(Tokens.Physics).GetPrim()
+
+        # Geometry layer: Create capsules.
+        # The capsules are aligned along the Z axis.
+        capsule0_path = geo_scope.GetPath().AppendChild("capsule0")
+        capsule1_path = geo_scope.GetPath().AppendChild("capsule1")
+        capsule2_path = geo_scope.GetPath().AppendChild("capsule2")
+        capsule_radius = 1.0
+        capsule_height = 8.0
+        capsule_axis = UsdGeom.Tokens.z
+        capsule_margin = 1.0
+
+        pz = 0.0
+        capsule_translation = Gf.Vec3d(0.0, 0.0, pz)
+        capsule_rotationXYZ = Gf.Vec3f(0, 0, 0)
+        capsule0_prim = self.createCapsule(
+            geo_scope.GetStage(),
+            capsule0_path,
+            capsule_radius,
+            capsule_height,
+            capsule_axis,
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            capsule_translation,
+            capsule_rotationXYZ,
+        )
+
+        pz += capsule_height + capsule_radius * 2.0 + capsule_margin
+        capsule_translation = Gf.Vec3d(0.0, 0.0, pz)
+        capsule1_prim = self.createCapsule(
+            geo_scope.GetStage(),
+            capsule1_path,
+            capsule_radius,
+            capsule_height,
+            capsule_axis,
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            capsule_translation,
+            capsule_rotationXYZ,
+        )
+
+        # For testing replacement.
+        capsule2_prim = self.createCapsule(
+            geo_scope.GetStage(),
+            capsule2_path,
+            capsule_radius,
+            capsule_height,
+            capsule_axis,
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            capsule_translation,
+            capsule_rotationXYZ,
+        )
+
+        # Physics layer: Apply collision and rigidbody.
+        prim_over = content[Tokens.Physics].OverridePrim(capsule0_prim.GetPath())
+        UsdPhysics.CollisionAPI.Apply(prim_over)
+        rigidbodyAPI = UsdPhysics.RigidBodyAPI.Apply(prim_over)
+
+        # Specify kinematics to prevent the root rigid body from free-falling during playback.
+        rigidbodyAPI.CreateKinematicEnabledAttr(True)
+
+        prim_over = content[Tokens.Physics].OverridePrim(capsule1_prim.GetPath())
+        UsdPhysics.CollisionAPI.Apply(prim_over)
+        UsdPhysics.RigidBodyAPI.Apply(prim_over)
+
+        prim_over = content[Tokens.Physics].OverridePrim(capsule2_prim.GetPath())
+        UsdPhysics.RigidBodyAPI.Apply(prim_over)
+
+        # Create a revolute joint.
+        axis = Gf.Vec3f(1.0, 0.0, 0.0)
+        lower_limit = -20.0
+        upper_limit = 35.0
+
+        xform_cache = UsdGeom.XformCache()
+        capsule0_worldTransform = xform_cache.GetLocalToWorldTransform(capsule0_prim)
+        capsule1_worldTransform = xform_cache.GetLocalToWorldTransform(capsule1_prim)
+        capsule0_worldPosition = capsule0_worldTransform.ExtractTranslation()
+        capsule1_worldPosition = capsule1_worldTransform.ExtractTranslation()
+        joint_position = (capsule0_worldPosition + capsule1_worldPosition) / 2.0
+        joint_orientation = Gf.Quatd.GetIdentity()
+        jointFrame = usdex.core.JointFrame(usdex.core.JointFrame.Space.World, joint_position, joint_orientation)
+
+        joint_path = physics_scope.GetPath().AppendChild("revolute_joint")
+        joint = usdex.core.definePhysicsRevoluteJoint(
+            physics_scope.GetStage(), joint_path, capsule0_prim, capsule1_prim, jointFrame, axis, lower_limit, upper_limit
+        )
+        self.assertTrue(joint)
+        self.assertIsValidUsd(content[Tokens.Asset])
+
+        # Check that the joint is not in the geometry layer.
+        self.assertNotEqual(capsule0_prim.GetStage(), joint.GetPrim().GetStage())
+        self.assertNotEqual(capsule1_prim.GetStage(), joint.GetPrim().GetStage())
+        self.assertNotEqual(capsule2_prim.GetStage(), joint.GetPrim().GetStage())
+
+        axis = Gf.Vec3f(-1.0, 0.0, 0.0)
+        new_lower_limit = -40.0
+        new_upper_limit = 15.0
+        jointFrame = usdex.core.JointFrame(usdex.core.JointFrame.Space.Body1, Gf.Vec3d(0, 0, -5.75), joint_orientation)
+
+        # Change parameters.
+        # When using alignPhysicsJoint, body0/body1 refer to the Physics layer on the joint's stage,
+        # and position and orientation will be jointFrame.position and jointFrame.orientation * axis (fail).
+        usdex.core.alignPhysicsJoint(joint, jointFrame, axis)
+        self.assertIsValidUsd(content[Tokens.Asset])
+        localPos0 = localPos1 = Gf.Vec3f(jointFrame.position)
+        localRot0 = localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, lower_limit, upper_limit)
+
+        # Change parameters.
+        # Replace capsule1_prim with capsule2_prim in body1.
+        # The joint belongs to the Physics layer, and body0 and body1 belong to the Geometry layer.
+        usdex.core.connectPhysicsJoint(joint, capsule0_prim, capsule2_prim, jointFrame, axis)
+        joint.GetLowerLimitAttr().Set(new_lower_limit)
+        joint.GetUpperLimitAttr().Set(new_upper_limit)
+        self.assertTrue(joint)
+        self.assertIsValidUsd(content[Tokens.Asset])
+
+        body0_targets = joint.GetBody0Rel().GetTargets()
+        body1_targets = joint.GetBody1Rel().GetTargets()
+        self.assertEqual(len(body0_targets), 1)
+        self.assertEqual(len(body1_targets), 1)
+        self.assertEqual(body0_targets[0], capsule0_prim.GetPath())
+        self.assertEqual(body1_targets[0], capsule2_prim.GetPath())
+
+        # Check the joint parameters.
+        localPos0 = Gf.Vec3f(0, 0, 5.25)
+        localRot0 = Gf.Quatf(0, 0, -1, 0)
+        localPos1 = Gf.Vec3f(0, 0, -5.75)
+        localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, new_lower_limit, new_upper_limit)
+
+        # Specify an empty prim for body0.
+        usdex.core.connectPhysicsJoint(joint, Usd.Prim(), capsule1_prim, jointFrame, axis)
+        self.assertEqual(len(joint.GetBody0Rel().GetTargets()), 0)
+
+        localPos0 = Gf.Vec3f(0, 0, 5.25)
+        localRot0 = Gf.Quatf(0, 0, -1, 0)
+        localPos1 = Gf.Vec3f(0, 0, -5.75)
+        localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, new_lower_limit, new_upper_limit)
+
+        # Specify an empty prim for body1.
+        jointFrame.space = usdex.core.JointFrame.Space.Body0
+        usdex.core.connectPhysicsJoint(joint, capsule0_prim, Usd.Prim(), jointFrame, axis)
+        self.assertEqual(len(joint.GetBody1Rel().GetTargets()), 0)
+
+        localPos0 = Gf.Vec3f(0, 0, -5.75)
+        localRot0 = Gf.Quatf(0, 0, -1, 0)
+        localPos1 = Gf.Vec3f(0, 0, -5.75)
+        localRot1 = Gf.Quatf(0, 0, -1, 0)
+        self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, new_lower_limit, new_upper_limit)
+
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Body0 and Body1 are not specified for PhysicsJoint at")]
+        ):
+            jointFrame.space = usdex.core.JointFrame.Space.World
+            usdex.core.connectPhysicsJoint(joint, Usd.Prim(), Usd.Prim(), jointFrame, axis)

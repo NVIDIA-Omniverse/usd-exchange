@@ -128,6 +128,7 @@ __all__ = [
     "definePhysicsPrismaticJoint",
     "definePhysicsSphericalJoint",
     "alignPhysicsJoint",
+    "connectPhysicsJoint",
     # physicsMaterial
     "definePhysicsMaterial",
     "addPhysicsToMaterial",

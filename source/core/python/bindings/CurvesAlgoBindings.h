@@ -79,7 +79,7 @@ void bindCurvesAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.BasisCurves`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -122,7 +122,7 @@ void bindCurvesAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.BasisCurves`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -163,7 +163,7 @@ void bindCurvesAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.BasisCurves`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -233,7 +233,7 @@ void bindCurvesAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.BasisCurves`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -280,7 +280,7 @@ void bindCurvesAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.BasisCurves`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -325,7 +325,7 @@ void bindCurvesAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.BasisCurves`` schema wrapping the defined ``Usd.Prim``
         )"
     );

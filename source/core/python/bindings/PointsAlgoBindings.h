@@ -74,7 +74,7 @@ void bindPointsAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.Points`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -113,7 +113,7 @@ void bindPointsAlgo(module& m)
                 - **displayColor** Values to be authored for the display color primvar.
                 - **displayOpacity** Values to be authored for the display opacity primvar.
 
-            Returns
+            Returns:
                 ``UsdGeom.Points`` schema wrapping the defined ``Usd.Prim``
         )"
     );
@@ -138,13 +138,13 @@ void bindPointsAlgo(module& m)
 
             This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
 
-            Args:
-                prim: Prim to define the point cloud on. The prim's type will be set to ``UsdGeom.Points``.
-                points: Positions of the points.
-                widths: Values for the width specification for the points.
-                normals: Values for the normals primvar for the points.
-                displayColor: Values to be authored for the display color primvar.
-                displayOpacity: Values to be authored for the display opacity primvar.
+            Parameters:
+                - **prim** - Prim to define the point cloud on. The prim's type will be set to ``UsdGeom.Points``.
+                - **points** - Positions of the points.
+                - **widths** - Values for the width specification for the points.
+                - **normals** - Values for the normals primvar for the points.
+                - **displayColor** - Values to be authored for the display color primvar.
+                - **displayOpacity** - Values to be authored for the display opacity primvar.
 
             Returns:
                 ``UsdGeom.Points`` schema wrapping the defined ``Usd.Prim``

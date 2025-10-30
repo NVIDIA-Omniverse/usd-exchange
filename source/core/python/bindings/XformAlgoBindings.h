@@ -134,9 +134,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of a prim at a given time.
 
-            Args:
-                prim: The prim to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **prim** - The prim to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a transform.
@@ -152,9 +152,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of a prim at a given time in the form of a 4x4 matrix.
 
-            Args:
-                prim: The prim to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **prim** - The prim to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a 4x4 matrix.
@@ -179,9 +179,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of a prim at a given time in the form of common transform components.
 
-            Args:
-                prim: The prim to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **prim** - The prim to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a tuple of translation, pivot, rotation, rotation order, scale.
@@ -205,9 +205,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of a prim at a given time in the form of common transform components with quaternion orientation.
 
-            Args:
-                prim: The prim to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **prim** - The prim to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a tuple of translation, pivot, orientation (quaternion), scale.
@@ -282,10 +282,10 @@ void bindXformAlgo(module& m)
         R"(
             Set the local transform of an xformable.
 
-            Args:
-                xformable: The xformable to set local transform on.
-                transform: The transform value to set.
-                time: Time at which to write the value.
+            Parameters:
+                - **xformable** - The xformable to set local transform on.
+                - **transform** - The transform value to set.
+                - **time** - Time at which to write the value.
 
             Returns:
                 A bool indicating if the local transform was set.
@@ -303,10 +303,10 @@ void bindXformAlgo(module& m)
         R"(
             Set the local transform of an xformable from a 4x4 matrix.
 
-            Args:
-                xformable: The xformable to set local transform on.
-                matrix: The matrix value to set.
-                time: Time at which to write the value.
+            Parameters:
+                - **xformable** - The xformable to set local transform on.
+                - **matrix** - The matrix value to set.
+                - **time** - Time at which to write the value.
 
             Returns:
                 A bool indicating if the local transform was set.
@@ -330,14 +330,14 @@ void bindXformAlgo(module& m)
         R"(
             Set the local transform of an xformable from common transform components.
 
-            Args:
-                xformable: The xformable to set local transform on.
-                translation: The translation value to set.
-                pivot: The pivot position value to set.
-                rotation: The rotation value to set in degrees.
-                rotationOrder: The rotation order of the rotation value.
-                scale: The scale value to set.
-                time: Time at which to write the value.
+            Parameters:
+                - **xformable** - The xformable to set local transform on.
+                - **translation** - The translation value to set.
+                - **pivot** - The pivot position value to set.
+                - **rotation** - The rotation value to set in degrees.
+                - **rotationOrder** - The rotation order of the rotation value.
+                - **scale** - The scale value to set.
+                - **time** - Time at which to write the value.
 
             Returns:
                 A bool indicating if the local transform was set.
@@ -357,12 +357,12 @@ void bindXformAlgo(module& m)
         R"(
             Set the local transform of an xformable from common transform components using a quaternion for orientation.
 
-            Args:
-                xformable: The xformable to set local transform on.
-                translation: The translation value to set.
-                orientation: The orientation value to set as a quaternion.
-                scale: The scale value to set - defaults to (1.0, 1.0, 1.0).
-                time: Time at which to write the value.
+            Parameters:
+                - **xformable** - The xformable to set local transform on.
+                - **translation** - The translation value to set.
+                - **orientation** - The orientation value to set as a quaternion.
+                - **scale** - The scale value to set - defaults to (1.0, 1.0, 1.0).
+                - **time** - Time at which to write the value.
 
             Returns:
                 A bool indicating if the local transform was set.
@@ -379,9 +379,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of an xformable at a given time.
 
-            Args:
-                xformable: The xformable to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **xformable** - The xformable to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a transform.
@@ -397,9 +397,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of an xformable at a given time in the form of a 4x4 matrix.
 
-            Args:
-                xformable: The xformable to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **xformable** - The xformable to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a 4x4 matrix.
@@ -424,9 +424,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of an xformable at a given time in the form of common transform components.
 
-            Args:
-                xformable: The xformable to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **xformable** - The xformable to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a tuple of translation, pivot, rotation, rotation order, scale.
@@ -450,9 +450,9 @@ void bindXformAlgo(module& m)
         R"(
             Get the local transform of an xformable at a given time in the form of common transform components with quaternion orientation.
 
-            Args:
-                xformable: The xformable to get local transform from.
-                time: Time at which to query the value.
+            Parameters:
+                - **xformable** - The xformable to get local transform from.
+                - **time** - Time at which to query the value.
 
             Returns:
                 Transform value as a tuple of translation, pivot, orientation (quaternion), scale.

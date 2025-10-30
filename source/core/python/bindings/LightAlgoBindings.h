@@ -141,11 +141,11 @@ void bindLightAlgo(module& m)
 
             This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
 
-            Args:
-                prim: Prim to define the dome light on. The prim's type will be set to ``UsdLux.DomeLight``.
-                intensity: The intensity value of the dome light
-                texturePath: The path to the texture file to use on the dome light.
-                textureFormat: How the texture should be mapped on the dome light.
+            Parameters:
+                - **prim** - Prim to define the dome light on. The prim's type will be set to ``UsdLux.DomeLight``.
+                - **intensity** - The intensity value of the dome light
+                - **texturePath** - The path to the texture file to use on the dome light.
+                - **textureFormat** - How the texture should be mapped on the dome light.
 
             Returns:
                 The light if created successfully.
@@ -221,12 +221,12 @@ void bindLightAlgo(module& m)
 
             This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
 
-            Args:
-                prim: Prim to define the rectangular light on. The prim's type will be set to ``UsdLux.RectLight``.
-                width: The width of the rectangular light, in the local X axis.
-                height: The height of the rectangular light, in the local Y axis.
-                intensity: The intensity value of the rectangular light.
-                texturePath: The path to the texture file to use on the rectangular light.
+            Parameters:
+                - **prim** - Prim to define the rectangular light on. The prim's type will be set to ``UsdLux.RectLight``.
+                - **width** - The width of the rectangular light, in the local X axis.
+                - **height** - The height of the rectangular light, in the local Y axis.
+                - **intensity** - The intensity value of the rectangular light.
+                - **texturePath** - The path to the texture file to use on the rectangular light.
 
             Returns:
                 The light if created successfully.
