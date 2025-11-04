@@ -237,6 +237,10 @@ USD_LIBS += \
  -lusd_python \
  -lusd_ts
 
+ifeq ($(CONFIG),debug)
+	USD_LIBS += -ltbb_debug
+endif
+
 # For USD 24.08 and older, uncomment and remove the block above.
 # USDEX_INCLUDE_DIRS += \
 #  -isystem $(DEPSDIR)/usd/$(CONFIG)/include/boost-1_78
