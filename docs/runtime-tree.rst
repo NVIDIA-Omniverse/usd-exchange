@@ -92,7 +92,8 @@
             |   ├── boost_python310-vc142-mt-x64-1_78.dll   <-- USD 24.08 & older
             │   ├── python3.dll
             │   ├── python310.dll
-            │   ├── tbb.dll
+            │   ├── tbb.dll                                 <-- USD 25.05 & older
+            │   ├── tbb12.dll                               <-- USD 25.08 & newer
             │   ├── usd_ar.dll
             │   ├── usd_arch.dll
             │   ├── usd_gf.dll
