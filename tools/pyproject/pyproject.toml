@@ -3,7 +3,16 @@ name = "usd-exchange"
 version = "0.0.0"  # generated from VERSION
 description = "OpenUSD Exchange provides higher-level convenience functions as a companion to lower-level OpenUSD concepts"
 readme = "README.md"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = [
+    "usd-exchange-LICENSE.md",
+    "boost-LICENSE*.txt",
+    "pybind11-LICENSE.txt",
+    "pyboost11-LICENSE.txt",
+    "usd-license.txt",
+    "*tbb-LICENSE*",
+    "zlib-LICENSE",
+]
 requires-python = ">=3.10,<3.13"
 
 [project.urls]

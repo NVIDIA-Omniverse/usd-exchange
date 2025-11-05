@@ -35,6 +35,7 @@
 
 - Fixed code-signing of Windows wheels
 - Fixed `install_usdex` bug todo with optional repo_tool dependencies
+- Fixed license documentation for python wheels
 
 ## Documentation
 
