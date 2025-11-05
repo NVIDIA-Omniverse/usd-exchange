@@ -102,6 +102,27 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         with open(readme_target, "w") as f:
             f.writelines(data[4:7])
 
+        # gather the license files
+        license_files = [
+            ("$root/LICENSE.md", f"{stagingDir}/usd-exchange-LICENSE.md"),
+            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/boost-LICENSE*.txt", None),
+            ("$root/_build/target-deps/pybind11/PACKAGE-LICENSES/pybind11-LICENSE.txt", None),
+            ("$root/tools/internal-licenses/pyboost11-LICENSE.txt", None),
+            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/*tbb-LICENSE*", None),
+            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/usd-license.txt", None),
+            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/zlib-LICENSE", None),
+        ]
+        for src, target in license_files:
+            resolved_src = omni.repo.man.resolve_tokens(src)
+            matches = glob.glob(resolved_src)
+            if matches:
+                source_file = matches[0]
+                if target is None:
+                    target = f"{stagingDir}/{os.path.basename(source_file)}"
+                shutil.copyfile(source_file, target)
+            else:
+                raise omni.repo.man.ExpectedError(f"Unable to find license file for pattern: {src}")
+
         if omni.repo.man.is_linux():
             # All plugInfo LibraryPath values are going to be incorrect, because auditwheel appends hashes to lib names
             # Fortunately, auditwheel also bakes rpaths into each module & the per plugin LibraryPath is unnecessary

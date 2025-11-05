@@ -14,13 +14,13 @@ def run_verify_deps(options: argparse.Namespace, toolConfig: Dict):
 
     depsFiles = ["deps/repo-deps.packman.xml", toolConfig["repo"]["folders"]["host_deps_xml"]]
     depsFiles.extend(toolConfig["repo_build"]["fetch"]["packman_target_files_to_pull"])
-    platforms = ["linux-x86_64", "windows-x86_64"]
     buildConfigs = ["release", "debug"]
     remotes = ["cloudfront"]
 
     usd_flavor = omni.repo.man.resolve_tokens("${usd_flavor}")
     usd_ver = omni.repo.man.resolve_tokens("${usd_ver}")
     python_ver = omni.repo.man.resolve_tokens("${python_ver}")
+    platforms = omni.repo.man.resolve_tokens("${platforms}").split(",")
 
     csv = []
     for platform in platforms:
