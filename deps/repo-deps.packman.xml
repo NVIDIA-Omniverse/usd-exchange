@@ -12,7 +12,7 @@
     <package name="repo_test" version="2.40.4" />
   </dependency>
   <dependency name="repo_format" linkPath="../_repo/deps/repo_format">
-    <package name="repo_format" version="2.16.2" />
+    <package name="repo_format" version="2.16.7" />
   </dependency>
   <dependency name="repo_package" linkPath="../_repo/deps/repo_package">
     <package name="repo_package" version="6.0.3" />
