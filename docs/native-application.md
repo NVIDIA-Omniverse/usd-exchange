@@ -106,19 +106,28 @@ It is included here to copy into a `UsdTraverse.cpp` file within `$project_root`
 // SPDX-License-Identifier: MIT
 //
 
+#include <usdex/core/Core.h>
 #include <usdex/core/XformAlgo.h>
 
+#include <pxr/pxr.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/metrics.h>
 #include <pxr/usd/usdGeom/xformable.h>
 
+#include <iomanip>
 #include <iostream>
 
 
 // The program expects one argument, a path to a USD file
 int main(int argc, char* argv[])
 {
+    // Print USD and Python versions
+    std::cout << "USD Version: " << PXR_MAJOR_VERSION << "." << PXR_MINOR_VERSION << "." << std::setfill('0') << std::setw(2) << PXR_PATCH_VERSION
+              << std::endl;
+    std::cout << "USD Exchange Version: " << usdex::core::version() << std::endl;
+    std::cout << "Python Version: " << PY_VERSION << std::endl;
+
     if (argc != 2)
     {
         std::cout << "Please provide a local file path to a USD stage to read." << std::endl;
@@ -269,7 +278,7 @@ ifndef PYTHON_LIB_DIR
 endif
 
 # Common flags
-CXXFLAGS += $(CONFIG_DEFINES) $(ABI_DEFINES) $(IGNORED_WARNINGS) -m64
+CXXFLAGS += $(CONFIG_DEFINES) $(ABI_DEFINES) $(IGNORED_WARNINGS)
 INCLUDES += $(USDEX_INCLUDE_DIRS) $(PYTHON_INCLUDE_DIR)
 LIBS += $(USD_LIBS) $(USDEX_LIBS) $(PYTHON_LIB)
 LDFLAGS += $(USDEX_LIB_DIRS) $(PYTHON_LIB_DIR)
@@ -409,7 +418,8 @@ The application must be able to find the shared libraries located in `usdex/$pla
 
             set -e
 
-            export RUNTIME_PATH=./usdex/linux-x86_64/release
+            export PLATFORM="linux-$(uname -m)"
+            export RUNTIME_PATH=./usdex/${PLATFORM}/release
             export LD_LIBRARY_PATH=${RUNTIME_PATH}/lib:${LD_LIBRARY_PATH}
 
             ./release/UsdTraverse "$@"
