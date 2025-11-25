@@ -1701,35 +1701,101 @@ class DefineXformTestCase(usdex.test.DefineFunctionTestCase, BaseXformTestCase):
         parent = stage.GetPrimAtPath("/Root/ParentName")
 
         # If None is passed then the local transform is not set
+        # stage, path
         path = Sdf.Path("/Root/StagePath/None")
         mesh = usdex.core.defineXform(stage, path, transform=None)
         self.assertTrue(mesh)
-
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
         self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
 
+        # parent, name
         name = "None"
         mesh = usdex.core.defineXform(parent, name, transform=None)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
+        self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
 
+        # prim
+        mesh = usdex.core.defineXform(mesh.GetPrim(), transform=None)
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
         self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
 
         # If a valid transform is passed in the prim will have that as it's local transform
+        # stage, path
         path = Sdf.Path("/Root/StagePath/NonIdentityTransform")
         mesh = usdex.core.defineXform(stage, path, transform=NON_IDENTITY_TRANSFORM)
         self.assertTrue(mesh)
-
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX)
 
+        # parent, name
         name = "NonIdentityTransform"
         mesh = usdex.core.defineXform(parent, name, transform=NON_IDENTITY_TRANSFORM)
         self.assertTrue(mesh)
-
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX)
+
+        # prim
+        mesh = usdex.core.defineXform(mesh.GetPrim(), transform=NON_IDENTITY_TRANSFORM)
+        self.assertTrue(mesh)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX)
+
+        self.assertIsValidUsd(stage)
+
+    def testOptionalMatrix(self):
+        # A matrix can optionally be supplied and will be used to set the local transform of the Xform
+        stage = self._createTestStage()
+
+        UsdGeom.Scope.Define(stage, "/Root/StagePath")
+        UsdGeom.Scope.Define(stage, "/Root/ParentName")
+        parent = stage.GetPrimAtPath("/Root/ParentName")
+
+        # If None is passed then the local matrix is not set
+        # stage, path
+        path = Sdf.Path("/Root/StagePath/None")
+        mesh = usdex.core.defineXform(stage, path, matrix=None)
+        self.assertTrue(mesh)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
+        self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
+
+        # parent, name
+        name = "None"
+        mesh = usdex.core.defineXform(parent, name, matrix=None)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
+        self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
+
+        # prim
+        mesh = usdex.core.defineXform(mesh.GetPrim(), matrix=None)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
+        self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
+
+        # If a valid matrix is passed in the prim will have that as it's local transform
+        # stage, path
+        path = Sdf.Path("/Root/StagePath/NonIdentityMatrix")
+        mesh = usdex.core.defineXform(stage, path, matrix=NON_IDENTITY_MATRIX)
+        self.assertTrue(mesh)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX)
+
+        # parent, name
+        name = "NonIdentityMatrix"
+        mesh = usdex.core.defineXform(parent, name, matrix=NON_IDENTITY_MATRIX)
+        self.assertTrue(mesh)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX)
+
+        # prim
+        mesh = usdex.core.defineXform(mesh.GetPrim(), matrix=NON_IDENTITY_MATRIX)
+        self.assertTrue(mesh)
+        xformable = UsdGeom.Xformable(mesh.GetPrim())
+        self.assertEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX)
+
         self.assertIsValidUsd(stage)
 
 
