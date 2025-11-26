@@ -17,7 +17,7 @@ import unittest
 from typing import List, Optional
 
 import usdex.core
-from pxr import Sdf, Usd, UsdGeom
+from pxr import Gf, Sdf, Usd, UsdGeom
 
 # usdex.test uses omni.asset_validator, which has a dependency on pxr.UsdSkel
 # When usdex.core initializes, it attempts to load all required libraries
@@ -80,8 +80,8 @@ class TestCase(unittest.TestCase):
         """Assert that given asset passes all enabled validation rules
 
         Args:
-            asset: The Asset to validate. Either a Usd.Stage object or a path to a USD Layer.
-            issuePredicates: Optional List of additional callables - ``func(issue)`` that are used to check if the issue can be bypassed.
+            asset: The Asset to validate. Either a ``Usd.Stage`` object or a path to a USD Layer.
+            issuePredicates: Optional ``List`` of additional callables - ``func(issue)`` that are used to check if the issue can be bypassed.
                 The default list of IssuePredicates will always be enabled.
             msg: Optional message to report while validation failed.
         """
@@ -102,8 +102,8 @@ class TestCase(unittest.TestCase):
         """Assert that given asset reported with issuePredicates
 
         Args:
-            asset: The Asset to validate. Either a Usd.Stage object or a path to a USD Layer.
-            issuePredicates (List): List of omni.asset_validator.IssuePredicates.
+            asset: The Asset to validate. Either a ``Usd.Stage`` object or a path to a USD Layer.
+            issuePredicates (List): List of ``omni.asset_validator.IssuePredicates``.
         """
         issues = self.__validateUsd(asset=asset, engine=self.validationEngine)
 
@@ -131,25 +131,46 @@ class TestCase(unittest.TestCase):
         self.fail(msg=msg)
 
     def assertUsdLayerEncoding(self, layer: Sdf.Layer, encoding: str):
-        """Assert that the given layer uses the given encoding type"""
+        """Assert that the given layer uses the given encoding type
+
+        Args:
+            layer: The ``Sdf.Layer`` to check
+            encoding: The expected encoding type (e.g. 'usda', 'usdc')
+        """
         self.assertEqual(self.getUsdEncoding(layer), encoding)
 
     def assertSdfLayerIdentifier(self, layer, identifier):
-        """Assert that the given layer has the expected identifier"""
+        """Assert that the given layer has the expected identifier
+
+        Args:
+            layer: The ``Sdf.Layer`` to check
+            identifier: The expected identifier string
+        """
         # Resolve paths to normalize casing and then make them into posix paths, this removes platform specific variations
         expected = pathlib.Path(identifier).resolve().as_posix()
         returned = pathlib.Path(layer.identifier).resolve().as_posix()
         self.assertEqual(expected, returned)
 
     def assertAttributeHasAuthoredValue(self, attr: Usd.Attribute, time=Usd.TimeCode.Default()):
-        """Asserts that a ``Usd.Attribute`` has a value authored at a given time"""
+        """Asserts that a ``Usd.Attribute`` has a value authored at a given time
+
+        Args:
+            attr: The ``Usd.Attribute`` to check
+            time: The ``Usd.TimeCode`` at which to check for an authored value (default: ``Usd.TimeCode.Default()``)
+        """
         if time == Usd.TimeCode.Default():
             self.assertIsNotNone(attr.Get(time))
         else:
             self.assertIn(time, attr.GetTimeSamples())
 
     def assertMatricesAlmostEqual(self, first, second, places=12):
-        """Assert that all 16 values of a pair of 4x4 matrices are equal, to a specified number of decimal places"""
+        """Assert that all 16 values of a pair of 4x4 matrices are equal, to a specified number of decimal places
+
+        Args:
+            first: The first matrix to compare
+            second: The second matrix to compare
+            places: The number of decimal places to compare to (default: 12)
+        """
         for row in range(4):
             for col in range(4):
                 x = first[row][col]
@@ -157,19 +178,60 @@ class TestCase(unittest.TestCase):
                 self.assertEqual(round(x - y, places), 0)
         self.assertTrue(True)
 
+    def assertRotationsAlmostEqual(self, rot1: Gf.Rotation | Gf.Quatf | Gf.Quatd, rot2: Gf.Rotation | Gf.Quatf | Gf.Quatd, tolerance: float = 1e-6):
+        """Assert two rotations are almost equal (same concrete type required).
+
+        Note:
+            Rotations must be the same class (Rotation vs Quatf vs Quatd).
+            Quaternions with opposite signs/sense are treated as different.
+
+        Args:
+            rot1: The first rotation to compare
+            rot2: The second rotation to compare
+            tolerance: A non-negative threshold for comparing values (default: 1e-6)
+        """
+        # Enforce identical concrete type without direct type comparison triggering E721.
+        if not (isinstance(rot1, type(rot2)) and isinstance(rot2, type(rot1))):
+            self.fail(f"Rotation types do not match or are unsupported: {type(rot1)} vs {type(rot2)}")
+
+        if isinstance(rot1, Gf.Rotation):
+            axis_ok = Gf.IsClose(rot1.GetAxis(), rot2.GetAxis(), tolerance)
+            angle_ok = Gf.IsClose(rot1.GetAngle(), rot2.GetAngle(), tolerance)
+            messages = []
+            if not axis_ok:
+                messages.append(f"Axis mismatch: {rot1.GetAxis()} != {rot2.GetAxis()}")
+            if not angle_ok:
+                messages.append(f"Angle mismatch: {rot1.GetAngle()} != {rot2.GetAngle()}")
+            self.assertTrue(axis_ok and angle_ok, "; ".join(messages))
+        else:  # Quatf or Quatd (same concrete type guaranteed)
+            real_ok = Gf.IsClose(rot1.GetReal(), rot2.GetReal(), tolerance)
+            imag_ok = Gf.IsClose(rot1.GetImaginary(), rot2.GetImaginary(), tolerance)
+            messages = []
+            if not real_ok:
+                messages.append(f"Real part mismatch: {rot1.GetReal()} != {rot2.GetReal()}")
+            if not imag_ok:
+                messages.append(f"Imaginary part mismatch: {rot1.GetImaginary()} != {rot2.GetImaginary()}")
+            self.assertTrue(real_ok and imag_ok, "; ".join(messages))
+
     def assertVecAlmostEqual(self, first, second, places=12):
-        """Assert that all elements of a Vec are equal, to a specified number of decimal places"""
+        """Assert that all elements of a Vec are equal, to a specified number of decimal places
+
+        Args:
+            first: The first Vec to compare
+            second: The second Vec to compare
+            places: The number of decimal places to compare to (default: 12)
+        """
         self.assertEqual(len(first), len(second))
         for idx in range(len(first)):
             self.assertAlmostEqual(first[idx], second[idx], places)
 
     def tmpLayer(self, name: str = "", ext: str = "usda") -> Sdf.Layer:
         """
-        Create a temporary Sdf.Layer on the local filesystem
+        Create a temporary ``Sdf.Layer`` on the local filesystem
 
         Args:
             name: an optional identifier prefix. If not provided the test name will be used
-            ext: an optional file extension (excluding ``.``) which must match a registered Sdf.FileFormatPlugin
+            ext: an optional file extension (excluding ``.``) which must match a registered ``Sdf.FileFormatPlugin``
 
         Returns:
             The ``Sdf.Layer`` object
@@ -218,7 +280,14 @@ class TestCase(unittest.TestCase):
 
     @staticmethod
     def isUsdOlderThan(version: str):
-        """Determine if the provided version is older than the current USD runtime"""
+        """Determine if the provided version is older than the current USD runtime
+
+        Args:
+            version: The version string to compare against the current USD runtime (e.g. '21.08.3')
+
+        Returns:
+            True if the current USD runtime is older than the provided version
+        """
         current_version = TestCase.__SemVersion(".".join([str(x) for x in Usd.GetVersion()]))
         compare_version = TestCase.__SemVersion(version)
         return current_version < compare_version
@@ -226,6 +295,7 @@ class TestCase(unittest.TestCase):
     @staticmethod
     def tmpBaseDir() -> str:
         """Get the path of the base temp directory. All temp files and directories in the same process will be created under this directory.
+
         Returns:
             The filesystem path
         """
@@ -243,7 +313,11 @@ class TestCase(unittest.TestCase):
 
     @staticmethod
     def getUsdEncoding(layer: Sdf.Layer):
-        """Get the extension of the encoding type used within an SdfLayer"""
+        """Get the extension of the encoding type used within an SdfLayer
+
+        Args:
+            layer: The ``Sdf.Layer`` to check
+        """
         fileFormat = layer.GetFileFormat()
 
         # If the encoding is explicit usda return that extension
@@ -272,7 +346,7 @@ class TestCase(unittest.TestCase):
         """Validate asset passes all enabled validation rules
 
         Args:
-            asset: The Asset to validate. Either a Usd.Stage object or a path to a USD Layer.
+            asset: The Asset to validate. Either a ``Usd.Stage`` object or a path to a USD Layer.
 
         Kwargs:
             engine: ValidationEngine for running Rules on a given Asset.
