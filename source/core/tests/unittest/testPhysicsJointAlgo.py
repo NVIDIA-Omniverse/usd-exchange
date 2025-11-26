@@ -110,17 +110,10 @@ class PhysicsJointAlgoTest(usdex.test.TestCase):
         self.assertTrue(joint.GetLocalPos1Attr().HasAuthoredValue())
         self.assertTrue(joint.GetLocalRot1Attr().HasAuthoredValue())
 
-        _localPos0: Gf.Vec3f = joint.GetLocalPos0Attr().Get()
-        _localRot0: Gf.Quatf = joint.GetLocalRot0Attr().Get()
-        _localPos1: Gf.Vec3f = joint.GetLocalPos1Attr().Get()
-        _localRot1: Gf.Quatf = joint.GetLocalRot1Attr().Get()
-
-        self.assertTrue(Gf.IsClose(_localPos0, localPos0, 1e-6))
-        self.assertTrue(Gf.IsClose(_localPos1, localPos1, 1e-6))
-        self.assertAlmostEqual(_localRot0.GetReal(), localRot0.GetReal(), places=6)
-        self.assertTrue(Gf.IsClose(_localRot0.GetImaginary(), localRot0.GetImaginary(), 1e-6))
-        self.assertAlmostEqual(_localRot1.GetReal(), localRot1.GetReal(), places=6)
-        self.assertTrue(Gf.IsClose(_localRot1.GetImaginary(), localRot1.GetImaginary(), 1e-6))
+        self.assertTrue(Gf.IsClose(joint.GetLocalPos0Attr().Get(), localPos0, 1e-6))
+        self.assertTrue(Gf.IsClose(joint.GetLocalPos1Attr().Get(), localPos1, 1e-6))
+        self.assertRotationsAlmostEqual(joint.GetLocalRot0Attr().Get(), localRot0)
+        self.assertRotationsAlmostEqual(joint.GetLocalRot1Attr().Get(), localRot1)
 
         prim = joint.GetPrim()
         if prim.IsA(UsdPhysics.RevoluteJoint) or prim.IsA(UsdPhysics.PrismaticJoint) or prim.IsA(UsdPhysics.SphericalJoint):
