@@ -904,6 +904,80 @@ UsdGeomXform usdex::core::defineXform(UsdPrim prim, std::optional<const pxr::GfT
     return usdex::core::defineXform(stage, path, transform);
 }
 
+UsdGeomXform usdex::core::defineXform(UsdStagePtr stage, const SdfPath& path, std::optional<const pxr::GfMatrix4d> matrix)
+{
+    // Early out if the proposed prim location is invalid
+    std::string reason;
+    if (!usdex::core::isEditablePrimLocation(stage, path, &reason))
+    {
+        TF_RUNTIME_ERROR("Unable to define UsdGeomXform due to an invalid location: %s", reason.c_str());
+        return UsdGeomXform();
+    }
+
+    // Define the Xform and check that this was successful
+    UsdGeomXform xform = UsdGeomXform::Define(stage, path);
+    if (!xform)
+    {
+        TF_RUNTIME_ERROR("Unable to define UsdGeomXform at \"%s\"", path.GetAsString().c_str());
+        return UsdGeomXform();
+    }
+
+    // Explicitly author the specifier and type name
+    UsdPrim prim = xform.GetPrim();
+    prim.SetSpecifier(SdfSpecifierDef);
+    prim.SetTypeName(prim.GetTypeName());
+
+    // Set the local transform if one was supplied
+    if (matrix.has_value())
+    {
+        usdex::core::setLocalTransform(prim, matrix.value(), UsdTimeCode::Default());
+    }
+
+    return xform;
+}
+
+UsdGeomXform usdex::core::defineXform(UsdPrim parent, const std::string& name, std::optional<const pxr::GfMatrix4d> matrix)
+{
+    // Early out if the proposed prim location is invalid
+    std::string reason;
+    if (!usdex::core::isEditablePrimLocation(parent, name, &reason))
+    {
+        TF_RUNTIME_ERROR("Unable to define UsdGeomXform due to an invalid location: %s", reason.c_str());
+        return UsdGeomXform();
+    }
+
+    // Call overloaded function
+    UsdStageWeakPtr stage = parent.GetStage();
+    const SdfPath path = parent.GetPath().AppendChild(TfToken(name));
+    return usdex::core::defineXform(stage, path, matrix);
+}
+
+UsdGeomXform usdex::core::defineXform(UsdPrim prim, std::optional<const pxr::GfMatrix4d> matrix)
+{
+    // Early out if the prim is invalid
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to define UsdGeomXform due to an invalid prim");
+        return UsdGeomXform();
+    }
+
+    // Warn if original prim is not Scope or Xform
+    TfToken originalType = prim.GetTypeName();
+    if (originalType != UsdGeomTokens->Scope && originalType != UsdGeomTokens->Xform && !originalType.IsEmpty())
+    {
+        TF_WARN(
+            "Redefining prim at \"%s\" from type \"%s\" to \"Xform\". Expected original type to be \"\" or \"Scope\" or \"Xform\".",
+            prim.GetPath().GetAsString().c_str(),
+            originalType.GetText()
+        );
+    }
+
+    // Call the stage/path version
+    UsdStageWeakPtr stage = prim.GetStage();
+    const SdfPath& path = prim.GetPath();
+    return usdex::core::defineXform(stage, path, matrix);
+}
+
 bool usdex::core::setLocalTransform(const UsdGeomXformable& xformable, const GfTransform& transform, UsdTimeCode time)
 {
     if (!xformable)
