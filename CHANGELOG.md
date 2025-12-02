@@ -1,4 +1,56 @@
-# 2.2.0-dev
+# 2.2.0-a1
+
+## Core
+
+### Features
+
+- Added `defineXform` overload which takes `GfMatrix` (in addition to the existing signature with `GfTransform`)
+- Added `computeMeshNormals` for provided mesh topology data
+  - It operates on the arrays rather than the authored Prim to allow computing normals _before authoring the mesh_
+  - It uses a vector-area approach for face normals and area-weighted averaging for vertex normals
+    - FaceVarying normals are supported via a simplified approach that assigns the same face normal to all corners of each face
+  - This function is designed primarily to resolve USD validation issues for meshes that lack normals data
+    - For production-quality rendering with sharp edges or complex shading requirements, users should prefer
+      specialized mesh processing libraries which provide full edge connectivity analysis and advanced
+      normal computation algorithms
+
+## Test
+
+### Features
+
+- Added `assertRotationsAlmostEqual` to compare `Gf.Rotation`, `Gf.Quatf`, or `Gf.Quatd`
+  - None of these types are handled by `Gf.IsClose` and the implementation can be ambiguous depending on intent
+  - This implementation requires the compared rotations to be of the same class (`Gf.Rotation` vs `Gf.Quatf` vs `Gf.Quatd`),
+    and to define quaternions with the same signs/sense.
+
+### Fixes
+
+- Deprecated `assertMatricesAlmostEqual` and `assertVecAlmostEqual`
+  - Users should migrate to `Gf.IsClose` instead as these types are natively supported
+
+## Documentation
+
+- Fixed Native Application Guide Makefile for aarch64 (Linux ARM) builds
+- Fixed python doc string argument listings for `usdex.test`
+
+## Dependencies
+
+### Runtime Deps
+
+- OpenUSD 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
+- Omni Asset Validator 1.4.2
+- Python 3.12.12, 3.11.14, 3.10.19 (default)
+- pybind 2.11.1
+
+### Dev Tools
+
+- packman 7.33
+- repo_tools (all matching latest public)
+- doctest 2.4.5
+- cxxopts 2.2.0
+- Premake 5.0.0-beta4
+- GCC 11.4.0
+- MSVC 2019-16.11
 
 # 2.1.0
 
