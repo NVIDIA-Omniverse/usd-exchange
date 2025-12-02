@@ -943,7 +943,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         # Author a non-identity scale, then check that default scale still works
         xformable.GetScaleOp().Set(NON_IDENTITY_SCALE)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_WITH_ORIENTATION_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
 
         success = usdex.core.setLocalTransform(prim, translation=NON_IDENTITY_TRANSLATE, orientation=NON_IDENTITY_ORIENTATION)
         self.assertTrue(success)
@@ -1065,7 +1065,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         # Fidelity of components takes precedence over existing authored xformOpOrders.
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_WITH_ORIENTATION_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
         self.assertIsValidUsd(stage)
 
     def testReuseComponentOps(self):
@@ -1092,7 +1092,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
         self.assertEqual(self._getOrderedXformOpPrecisions(xformable), precisions)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_WITH_ORIENTATION_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
 
         # Add a subset of the standard xformOps with an unexpected precisions
         self._removeXformableProperties(prim)
@@ -1112,7 +1112,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
         self.assertEqual(self._getOrderedXformOpPrecisions(xformable), precisions)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_WITH_ORIENTATION_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
         self.assertIsValidUsd(stage)
 
     def testRoundTrip(self):
@@ -1127,7 +1127,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
 
         # A non-identity matrix (adjusted for no pivot)
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
         self.assertIsValidUsd(stage)
 
     def testRotationOrientationRoundTrip(self):
@@ -1139,7 +1139,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         # First set using rotation components
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX, 1e-6))
 
         # Verify no extraneous xformOps
         self.assertNoExtraneousXformOps(prim)
@@ -1147,7 +1147,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         # Then set using orientation components
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_WITH_ORIENTATION_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
 
         # Verify no extraneous xformOps
         self.assertNoExtraneousXformOps(prim)
@@ -1155,7 +1155,7 @@ class SetLocalTransformWithOrientationTestCase(BaseSetLocalTransformTestCase):
         # Then set back to rotation components
         usdex.core.setLocalTransform(prim, *NON_IDENTITY_COMPONENTS)
         self.assertEqual(xformable.GetXformOpOrderAttr().Get(), COMPONENT_XFORM_OP_ORDER)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_MATRIX, 1e-6))
 
         # Verify no extraneous xformOps
         self.assertNoExtraneousXformOps(prim)
@@ -1420,16 +1420,16 @@ class GetLocalTransformMatrixTest(BaseXformTestCase):
         # Assert the expected values at different times
         # We assert that the matrices are almost equal to account for float to double precision errors
         returned = usdex.core.getLocalTransformMatrix(prim, Usd.TimeCode.Default())
-        self.assertMatricesAlmostEqual(returned, matrixDefault)
+        self.assertTrue(Gf.IsClose(returned, matrixDefault, 1e-6))
 
         returned = usdex.core.getLocalTransformMatrix(prim, Usd.TimeCode(0.0))
-        self.assertMatricesAlmostEqual(returned, matrixTime0)
+        self.assertTrue(Gf.IsClose(returned, matrixTime0, 1e-6))
 
         returned = usdex.core.getLocalTransformMatrix(prim, Usd.TimeCode(5.0))
-        self.assertMatricesAlmostEqual(returned, matrixTime5)
+        self.assertTrue(Gf.IsClose(returned, matrixTime5, 1e-6))
 
         returned = usdex.core.getLocalTransformMatrix(prim, Usd.TimeCode(10.0))
-        self.assertMatricesAlmostEqual(returned, matrixTime10)
+        self.assertTrue(Gf.IsClose(returned, matrixTime10, 1e-6))
         self.assertIsValidUsd(stage)
 
 
@@ -1907,7 +1907,7 @@ class SetLocalTransformWithOrientationXformableTestCase(BaseSetLocalTransformTes
         success = usdex.core.setLocalTransform(xformable, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
         self.assertTrue(success)
         self.assertSuccessfulSetLocalTransform(prim)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
 
     def testRoundTrip(self):
         # The xformable overload should produce the same results as the prim version
@@ -1916,7 +1916,7 @@ class SetLocalTransformWithOrientationXformableTestCase(BaseSetLocalTransformTes
         xformable = UsdGeom.Xformable(prim)
 
         usdex.core.setLocalTransform(xformable, *NON_IDENTITY_COMPONENTS_WITH_ORIENTATION)
-        self.assertMatricesAlmostEqual(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, places=6)
+        self.assertTrue(Gf.IsClose(xformable.GetLocalTransformation(), NON_IDENTITY_NO_PIVOT_MATRIX, 1e-6))
         self.assertIsValidUsd(stage)
 
 

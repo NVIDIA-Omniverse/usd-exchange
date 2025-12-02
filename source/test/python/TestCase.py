@@ -163,6 +163,7 @@ class TestCase(unittest.TestCase):
         else:
             self.assertIn(time, attr.GetTimeSamples())
 
+    @usdex.core.deprecated("2.2", "Use Gf.IsClose instead")
     def assertMatricesAlmostEqual(self, first, second, places=12):
         """Assert that all 16 values of a pair of 4x4 matrices are equal, to a specified number of decimal places
 
@@ -171,12 +172,7 @@ class TestCase(unittest.TestCase):
             second: The second matrix to compare
             places: The number of decimal places to compare to (default: 12)
         """
-        for row in range(4):
-            for col in range(4):
-                x = first[row][col]
-                y = second[row][col]
-                self.assertEqual(round(x - y, places), 0)
-        self.assertTrue(True)
+        self.assertTrue(Gf.IsClose(first, second, 10 ** (-places)))
 
     def assertRotationsAlmostEqual(self, rot1: Gf.Rotation | Gf.Quatf | Gf.Quatd, rot2: Gf.Rotation | Gf.Quatf | Gf.Quatd, tolerance: float = 1e-6):
         """Assert two rotations are almost equal (same concrete type required).
@@ -213,6 +209,7 @@ class TestCase(unittest.TestCase):
                 messages.append(f"Imaginary part mismatch: {rot1.GetImaginary()} != {rot2.GetImaginary()}")
             self.assertTrue(real_ok and imag_ok, "; ".join(messages))
 
+    @usdex.core.deprecated("2.2", "Use Gf.IsClose instead")
     def assertVecAlmostEqual(self, first, second, places=12):
         """Assert that all elements of a Vec are equal, to a specified number of decimal places
 
@@ -221,9 +218,7 @@ class TestCase(unittest.TestCase):
             second: The second Vec to compare
             places: The number of decimal places to compare to (default: 12)
         """
-        self.assertEqual(len(first), len(second))
-        for idx in range(len(first)):
-            self.assertAlmostEqual(first[idx], second[idx], places)
+        self.assertTrue(Gf.IsClose(first, second, 10 ** (-places)))
 
     def tmpLayer(self, name: str = "", ext: str = "usda") -> Sdf.Layer:
         """
