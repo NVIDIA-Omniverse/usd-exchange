@@ -331,3 +331,189 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             mesh = usdex.core.definePolyMesh(xformPrim, FACE_VERTEX_COUNTS, FACE_VERTEX_INDICES, POINTS)
         self.assertTrue(mesh)
         self.assertEqual(mesh.GetPrim().GetTypeName(), "Mesh")
+
+    def testComputeMeshNormals(self):
+        self.validationEngine.enable_rule(omni.asset_validator.NormalsExistChecker)
+        stage = self.createTestStage()
+
+        faceVertexCounts = Vt.IntArray([3])
+        faceVertexIndices = Vt.IntArray([0, 1, 2])
+        points = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 0.0, 0.0), Gf.Vec3f(0.0, 1.0, 0.0)])
+
+        # Test uniform normals
+        uniformNormals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.uniform)
+        self.assertTrue(uniformNormals.isValid())
+        self.assertEqual(uniformNormals.interpolation(), UsdGeom.Tokens.uniform)
+        self.assertEqual(uniformNormals.effectiveSize(), 1)
+        uniformNormals.index()
+        scope = UsdGeom.Scope.Define(stage, Sdf.Path("/World/TestUniformNormals"))
+        mesh = usdex.core.definePolyMesh(scope.GetPrim(), faceVertexCounts, faceVertexIndices, points, normals=uniformNormals)
+        self.assertTrue(mesh)
+        self.assertIsValidUsd(stage)
+
+        # Test vertex normals
+        vertexNormals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.vertex)
+        self.assertTrue(vertexNormals.isValid())
+        self.assertEqual(vertexNormals.interpolation(), UsdGeom.Tokens.vertex)
+        self.assertEqual(vertexNormals.effectiveSize(), 3)
+        vertexNormals.index()
+        scope = UsdGeom.Scope.Define(stage, Sdf.Path("/World/TestVertexNormals"))
+        mesh = usdex.core.definePolyMesh(scope.GetPrim(), faceVertexCounts, faceVertexIndices, points, normals=vertexNormals)
+        self.assertTrue(mesh)
+        self.assertIsValidUsd(stage)
+
+        # Test face-varying normals
+        faceVaryingNormals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.faceVarying)
+        self.assertTrue(faceVaryingNormals.isValid())
+        self.assertEqual(faceVaryingNormals.interpolation(), UsdGeom.Tokens.faceVarying)
+        self.assertEqual(faceVaryingNormals.effectiveSize(), 3)
+        faceVaryingNormals.index()
+        scope = UsdGeom.Scope.Define(stage, Sdf.Path("/World/TestFaceVaryingNormals"))
+        mesh = usdex.core.definePolyMesh(scope.GetPrim(), faceVertexCounts, faceVertexIndices, points, normals=faceVaryingNormals)
+        self.assertTrue(mesh)
+        self.assertIsValidUsd(stage)
+
+        # Test that vertices used across multiple faces with differing normals are correctly averaged
+        faceVertexCounts = Vt.IntArray([3, 3])
+        faceVertexIndices = Vt.IntArray([0, 1, 2, 0, 3, 4])
+        points = Vt.Vec3fArray(
+            [
+                Gf.Vec3f(0.0, 0.0, 0.0),
+                Gf.Vec3f(1.0, 0.0, 0.0),
+                Gf.Vec3f(0.0, 1.0, 0.0),
+                Gf.Vec3f(0.0, 0.0, 1.0),
+                Gf.Vec3f(1.0, 0.0, 1.0),
+            ]
+        )
+
+        vertexNormals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.vertex)
+        self.assertTrue(vertexNormals.isValid())
+        self.assertEqual(vertexNormals.interpolation(), UsdGeom.Tokens.vertex)
+        self.assertEqual(vertexNormals.effectiveSize(), 5)
+
+        normalsArray = []
+        for i in range(5):
+            normalsArray.append(vertexNormals.values()[vertexNormals.indices()[i]] if vertexNormals.hasIndices() else vertexNormals.values()[i])
+
+        # Verify all normals are normalized
+        for i in range(5):
+            normalLength = normalsArray[i].GetLength()
+            self.assertAlmostEqual(normalLength, 1.0, places=5, msg=f"Normal at vertex {i} is not normalized")
+
+        sharedVertexNormal = normalsArray[0]
+        self.assertGreater(abs(sharedVertexNormal[1]), 0.1, "Shared vertex normal should have Y component from triangle 2")
+        self.assertGreater(abs(sharedVertexNormal[2]), 0.1, "Shared vertex normal should have Z component from triangle 1")
+
+        vertex1Normal = normalsArray[1]
+        self.assertGreater(abs(vertex1Normal[2]), 0.5, "Vertex 1 normal should be primarily in Z direction")
+        vertex2Normal = normalsArray[2]
+        self.assertGreater(abs(vertex2Normal[2]), 0.5, "Vertex 2 normal should be primarily in Z direction")
+        vertex3Normal = normalsArray[3]
+        self.assertGreater(abs(vertex3Normal[1]), 0.5, "Vertex 3 normal should be primarily in Y direction")
+        vertex4Normal = normalsArray[4]
+        self.assertGreater(abs(vertex4Normal[1]), 0.5, "Vertex 4 normal should be primarily in Y direction")
+
+    def testComputeMeshNormalsInvalidTopology(self):
+        # The point array must not be empty
+        points = Vt.Vec3fArray()
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to compute normals due to invalid points: Empty array")]
+        ):
+            normals = usdex.core.computeMeshNormals(FACE_VERTEX_COUNTS, FACE_VERTEX_INDICES, points, UsdGeom.Tokens.vertex)
+        self.assertFalse(normals.isValid())
+
+        # The sum of the faceVertexCounts must equal the count of the faceVertexIndices otherwise the topology is invalid.
+        faceVertexCounts = Vt.IntArray([2])
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to compute normals due to invalid topology")]):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, FACE_VERTEX_INDICES, POINTS, UsdGeom.Tokens.vertex)
+        self.assertFalse(normals.isValid())
+
+        # The faceVertexIndices must be within the range of the points otherwise the topology is invalid.
+        points = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(0.0, 0.0, 1.0)])
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to compute normals due to invalid topology")]):
+            normals = usdex.core.computeMeshNormals(FACE_VERTEX_COUNTS, FACE_VERTEX_INDICES, points, UsdGeom.Tokens.vertex)
+        self.assertFalse(normals.isValid())
+
+        # Test empty face vertex counts
+        emptyFaceVertexCounts = Vt.IntArray()
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to compute normals due to invalid topology")]):
+            normals = usdex.core.computeMeshNormals(emptyFaceVertexCounts, FACE_VERTEX_INDICES, POINTS, UsdGeom.Tokens.vertex)
+        self.assertFalse(normals.isValid())
+
+        # Test empty face vertex indices
+        emptyFaceVertexIndices = Vt.IntArray()
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to compute normals due to invalid topology")]):
+            normals = usdex.core.computeMeshNormals(FACE_VERTEX_COUNTS, emptyFaceVertexIndices, POINTS, UsdGeom.Tokens.vertex)
+        self.assertFalse(normals.isValid())
+
+        # Invalid topology scenario that is not caught by prior checks
+        # Test with negative face vertex indices
+        faceVertexCounts = Vt.IntArray([3])
+        faceVertexIndices = Vt.IntArray([-1, 0, 1])
+        points = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 0.0, 0.0), Gf.Vec3f(0.0, 1.0, 0.0)])
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to compute normals due to invalid topology")]):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.vertex)
+        self.assertFalse(normals.isValid())
+
+    def testComputeMeshNormalsInvalidInterpolation(self):
+        # Invalid interpolation value. Include varying and one other clearly invalid value.
+        faceVertexCounts = Vt.IntArray([3])
+        faceVertexIndices = Vt.IntArray([0, 1, 2])
+        points = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 0.0, 0.0), Gf.Vec3f(0.0, 1.0, 0.0)])
+
+        # Test with "varying" interpolation
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Unable to compute normals due to unsupported interpolation.*varying.*")]
+        ):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, "varying")
+        self.assertFalse(normals.isValid())
+
+        # Test with another clearly invalid interpolation value
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Unable to compute normals due to unsupported interpolation.*invalid.*")]
+        ):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, "invalid")
+        self.assertFalse(normals.isValid())
+
+    def testComputeMeshNormalsFallback(self):
+        # Topology data where one or more faces have less than 3 vertices
+        faceVertexCounts = Vt.IntArray([2, 3])
+        faceVertexIndices = Vt.IntArray([0, 1, 0, 1, 2])
+        points = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 0.0, 0.0), Gf.Vec3f(0.0, 1.0, 0.0)])
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Some faces are degenerate and have been assigned fallback normals.*")]
+        ):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.uniform)
+        self.assertTrue(normals.isValid())
+        self.assertEqual(normals.interpolation(), UsdGeom.Tokens.uniform)
+        self.assertEqual(normals.effectiveSize(), 2)
+
+        # Topology data where one or more faces are degenerate and the default normal has been assigned
+        faceVertexCounts = Vt.IntArray([3])
+        faceVertexIndices = Vt.IntArray([0, 1, 2])
+        points = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 0.0, 0.0), Gf.Vec3f(2.0, 0.0, 0.0)])
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Some faces are degenerate and have been assigned fallback normals.*")]
+        ):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.uniform)
+        self.assertTrue(normals.isValid())
+        self.assertEqual(normals.interpolation(), UsdGeom.Tokens.uniform)
+
+        # Topology data where an unused vertex is assigned the default normal
+        faceVertexCounts = Vt.IntArray([3])
+        faceVertexIndices = Vt.IntArray([0, 1, 2])
+        points = Vt.Vec3fArray(
+            [
+                Gf.Vec3f(0.0, 0.0, 0.0),
+                Gf.Vec3f(1.0, 0.0, 0.0),
+                Gf.Vec3f(0.0, 1.0, 0.0),
+                Gf.Vec3f(2.0, 2.0, 2.0),
+            ]
+        )
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Some vertices have no contributing faces and have been assigned fallback normals.*")]
+        ):
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.vertex)
+        self.assertTrue(normals.isValid())
+        self.assertEqual(normals.interpolation(), UsdGeom.Tokens.vertex)
+        self.assertEqual(normals.effectiveSize(), 4)

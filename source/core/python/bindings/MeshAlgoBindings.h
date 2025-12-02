@@ -156,6 +156,45 @@ void bindMeshAlgo(module& m)
 
         )"
     );
+
+    m.def(
+        "computeMeshNormals",
+        &computeMeshNormals,
+        arg("faceVertexCounts"),
+        arg("faceVertexIndices"),
+        arg("points"),
+        arg("interpolation") = UsdGeomTokens->uniform,
+        arg("fallback") = GfVec3f(0.0f, 0.0f, 1.0f),
+        R"(
+            Computes mesh normals for a given mesh topology.
+
+            This function computes normals for mesh geometry using vector-area approach for face normals
+            and area-weighted averaging for vertex normals. The computation supports uniform, vertex, and
+            faceVarying interpolations to match USD's primvar interpolation types. FaceVarying normals are a simplified
+            approach that assigns the same face normal to all corners of each face.
+
+            Normal computation assumes right-handed mesh orientation. The winding order of the data should be reversed in advance if that is not the case.
+
+            Degenerate faces (with zero area) and vertices with no contributing faces are assigned the fallback normal.
+
+            Note:
+                This function is designed primarily to resolve USD validation issues for meshes
+                that lack normals data. For production-quality rendering with sharp edges or complex
+                shading requirements, consider using specialized mesh processing libraries that provide
+                full edge connectivity analysis and advanced normal computation algorithms.
+
+            Args:
+                faceVertexCounts: The number of vertices in each face of the mesh
+                faceVertexIndices: Indices of the positions from the ``points`` to use for each face vertex
+                points: Vertex positions for the mesh described in local space
+                interpolation: The desired interpolation type for the computed normals
+                fallback: The fallback normal to use for degenerate faces and vertices with no contributing faces
+
+            Returns:
+                Vec3fPrimvarData containing the computed normals, or an invalid one if computation fails.
+
+        )"
+    );
 }
 
 } // namespace usdex::core::bindings
