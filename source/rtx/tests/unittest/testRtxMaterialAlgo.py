@@ -122,7 +122,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         shaderInput = material.GetInput("diffuseColor")
         self.assertTrue(shaderInput)
         self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
-        self.assertVecAlmostEqual(shaderInput.Get(), color)
+        self.assertTrue(Gf.IsClose(shaderInput.Get(), color, 1e-6))
 
         # The Material Interface should include a Float named "Opacity" that holds the specified value
         shaderInput = material.GetInput("opacity")
@@ -149,7 +149,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         shaderInput = shader.GetInput("diffuse_color_constant")
         self.assertTrue(shaderInput)
         self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
-        self.assertVecAlmostEqual(computeEffectiveShaderInputValue(shaderInput), color)
+        self.assertTrue(Gf.IsClose(computeEffectiveShaderInputValue(shaderInput), color, 1e-6))
 
         # The MDL Shader should include a Float named "opacity_constant" that has the effective specified value
         shaderInput = shader.GetInput("opacity_constant")
@@ -187,7 +187,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         shaderInput = shader.GetInput("diffuseColor")
         self.assertTrue(shaderInput)
         self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
-        self.assertVecAlmostEqual(computeEffectiveShaderInputValue(shaderInput), color)
+        self.assertTrue(Gf.IsClose(computeEffectiveShaderInputValue(shaderInput), color, 1e-6))
 
         # The Shader should include a Float named "opacity" that has the effective specified value
         shaderInput = shader.GetInput("opacity")
@@ -213,7 +213,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         shaderInput = material.GetInput("diffuseColor")
         self.assertTrue(shaderInput)
         self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
-        self.assertVecAlmostEqual(shaderInput.Get(), color)
+        self.assertTrue(Gf.IsClose(shaderInput.Get(), color, 1e-6))
 
         # The Material Interface should include a Float named "IOR" that holds the specified value
         shaderInput = material.GetInput("ior")
@@ -228,7 +228,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         shaderInput = shader.GetInput("glass_color")
         self.assertTrue(shaderInput)
         self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
-        self.assertVecAlmostEqual(computeEffectiveShaderInputValue(shaderInput), color)
+        self.assertTrue(Gf.IsClose(computeEffectiveShaderInputValue(shaderInput), color, 1e-6))
 
         # The MDL Shader should include a Float named "glass_ior" that has the effective specified value
         shaderInput = shader.GetInput("glass_ior")
@@ -243,7 +243,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         shaderInput = shader.GetInput("diffuseColor")
         self.assertTrue(shaderInput)
         self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
-        self.assertVecAlmostEqual(computeEffectiveShaderInputValue(shaderInput), color)
+        self.assertTrue(Gf.IsClose(computeEffectiveShaderInputValue(shaderInput), color, 1e-6))
 
         # The Shader should include a Float named "ior" that has the effective specified value
         shaderInput = shader.GetInput("ior")
