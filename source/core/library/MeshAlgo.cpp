@@ -102,6 +102,189 @@ bool validatePrimvar(
     return true;
 }
 
+// Compute face normals using vector-area approach
+std::vector<pxr::GfVec3f> computeFaceNormals(
+    const VtIntArray& faceVertexCounts,
+    const VtIntArray& faceVertexIndices,
+    const VtVec3fArray& points,
+    const pxr::GfVec3f& defaultNormal
+)
+{
+
+    std::vector<pxr::GfVec3f> faceNormals;
+    faceNormals.reserve(faceVertexCounts.size());
+
+    GfVec3f vectorArea;
+    bool hasDegenerateFaces = false;
+    size_t vertexIndex = 0;
+    for (size_t faceIndex = 0; faceIndex < faceVertexCounts.size(); ++faceIndex)
+    {
+        const int vertexCount = faceVertexCounts[faceIndex];
+        if (vertexCount < 3)
+        {
+            hasDegenerateFaces = true;
+            // Fallback to a default normal if the face has less than 3 vertices
+            faceNormals.push_back(defaultNormal);
+            vertexIndex += vertexCount;
+            continue;
+        }
+
+        vectorArea = GfVec3f(0.0f, 0.0f, 0.0f);
+
+        // Get the first vertex
+        const GfVec3f& v0 = points[faceVertexIndices[vertexIndex]];
+
+        // Sum cross products of consecutive edges
+        for (int i = 1; i < vertexCount - 1; ++i)
+        {
+            const GfVec3f& v1 = points[faceVertexIndices[vertexIndex + i]];
+            const GfVec3f& v2 = points[faceVertexIndices[vertexIndex + i + 1]];
+
+            // Cross product of (v1-v0) and (v2-v0)
+            GfVec3f edge1 = v1 - v0;
+            GfVec3f edge2 = v2 - v0;
+            GfVec3f cross = GfCross(edge1, edge2);
+            vectorArea += cross;
+        }
+
+        // Normalize the vector area to get the face normal
+        float length = vectorArea.GetLength();
+        if (length > 1e-6f)
+        {
+            faceNormals.push_back(vectorArea / length);
+        }
+        else
+        {
+            hasDegenerateFaces = true;
+            // Fallback to a default normal if the face is degenerate
+            faceNormals.push_back(defaultNormal);
+        }
+
+        vertexIndex += vertexCount;
+    }
+
+    if (hasDegenerateFaces)
+    {
+        TF_WARN("Some faces are degenerate and have been assigned fallback normals");
+    }
+
+    return faceNormals;
+}
+
+// Compute vertex normals by averaging face normals
+std::vector<pxr::GfVec3f> computeVertexNormals(
+    const VtIntArray& faceVertexCounts,
+    const VtIntArray& faceVertexIndices,
+    const VtVec3fArray& points,
+    const pxr::GfVec3f& defaultNormal
+)
+{
+    // First compute face normals
+    auto faceNormals = computeFaceNormals(faceVertexCounts, faceVertexIndices, points, defaultNormal);
+    if (faceNormals.empty())
+    {
+        return {};
+    }
+
+    // Initialize vertex normals to zero
+    std::vector<pxr::GfVec3f> vertexNormals(points.size(), GfVec3f(0.0f, 0.0f, 0.0f));
+
+    // Sum face normals for each vertex
+    size_t vertexIndex = 0;
+    for (size_t faceIndex = 0; faceIndex < faceVertexCounts.size(); ++faceIndex)
+    {
+        const int vertexCount = faceVertexCounts[faceIndex];
+        const GfVec3f& faceNormal = faceNormals[faceIndex];
+
+        for (int i = 0; i < vertexCount; ++i)
+        {
+            int vertexIdx = faceVertexIndices[vertexIndex + i];
+            if (vertexIdx >= 0 && vertexIdx < static_cast<int>(points.size()))
+            {
+                vertexNormals[vertexIdx] += faceNormal;
+            }
+        }
+
+        vertexIndex += vertexCount;
+    }
+
+    // Normalize vertex normals
+    bool hasVerticesWithoutFaces = false;
+    for (GfVec3f& normal : vertexNormals)
+    {
+        float length = normal.GetLength();
+        if (length > 1e-6f)
+        {
+            normal /= length;
+        }
+        else
+        {
+            // Fallback to a default normal if the vertex has no contributing faces
+            hasVerticesWithoutFaces = true;
+            normal = defaultNormal;
+        }
+    }
+
+    if (hasVerticesWithoutFaces)
+    {
+        TF_WARN("Some vertices have no contributing faces and have been assigned fallback normals");
+    }
+
+    return vertexNormals;
+}
+
+// Compute face-varying normals (corner normals)
+// This is a simplified implementation that uses the face normal for each corner
+std::vector<pxr::GfVec3f> computeFaceVaryingNormals(
+    const VtIntArray& faceVertexCounts,
+    const VtIntArray& faceVertexIndices,
+    const VtVec3fArray& points,
+    const pxr::GfVec3f& defaultNormal
+)
+{
+    auto faceNormals = computeFaceNormals(faceVertexCounts, faceVertexIndices, points, defaultNormal);
+    if (faceNormals.empty())
+    {
+        return {};
+    }
+
+    // Create face-varying normals by repeating face normals for each corner
+    std::vector<pxr::GfVec3f> cornerNormals;
+    cornerNormals.reserve(faceVertexIndices.size());
+
+    size_t vertexIndex = 0;
+    for (size_t faceIndex = 0; faceIndex < faceVertexCounts.size(); ++faceIndex)
+    {
+        const int vertexCount = faceVertexCounts[faceIndex];
+        const GfVec3f& faceNormal = faceNormals[faceIndex];
+
+        // Assign the same face normal to all corners of this face
+        for (int i = 0; i < vertexCount; ++i)
+        {
+            cornerNormals.push_back(faceNormal);
+        }
+
+        vertexIndex += vertexCount;
+    }
+
+    return cornerNormals;
+}
+
+// Create an indexed Vec3fPrimvarData from a vector of values
+Vec3fPrimvarData getIndexedPrimvar(const std::vector<pxr::GfVec3f>& values, const pxr::TfToken& interpolation)
+{
+    const VtVec3fArray valuesArray(values.begin(), values.end());
+    Vec3fPrimvarData primvarData(interpolation, valuesArray);
+    primvarData.index();
+    return primvarData;
+}
+
+Vec3fPrimvarData getInvalidPrimvar()
+{
+    // Return an invalid primvar to indicate failure
+    return Vec3fPrimvarData(UsdGeomTokens->constant, VtVec3fArray());
+}
+
 } // namespace
 
 UsdGeomMesh usdex::core::definePolyMesh(
@@ -321,4 +504,71 @@ UsdGeomMesh usdex::core::definePolyMesh(
     UsdStageWeakPtr stage = prim.GetStage();
     const SdfPath& path = prim.GetPath();
     return usdex::core::definePolyMesh(stage, path, faceVertexCounts, faceVertexIndices, points, normals, uvs, displayColor, displayOpacity);
+}
+
+Vec3fPrimvarData usdex::core::computeMeshNormals(
+    const VtIntArray& faceVertexCounts,
+    const VtIntArray& faceVertexIndices,
+    const VtVec3fArray& points,
+    const TfToken& interpolation,
+    const GfVec3f& fallback
+)
+{
+    // Validate interpolation
+    if (interpolation != UsdGeomTokens->uniform && interpolation != UsdGeomTokens->vertex && interpolation != UsdGeomTokens->faceVarying)
+    {
+        TF_WARN(
+            "Unable to compute normals due to unsupported interpolation '%s'. Only 'uniform', 'vertex', and 'faceVarying' are supported.",
+            interpolation.GetText()
+        );
+        return getInvalidPrimvar();
+    }
+
+    // Early out if the points are empty
+    if (points.empty())
+    {
+        TF_RUNTIME_ERROR("Unable to compute normals due to invalid points: Empty array");
+        return getInvalidPrimvar();
+    }
+
+    // Early out if the topology is not valid
+    std::string reason;
+    if (!UsdGeomMesh::ValidateTopology(faceVertexIndices, faceVertexCounts, points.size(), &reason))
+    {
+        TF_RUNTIME_ERROR("Unable to compute normals due to invalid topology: %s", reason.c_str());
+        return getInvalidPrimvar();
+    }
+
+    // Normalize the fallback vector to ensure it's a valid normal
+    GfVec3f defaultNormal = fallback.GetNormalized();
+
+    if (interpolation == UsdGeomTokens->uniform)
+    {
+        auto faceNormals = computeFaceNormals(faceVertexCounts, faceVertexIndices, points, defaultNormal);
+        if (faceNormals.empty())
+        {
+            return getInvalidPrimvar();
+        }
+        return getIndexedPrimvar(faceNormals, UsdGeomTokens->uniform);
+    }
+    else if (interpolation == UsdGeomTokens->vertex)
+    {
+        auto vertexNormals = computeVertexNormals(faceVertexCounts, faceVertexIndices, points, defaultNormal);
+        if (vertexNormals.empty())
+        {
+            return getInvalidPrimvar();
+        }
+        return getIndexedPrimvar(vertexNormals, UsdGeomTokens->vertex);
+    }
+    else if (interpolation == UsdGeomTokens->faceVarying)
+    {
+        auto cornerNormals = computeFaceVaryingNormals(faceVertexCounts, faceVertexIndices, points, defaultNormal);
+        if (cornerNormals.empty())
+        {
+            return getInvalidPrimvar();
+        }
+        return getIndexedPrimvar(cornerNormals, UsdGeomTokens->faceVarying);
+    }
+
+    return getInvalidPrimvar();
 }

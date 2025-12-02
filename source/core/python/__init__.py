@@ -87,6 +87,7 @@ __all__ = [
     "defineCone",
     "defineCylinder",
     "defineCapsule",
+    "computeMeshNormals",
     # camera
     "defineCamera",
     # primvars

@@ -140,6 +140,37 @@ USDEX_API pxr::UsdGeomMesh definePolyMesh(
     std::optional<const FloatPrimvarData> displayOpacity = std::nullopt
 );
 
+//! Computes mesh normals for a given mesh topology.
+//!
+//! This function computes normals for mesh geometry using vector-area approach for face normals
+//! and area-weighted averaging for vertex normals. The computation supports uniform, vertex, and
+//! faceVarying interpolations to match USD's primvar interpolation types. FaceVarying normals are a simplified
+//! approach that assigns the same face normal to all corners of each face.
+//!
+//! Normal computation assumes right-handed mesh orientation. The winding order of the data should be reversed in advance if that is not the case.
+//!
+//! Degenerate faces (with zero area) and vertices with no contributing faces are assigned the fallback normal.
+//!
+//! @note This function is designed primarily to resolve USD validation issues for meshes
+//! that lack normals data. For production-quality rendering with sharp edges or complex
+//! shading requirements, consider using specialized mesh processing libraries that provide
+//! full edge connectivity analysis and advanced normal computation algorithms.
+//!
+//! @param faceVertexCounts The number of vertices in each face of the mesh
+//! @param faceVertexIndices Indices of the positions from the `points` to use for each face vertex
+//! @param points Vertex positions for the mesh described in local space
+//! @param interpolation The desired interpolation type for the computed normals
+//! @param fallback The fallback normal to use for degenerate faces and vertices with no contributing faces
+//!
+//! @returns Vec3fPrimvarData containing the computed normals, or an invalid one if computation fails.
+USDEX_API Vec3fPrimvarData computeMeshNormals(
+    const pxr::VtIntArray& faceVertexCounts,
+    const pxr::VtIntArray& faceVertexIndices,
+    const pxr::VtVec3fArray& points,
+    const pxr::TfToken& interpolation = pxr::UsdGeomTokens->uniform,
+    const pxr::GfVec3f& fallback = pxr::GfVec3f(0.0f, 0.0f, 1.0f)
+);
+
 //! @}
 
 } // namespace usdex::core
