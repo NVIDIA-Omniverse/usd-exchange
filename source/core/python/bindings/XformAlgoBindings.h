@@ -274,17 +274,17 @@ void bindXformAlgo(module& m)
 
     m.def(
         "defineXform",
-        overload_cast<UsdStagePtr, const SdfPath&, std::optional<const GfMatrix4d>>(&defineXform),
+        overload_cast<UsdStagePtr, const SdfPath&, const GfMatrix4d&>(&defineXform),
         arg("stage"),
         arg("path"),
-        arg("matrix") = nullptr,
+        arg("matrix"),
         R"(
             Defines an xform on the stage.
 
             Parameters:
                 - **stage** - The stage on which to define the xform
                 - **path** - The absolute prim path at which to define the xform
-                - **matrix** - Optional local transform matrix to set
+                - **matrix** - The local transform matrix to set
 
             Returns:
                 UsdGeom.Xform schema wrapping the defined Usd.Prim. Returns an invalid schema on error.
@@ -293,17 +293,17 @@ void bindXformAlgo(module& m)
 
     m.def(
         "defineXform",
-        overload_cast<UsdPrim, const std::string&, std::optional<const GfMatrix4d>>(&defineXform),
+        overload_cast<UsdPrim, const std::string&, const GfMatrix4d&>(&defineXform),
         arg("parent"),
         arg("name"),
-        arg("matrix") = nullptr,
+        arg("matrix"),
         R"(
             Defines an xform on the stage.
 
             Parameters:
                 - **parent** - Prim below which to define the xform
                 - **name** - Name of the xform
-                - **matrix** - Optional local transform matrix to set
+                - **matrix** - The local transform matrix to set
 
             Returns:
                 UsdGeom.Xform schema wrapping the defined Usd.Prim. Returns an invalid schema on error.
@@ -312,9 +312,9 @@ void bindXformAlgo(module& m)
 
     m.def(
         "defineXform",
-        overload_cast<UsdPrim, std::optional<const GfMatrix4d>>(&defineXform),
+        overload_cast<UsdPrim, const GfMatrix4d&>(&defineXform),
         arg("prim"),
-        arg("matrix") = nullptr,
+        arg("matrix"),
         R"(
             Defines an xform from an existing prim.
 
@@ -322,7 +322,7 @@ void bindXformAlgo(module& m)
 
             Parameters:
                 - **prim** - The existing prim to convert to an xform
-                - **matrix** - Optional local transform matrix to set
+                - **matrix** - The local transform matrix to set
 
             Returns:
                 UsdGeom.Xform schema wrapping the converted Usd.Prim.

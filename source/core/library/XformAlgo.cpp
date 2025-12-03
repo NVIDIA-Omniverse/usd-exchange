@@ -904,7 +904,7 @@ UsdGeomXform usdex::core::defineXform(UsdPrim prim, std::optional<const pxr::GfT
     return usdex::core::defineXform(stage, path, transform);
 }
 
-UsdGeomXform usdex::core::defineXform(UsdStagePtr stage, const SdfPath& path, std::optional<const pxr::GfMatrix4d> matrix)
+UsdGeomXform usdex::core::defineXform(UsdStagePtr stage, const SdfPath& path, const pxr::GfMatrix4d& matrix)
 {
     // Early out if the proposed prim location is invalid
     std::string reason;
@@ -928,15 +928,12 @@ UsdGeomXform usdex::core::defineXform(UsdStagePtr stage, const SdfPath& path, st
     prim.SetTypeName(prim.GetTypeName());
 
     // Set the local transform if one was supplied
-    if (matrix.has_value())
-    {
-        usdex::core::setLocalTransform(prim, matrix.value(), UsdTimeCode::Default());
-    }
+    usdex::core::setLocalTransform(prim, matrix, UsdTimeCode::Default());
 
     return xform;
 }
 
-UsdGeomXform usdex::core::defineXform(UsdPrim parent, const std::string& name, std::optional<const pxr::GfMatrix4d> matrix)
+UsdGeomXform usdex::core::defineXform(UsdPrim parent, const std::string& name, const pxr::GfMatrix4d& matrix)
 {
     // Early out if the proposed prim location is invalid
     std::string reason;
@@ -952,7 +949,7 @@ UsdGeomXform usdex::core::defineXform(UsdPrim parent, const std::string& name, s
     return usdex::core::defineXform(stage, path, matrix);
 }
 
-UsdGeomXform usdex::core::defineXform(UsdPrim prim, std::optional<const pxr::GfMatrix4d> matrix)
+UsdGeomXform usdex::core::defineXform(UsdPrim prim, const pxr::GfMatrix4d& matrix)
 {
     // Early out if the prim is invalid
     if (!prim)
