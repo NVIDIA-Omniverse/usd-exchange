@@ -1756,7 +1756,7 @@ class DefineXformTestCase(usdex.test.DefineFunctionTestCase, BaseXformTestCase):
         # If None is passed then the local matrix is not set
         # stage, path
         path = Sdf.Path("/Root/StagePath/None")
-        mesh = usdex.core.defineXform(stage, path, matrix=None)
+        mesh = usdex.core.defineXform(stage, path)
         self.assertTrue(mesh)
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
@@ -1764,13 +1764,13 @@ class DefineXformTestCase(usdex.test.DefineFunctionTestCase, BaseXformTestCase):
 
         # parent, name
         name = "None"
-        mesh = usdex.core.defineXform(parent, name, matrix=None)
+        mesh = usdex.core.defineXform(parent, name)
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
         self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)
 
         # prim
-        mesh = usdex.core.defineXform(mesh.GetPrim(), matrix=None)
+        mesh = usdex.core.defineXform(mesh.GetPrim())
         xformable = UsdGeom.Xformable(mesh.GetPrim())
         self.assertFalse(xformable.GetXformOpOrderAttr().IsAuthored())
         self.assertEqual(xformable.GetLocalTransformation(), IDENTITY_MATRIX)

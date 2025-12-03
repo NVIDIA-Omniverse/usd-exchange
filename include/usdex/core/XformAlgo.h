@@ -324,29 +324,29 @@ USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdPrim prim, std::optional<const p
 //!
 //! @param stage The stage on which to define the xform
 //! @param path The absolute prim path at which to define the xform
-//! @param matrix Optional local transform matrix to set
+//! @param matrix The local transform matrix to set
 //!
 //! @returns UsdGeomXform schema wrapping the defined UsdPrim. Returns an invalid schema on error.
-USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdStagePtr stage, const pxr::SdfPath& path, std::optional<const pxr::GfMatrix4d> matrix = std::nullopt);
+USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdStagePtr stage, const pxr::SdfPath& path, const pxr::GfMatrix4d& matrix);
 
 //! Defines an xform on the stage.
 //!
 //! @param parent Prim below which to define the xform
 //! @param name Name of the xform
-//! @param matrix Optional local transform matrix to set
+//! @param matrix The local transform matrix to set
 //!
 //! @returns UsdGeomXform schema wrapping the defined UsdPrim. Returns an invalid schema on error.
-USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdPrim parent, const std::string& name, std::optional<const pxr::GfMatrix4d> matrix = std::nullopt);
+USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdPrim parent, const std::string& name, const pxr::GfMatrix4d& matrix);
 
 //! Defines a basic xform from an existing prim.
 //!
 //! This converts an existing prim to an Xform type, preserving any existing transform data.
 //!
 //! @param prim The existing prim to convert to an xform
-//! @param matrix Optional local transform matrix to set
+//! @param matrix The local transform matrix to set
 //!
 //! @returns UsdGeomXform schema wrapping the converted UsdPrim.
-USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdPrim prim, std::optional<const pxr::GfMatrix4d> matrix = std::nullopt);
+USDEX_API pxr::UsdGeomXform defineXform(pxr::UsdPrim prim, const pxr::GfMatrix4d& matrix);
 
 //! @}
 
