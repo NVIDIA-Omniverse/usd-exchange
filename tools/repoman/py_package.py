@@ -105,12 +105,11 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         # gather the license files
         license_files = [
             ("$root/LICENSE.md", f"{stagingDir}/usd-exchange-LICENSE.md"),
-            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/boost-LICENSE*.txt", None),
             ("$root/_build/target-deps/pybind11/PACKAGE-LICENSES/pybind11-LICENSE.txt", None),
             ("$root/tools/internal-licenses/pyboost11-LICENSE.txt", None),
             ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/*tbb-LICENSE*", None),
             ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/usd-license.txt", None),
-            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/zlib-LICENSE", None),
+            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/zlib-LICENSE*", None),
         ]
         for src, target in license_files:
             resolved_src = omni.repo.man.resolve_tokens(src)
