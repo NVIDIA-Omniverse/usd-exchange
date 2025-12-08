@@ -31,6 +31,7 @@ __all__ = [
     "getLayerAuthoringMetadata",
     "saveLayer",
     "exportLayer",
+    "getUsdLayerEncoding",
     # stage
     "createStage",
     "configureStage",

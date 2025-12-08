@@ -20,7 +20,7 @@ When authoring [UsdPrims](https://openusd.org/release/api/class_usd_prim.html) t
 
 ### Binary vs Text Layers
 
-`SdfLayers` can be written in several formats, the most common of which is `.usd`. However, any `.usd` file could be either USDA encoded (human-readable text) or USDC encoded (a binary [Crate](https://openusd.org/release/glossary.html#crate-file-format) encoding). Both encodings are also available as their own dedicated file extensions (`.usda` and `.usdc`), which help clarify the intent of content & prevent encoding mistakes.
+`SdfLayers` can be written in several formats, the most common of which is `.usd`. However, any `.usd` file could be either USDA encoded (human-readable text) or USDC encoded (a binary [Crate](https://openusd.org/release/glossary.html#crate-file-format) encoding). Both encodings are also available as their own dedicated file extensions (`.usda` and `.usdc`), which help clarify the intent of content & prevent encoding mistakes. To ease introspection of USD layers, we provide a `getUsdLayerEncoding` function in our [SdfLayer authoring](../api/group__layers.rebreather_rst) module.
 
 It is important to consider your content when choosing the encoding for your `SdfLayer`. A good default is to always prefer USDC encoding, but for lightweight "interface" layers or quick debugging layers it may be preferable to choose USDA encoding. Further guidance can be found [here](https://openusd.org/release/maxperf.html#use-binary-usd-files-for-geometry-and-shading-caches).
 

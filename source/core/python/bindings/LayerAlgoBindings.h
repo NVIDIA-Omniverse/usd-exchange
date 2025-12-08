@@ -154,6 +154,31 @@ void bindLayerAlgo(module& m)
                 A bool indicating if the export was successful.
         )"
     );
+
+    m.def(
+        "getUsdLayerEncoding",
+        &getUsdLayerEncoding,
+        arg("layer"),
+        R"(
+            Get the USD file format encoding of the given ``Sdf.Layer``.
+
+            ``Sdf.Layers`` can be written in several formats, the most common of which is ``.usd``. However, any ``.usd`` file could be either
+            USDA encoded (human-readable text) or USDC encoded (a binary `Crate <https://openusd.org/release/glossary.html#crate-file-format>`_
+            encoding).
+
+            Both encodings are also available as their own dedicated file extensions (``.usda`` and ``.usdc``), which can help clarify the intent
+            of content and prevent encoding mistakes.
+
+            This function returns the USD file format encoding of the given ``Sdf.Layer``. It will return "usda", "usdc", or "usd" for valid USD
+            layers, and an empty token for any other file format (i.e. 3rd party ``SdfFileFormatPlugin`` layers).
+
+            Args:
+                layer: The layer to get the USD file format encoding of.
+
+            Returns:
+                The USD file format encoding of the layer, or an empty token if the layer is not a valid USD layer.
+        )"
+    );
 }
 
 } // namespace usdex::core::bindings
