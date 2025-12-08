@@ -308,6 +308,7 @@ def __install(
             "usdPhysics",
             "usdShade",
             "usdUtils",
+            "usdUI",
             "vt",
             "work",
         ]
@@ -319,6 +320,7 @@ def __install(
             "usdLux",
             "usdPhysics",
             "usdShade",
+            "usdUI",
         ]
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdLibs.append("ts")
@@ -409,6 +411,7 @@ def __install(
             ("pxr/UsdPhysics", "_usdPhysics"),
             ("pxr/UsdShade", "_usdShade"),
             ("pxr/UsdUtils", "_usdUtils"),
+            ("pxr/UsdUI", "_usdUI"),
             ("pxr/Vt", "_vt"),
             ("pxr/Work", "_work"),
         ]

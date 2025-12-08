@@ -36,6 +36,7 @@
             │   ├── libusd_usdShade.so
             │   ├── libusd_usd.so
             │   ├── libusd_usdUtils.so
+            │   ├── libusd_usdUI.so
             │   ├── libusd_vt.so
             │   ├── libusd_work.so
             |   └── usd
@@ -114,6 +115,7 @@
             │   ├── usd_usdPhysics.dll
             │   ├── usd_usdShade.dll
             │   ├── usd_usdUtils.dll
+            │   ├── usd_usdUI.dll
             │   ├── usd_vt.dll
             │   └── usd_work.dll
             |   └── usd
