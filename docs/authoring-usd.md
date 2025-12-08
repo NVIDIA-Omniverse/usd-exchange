@@ -24,15 +24,46 @@ When authoring [UsdPrims](https://openusd.org/release/api/class_usd_prim.html) t
 
 It is important to consider your content when choosing the encoding for your `SdfLayer`. A good default is to always prefer USDC encoding, but for lightweight "interface" layers or quick debugging layers it may be preferable to choose USDA encoding. Further guidance can be found [here](https://openusd.org/release/maxperf.html#use-binary-usd-files-for-geometry-and-shading-caches).
 
-#### USDC Crate Version
+### USD Layer Versions
 
-When using USDC encoding, any new layers will be saved with the default Crate Version of the running process. As the default Crate Version differs across USD runtimes, this has implications on which USD Ecosystem products will be able to load the layer. [UsdCrateInfo](https://openusd.org/release/api/class_usd_crate_info.html) is a useful class to help determine your software's USDC capabilities.
+Both USDC and USDA file formats have their own associated version that is separate from the USD runtime version, as it impacts serialized content that may be loaded in newer or older runtimes. As the default versions differs across USD runtimes, this has implications on which USD Ecosystem products will be able to load each layer.
 
-- Use `UsdCrateInfo::GetSoftwareVersion` to determine the newest possible Crate Version that your runtime could read.
-- Use `UsdCrateInfo::GetFileVersion` to determine the Crate Version with which a given `SdfLayer` was serialized.
-- To determine your current default Crate Version, serialize a new layer and check `UsdCrateInfo::GetFileVersion`.
+In a given USD runtime, these versions are hardcoded on the `UsdcFileFormat` and `UsdaFileFormat` objects. However, both formats provide [TfEnvSetting](https://openusd.org/release/api/env_setting_8h.html#details) to downgrade & target an older format, with auto-upgrade processes if necessary to support the authored features in the layer.
+
+```{eval-rst}
+.. note::
+  In OpenUSD v25.11 and beyond, all of these objects were moved from the `usd` to the `sdf` module. In older runtimes, use e.g. `UsdUsdaFileFormat` and in newer runtimes use `SdfUsdaFileFormat`.
+```
+
+Accessing the version information is different for each file format. See [USDC Version Info](#usdc-version-info) and [USDA Version Info](#usda-version-info) respectively.
+
+#### USDC Version Info
+
+[CrateInfo](https://openusd.org/release/api/class_usd_crate_info.html) is a useful class to help determine your software's USDC capabilities.
+
+```{eval-rst}
+.. note::
+  In OpenUSD v25.11 and beyond, `CrateInfo` was moved from the `usd` to the `sdf` module. In older runtimes, use `Usd.CrateInfo` and in newer runtimes use `Sdf.CrateInfo`.
+```
+
+- Use `CrateInfo::GetSoftwareVersion` to determine the newest possible Crate Version that your runtime could read.
+- Use `CrateInfo::GetFileVersion` to determine the Crate Version with which a given `SdfLayer` was serialized.
+- To determine your current default Crate Version, serialize a new layer and check `CrateInfo::GetFileVersion`.
   - Note this will not necessarily match `GetSoftwareVersion`; it is common for a runtime to serialize an older Crate Version than it can read, to maximize portability to other runtimes.
 - If you need to target older runtimes than your default allows, be sure to set the [TfEnvSetting](https://openusd.org/release/api/env_setting_8h.html#details) `USD_WRITE_NEW_USDC_FILES_AS_VERSION` _before starting the process_.
+
+#### USDA Version Info
+
+Unlike USDC, there is no public function to programmatically query USDA version on an existing layer. However, as these files are plain text, it is trivial to parse the first line of the file to determine the version.
+
+Rather than providing a standalone class like `CrateInfo`, the [UsdaFileFormat](https://openusd.org/release/api/class_sdf_usda_file_format.html#pub-static-methods) object provides direct methods for querying the min/max input & output versions.
+
+```{eval-rst}
+.. note::
+  The USDA version inspection functions are *not* bound to python.
+```
+
+If you need to target older runtimes than your default allows, be sure to set the [TfEnvSetting](https://openusd.org/release/api/env_setting_8h.html#details) `USD_WRITE_NEW_USDA_FILES_AS_VERSION` _before starting the process_.
 
 ## Valid and Unique Names
 
