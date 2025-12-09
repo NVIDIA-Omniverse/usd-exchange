@@ -197,7 +197,7 @@ class LayerAlgoTest(usdex.test.TestCase):
             success = usdex.core.exportLayer(layer, identifier, LayerAlgoTest.defaultAuthoringMetadata)
         self.assertTrue(success)
         exportedLayer = Sdf.Layer.FindOrOpen(identifier)
-        self.assertUsdLayerEncoding(exportedLayer, "usda")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(exportedLayer), "usda")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(exportedLayer))
 
         # A valid "usdc" value will result in a successful layer export
@@ -206,7 +206,7 @@ class LayerAlgoTest(usdex.test.TestCase):
             success = usdex.core.exportLayer(layer, identifier, LayerAlgoTest.defaultAuthoringMetadata)
         self.assertTrue(success)
         exportedLayer = Sdf.Layer.FindOrOpen(identifier)
-        self.assertUsdLayerEncoding(exportedLayer, "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(exportedLayer), "usdc")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(exportedLayer))
 
     def testExportLayerWithComment(self):
@@ -271,7 +271,7 @@ class LayerAlgoTest(usdex.test.TestCase):
             success = usdex.core.exportLayer(layer, identifier, LayerAlgoTest.defaultAuthoringMetadata, fileFormatArgs={})
         self.assertTrue(success)
         exportedLayer = Sdf.Layer.FindOrOpen(identifier)
-        self.assertUsdLayerEncoding(exportedLayer, "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(exportedLayer), "usdc")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(exportedLayer))
 
         # A valid "usd" value will result in a successful layer export
@@ -282,7 +282,7 @@ class LayerAlgoTest(usdex.test.TestCase):
             success = usdex.core.exportLayer(layer, identifier, LayerAlgoTest.defaultAuthoringMetadata, fileFormatArgs=fileFormatArgs)
         self.assertTrue(success)
         exportedLayer = Sdf.Layer.FindOrOpen(identifier)
-        self.assertUsdLayerEncoding(exportedLayer, "usda")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(exportedLayer), "usda")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(exportedLayer))
 
         # A valid "usd" value will result in a successful layer export
@@ -293,5 +293,5 @@ class LayerAlgoTest(usdex.test.TestCase):
             success = usdex.core.exportLayer(layer, identifier, LayerAlgoTest.defaultAuthoringMetadata, fileFormatArgs=fileFormatArgs)
         self.assertTrue(success)
         exportedLayer = Sdf.Layer.FindOrOpen(identifier)
-        self.assertUsdLayerEncoding(exportedLayer, "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(exportedLayer), "usdc")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(exportedLayer))

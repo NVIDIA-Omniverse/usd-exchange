@@ -72,12 +72,11 @@ class CoreTest(unittest.TestCase):
         if in_virtual_environment():
             expectedLicenses = [
                 "usd-exchange-LICENSE.md",
-                "boost-LICENSE*.txt",
                 "pybind11-LICENSE.txt",
                 "pyboost11-LICENSE.txt",
                 "usd-license.txt",
                 "*tbb-LICENSE*",
-                "zlib-LICENSE",
+                "zlib-LICENSE*",
             ]
             packageInfoDir = get_package_metadata_directory("usd-exchange")
             self.assertIsNotNone(packageInfoDir, "usd-exchange package is not installed.")

@@ -6,6 +6,16 @@
 
 #include <pxr/usd/usd/stage.h>
 
+#if PXR_VERSION < 2511
+#include <pxr/usd/usd/usdFileFormat.h>
+#include <pxr/usd/usd/usdaFileFormat.h>
+#include <pxr/usd/usd/usdcFileFormat.h>
+#else
+#include <pxr/usd/sdf/usdFileFormat.h>
+#include <pxr/usd/sdf/usdaFileFormat.h>
+#include <pxr/usd/sdf/usdcFileFormat.h>
+#endif
+
 using namespace pxr;
 
 namespace
@@ -103,4 +113,52 @@ bool usdex::core::exportLayer(
     }
 
     return success;
+}
+
+TfToken usdex::core::getUsdLayerEncoding(const SdfLayerHandle layer)
+{
+    SdfFileFormatConstPtr fileFormat = layer->GetFileFormat();
+
+#if PXR_VERSION < 2511
+
+    // If the encoding is explicitly usda return that extension
+    if (fileFormat == SdfFileFormat::FindById(UsdUsdaFileFormatTokens->Id))
+    {
+        return UsdUsdaFileFormatTokens->Id;
+    }
+
+    // If the encoding is explicitly usdc return that extension
+    if (fileFormat == SdfFileFormat::FindById(UsdUsdcFileFormatTokens->Id))
+    {
+        return UsdUsdcFileFormatTokens->Id;
+    }
+
+    if (fileFormat == SdfFileFormat::FindById(UsdUsdFileFormatTokens->Id))
+    {
+        return UsdUsdFileFormat::GetUnderlyingFormatForLayer(*layer);
+    }
+
+#else
+
+    // If the encoding is explicitly usda return that extension
+    if (fileFormat == SdfFileFormat::FindById(SdfUsdaFileFormatTokens->Id))
+    {
+        return SdfUsdaFileFormatTokens->Id;
+    }
+
+    // If the encoding is explicitly usdc return that extension
+    if (fileFormat == SdfFileFormat::FindById(SdfUsdcFileFormatTokens->Id))
+    {
+        return SdfUsdcFileFormatTokens->Id;
+    }
+
+    if (fileFormat == SdfFileFormat::FindById(SdfUsdFileFormatTokens->Id))
+    {
+        return SdfUsdFileFormat::GetUnderlyingFormatForLayer(*layer);
+    }
+
+#endif
+
+    static TfToken empty;
+    return empty;
 }

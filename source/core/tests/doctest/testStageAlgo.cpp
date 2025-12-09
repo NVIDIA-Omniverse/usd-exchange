@@ -13,9 +13,6 @@
 
 #include <pxr/base/vt/dictionary.h>
 #include <pxr/usd/usd/prim.h>
-#include <pxr/usd/usd/usdFileFormat.h>
-#include <pxr/usd/usd/usdaFileFormat.h>
-#include <pxr/usd/usd/usdcFileFormat.h>
 #include <pxr/usd/usdGeom/metrics.h>
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdPhysics/metrics.h>
@@ -31,31 +28,6 @@ namespace
 std::string getAuthoringMetadata()
 {
     return TfStringPrintf("usdex cpp tests: %s, usd_ver: %d, with_python: %d", usdex::core::version(), PXR_VERSION, usdex::core::withPython());
-}
-
-// FUTURE: this is included in both python and c++ tests. Is it useful at runtime? Maybe it belongs in usdex::core instead
-TfToken getUsdEncoding(const SdfLayer& layer)
-{
-    SdfFileFormatConstPtr fileFormat = layer.GetFileFormat();
-
-    // If the encoding is explicit usda return that extension
-    if (fileFormat == SdfFileFormat::FindById(UsdUsdaFileFormatTokens->Id))
-    {
-        return UsdUsdaFileFormatTokens->Id;
-    }
-
-    // If the encoding is explicit usdc return that extension
-    if (fileFormat == SdfFileFormat::FindById(UsdUsdcFileFormatTokens->Id))
-    {
-        return UsdUsdcFileFormatTokens->Id;
-    }
-
-    if (fileFormat == SdfFileFormat::FindById(UsdUsdFileFormatTokens->Id))
-    {
-        return UsdUsdFileFormat::GetUnderlyingFormatForLayer(layer);
-    }
-
-    return {};
 }
 
 } // namespace
@@ -93,7 +65,7 @@ TEST_CASE("createStage identifier")
     stage = usdex::core::createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata);
     REQUIRE(stage != nullptr);
     CHECK(usdex::test::compareIdentifiers(stage->GetRootLayer()->GetIdentifier(), identifier));
-    CHECK(getUsdEncoding(*stage->GetRootLayer()) == UsdUsdaFileFormatTokens->Id);
+    CHECK(usdex::core::getUsdLayerEncoding(stage->GetRootLayer()) == "usda");
     CHECK(usdex::core::hasLayerAuthoringMetadata(stage->GetRootLayer()));
 
     // valid usdc
@@ -101,7 +73,7 @@ TEST_CASE("createStage identifier")
     stage = usdex::core::createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata);
     REQUIRE(stage != nullptr);
     CHECK(usdex::test::compareIdentifiers(stage->GetRootLayer()->GetIdentifier(), identifier));
-    CHECK(getUsdEncoding(*stage->GetRootLayer()) == UsdUsdcFileFormatTokens->Id);
+    CHECK(usdex::core::getUsdLayerEncoding(stage->GetRootLayer()) == "usdc");
     CHECK(usdex::core::hasLayerAuthoringMetadata(stage->GetRootLayer()));
 
     // valid usd results in usdc
@@ -109,7 +81,7 @@ TEST_CASE("createStage identifier")
     stage = usdex::core::createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata);
     REQUIRE(stage != nullptr);
     CHECK(usdex::test::compareIdentifiers(stage->GetRootLayer()->GetIdentifier(), identifier));
-    CHECK(getUsdEncoding(*stage->GetRootLayer()) == UsdUsdcFileFormatTokens->Id);
+    CHECK(usdex::core::getUsdLayerEncoding(stage->GetRootLayer()) == "usdc");
     CHECK(usdex::core::hasLayerAuthoringMetadata(stage->GetRootLayer()));
     stage = nullptr;
 }
@@ -322,7 +294,7 @@ TEST_CASE("createStage fileFormatArgs")
     UsdStageRefPtr stage = usdex::core::createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata, args);
     REQUIRE(stage != nullptr);
     CHECK(usdex::test::compareIdentifiers(stage->GetRootLayer()->GetIdentifier(), identifier));
-    CHECK(getUsdEncoding(*stage->GetRootLayer()) == UsdUsdaFileFormatTokens->Id);
+    CHECK(usdex::core::getUsdLayerEncoding(stage->GetRootLayer()) == "usda");
     CHECK(usdex::core::hasLayerAuthoringMetadata(stage->GetRootLayer()));
 
     // respects FileFormatArgs
@@ -330,7 +302,7 @@ TEST_CASE("createStage fileFormatArgs")
     stage = usdex::core::createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata, args);
     REQUIRE(stage != nullptr);
     CHECK(usdex::test::compareIdentifiers(stage->GetRootLayer()->GetIdentifier(), identifier));
-    CHECK(getUsdEncoding(*stage->GetRootLayer()) == UsdUsdcFileFormatTokens->Id);
+    CHECK(usdex::core::getUsdLayerEncoding(stage->GetRootLayer()) == "usdc");
     CHECK(usdex::core::hasLayerAuthoringMetadata(stage->GetRootLayer()));
     stage = nullptr;
 }

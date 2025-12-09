@@ -19,7 +19,7 @@ namespace usdex::core
 
 //! @defgroup layers SdfLayer Authoring
 //!
-//! Utility functions to provide consistant authoring of `SdfLayers`
+//! Utility functions to provide consistent authoring of `SdfLayers`
 //!
 //! It is desirable to capture data provenance information into the metadata of SdfLayers, in order to keep track of what tools & versions
 //! were used throughout content creation pipelines, and to capture notes from the content author. While OpenUSD does not currently have a
@@ -113,6 +113,21 @@ USDEX_API bool exportLayer(
     std::optional<std::string_view> comment = std::nullopt,
     const pxr::SdfLayer::FileFormatArguments& fileFormatArgs = pxr::SdfLayer::FileFormatArguments()
 );
+
+//! Get the USD file format encoding of the given `SdfLayer`.
+//!
+//! `SdfLayers` can be written in several formats, the most common of which is `.usd`. However, any `.usd` file could be either USDA encoded
+//! (human-readable text) or USDC encoded (a binary [Crate](https://openusd.org/release/glossary.html#crate-file-format) encoding).
+//!
+//! Both encodings are also available as their own dedicated file extensions (`.usda` and `.usdc`), which can help clarify the intent of content
+//! and prevent encoding mistakes.
+//!
+//! This function returns the USD file format encoding of the given `SdfLayer`. It will return "usda", "usdc", or "usd" for valid USD layers,
+//! and an empty token for any other file format (i.e. 3rd party `SdfFileFormatPlugin` layers).
+//!
+//! @param layer The layer to get the USD file format encoding of.
+//! @returns The USD file format encoding of the layer, or an empty token if the layer is not a valid USD layer.
+USDEX_API pxr::TfToken getUsdLayerEncoding(const pxr::SdfLayerHandle layer);
 
 //! @}
 

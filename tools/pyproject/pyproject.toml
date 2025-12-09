@@ -6,12 +6,11 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = [
     "usd-exchange-LICENSE.md",
-    "boost-LICENSE*.txt",
     "pybind11-LICENSE.txt",
     "pyboost11-LICENSE.txt",
     "usd-license.txt",
     "*tbb-LICENSE*",
-    "zlib-LICENSE",
+    "zlib-LICENSE*",
 ]
 requires-python = ">=3.10,<3.13"
 

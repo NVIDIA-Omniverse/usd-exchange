@@ -153,7 +153,7 @@ class AssetStructureTestCase(usdex.test.TestCase):
             assetPayloadStageIdentifier = f"{usdex.core.getPayloadToken()}/{usdex.core.getContentsToken()}.{stageExtension}"
             fullIdentifier = pathlib.Path(assetStageIdentifier).parent / assetPayloadStageIdentifier
             self.assertSdfLayerIdentifier(assetPayloadStage.GetRootLayer(), fullIdentifier)
-            self.assertUsdLayerEncoding(assetPayloadStage.GetRootLayer(), expectedEncoding)
+            self.assertEqual(usdex.core.getUsdLayerEncoding(assetPayloadStage.GetRootLayer()), expectedEncoding)
             self.assertTrue(usdex.core.hasLayerAuthoringMetadata(assetPayloadStage.GetRootLayer()))
             self.assertEqual(usdex.core.getLayerAuthoringMetadata(assetPayloadStage.GetRootLayer()), self.defaultAuthoringMetadata)
             self.assertIsValidUsd(assetPayloadStage)
@@ -204,7 +204,7 @@ class AssetStructureTestCase(usdex.test.TestCase):
             self.assertIsInstance(assetContentStage, Usd.Stage)
 
             # check that the asset content stage has the expected encoding
-            self.assertUsdLayerEncoding(assetContentStage.GetRootLayer(), expectedEncoding)
+            self.assertEqual(usdex.core.getUsdLayerEncoding(assetContentStage.GetRootLayer()), expectedEncoding)
             self.assertTrue(usdex.core.hasLayerAuthoringMetadata(assetContentStage.GetRootLayer()))
             self.assertEqual(usdex.core.getLayerAuthoringMetadata(assetContentStage.GetRootLayer()), self.defaultAuthoringMetadata)
 
@@ -345,7 +345,7 @@ class AddAssetLibraryTestCase(usdex.test.TestCase):
             self.assertSdfLayerIdentifier(assetLibraryStage.GetRootLayer(), expectedLibraryIdentifier)
 
             # check that the library stage has the correct encoding
-            self.assertUsdLayerEncoding(assetLibraryStage.GetRootLayer(), expectedEncoding)
+            self.assertEqual(usdex.core.getUsdLayerEncoding(assetLibraryStage.GetRootLayer()), expectedEncoding)
 
             # check that the library stage has the correct default prim name and it has a class specifier
             defaultPrim = assetLibraryStage.GetDefaultPrim()
@@ -388,7 +388,7 @@ class AddAssetLibraryTestCase(usdex.test.TestCase):
         self.assertSdfLayerIdentifier(assetLibraryStage.GetRootLayer(), expectedLibraryIdentifier)
 
         # check that the library stage has the correct encoding (usdc by default)
-        self.assertUsdLayerEncoding(assetLibraryStage.GetRootLayer(), "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(assetLibraryStage.GetRootLayer()), "usdc")
         self.assertIsValidUsd(payloadStage)
 
 

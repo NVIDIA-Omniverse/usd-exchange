@@ -130,6 +130,7 @@ class TestCase(unittest.TestCase):
 
         self.fail(msg=msg)
 
+    @usdex.core.deprecated("2.2", "Use usdex.core.getUsdLayerEncoding instead")
     def assertUsdLayerEncoding(self, layer: Sdf.Layer, encoding: str):
         """Assert that the given layer uses the given encoding type
 
@@ -137,7 +138,7 @@ class TestCase(unittest.TestCase):
             layer: The ``Sdf.Layer`` to check
             encoding: The expected encoding type (e.g. 'usda', 'usdc')
         """
-        self.assertEqual(self.getUsdEncoding(layer), encoding)
+        self.assertEqual(usdex.core.getUsdLayerEncoding(layer), encoding)
 
     def assertSdfLayerIdentifier(self, layer, identifier):
         """Assert that the given layer has the expected identifier
@@ -306,31 +307,18 @@ class TestCase(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.tmpBaseDir(), ignore_errors=True)
 
+    @usdex.core.deprecated("2.2", "Use usdex.core.getUsdLayerEncoding instead")
     @staticmethod
-    def getUsdEncoding(layer: Sdf.Layer):
+    def getUsdEncoding(layer: Sdf.Layer) -> str:
         """Get the extension of the encoding type used within an SdfLayer
 
         Args:
             layer: The ``Sdf.Layer`` to check
+
+        Returns:
+            The USD file format encoding of the layer, or an empty token if the layer is not a valid USD layer.
         """
-        fileFormat = layer.GetFileFormat()
-
-        # If the encoding is explicit usda return that extension
-        usdaFileFormat = Sdf.FileFormat.FindById("usda")
-        if fileFormat == usdaFileFormat:
-            return "usda"
-
-        # If the encoding is explicit usdc return that extension
-        usdcFileFormat = Sdf.FileFormat.FindById("usdc")
-        if fileFormat == usdcFileFormat:
-            return "usdc"
-
-        # If the encoding is implicit check which of the explicit extensions can read the layer and return that type
-        usdFileFormat = Sdf.FileFormat.FindById("usd")
-        if fileFormat == usdFileFormat:
-            return usdFileFormat.GetUnderlyingFormatForLayer(layer)
-
-        return ""
+        return usdex.core.getUsdLayerEncoding(layer)
 
     @staticmethod
     def __validateUsd(

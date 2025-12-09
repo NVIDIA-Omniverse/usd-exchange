@@ -44,7 +44,7 @@ class CreateStageTestCase(usdex.test.TestCase):
         stage = usdex.core.createStage(identifier, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
         self.assertIsInstance(stage, Usd.Stage)
         self.assertSdfLayerIdentifier(stage.GetRootLayer(), identifier)
-        self.assertUsdLayerEncoding(stage.GetRootLayer(), "usda")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(stage.GetRootLayer()), "usda")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(stage.GetRootLayer()))
         self.assertIsValidUsd(stage)
 
@@ -53,7 +53,7 @@ class CreateStageTestCase(usdex.test.TestCase):
         stage = usdex.core.createStage(identifier, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
         self.assertIsInstance(stage, Usd.Stage)
         self.assertSdfLayerIdentifier(stage.GetRootLayer(), identifier)
-        self.assertUsdLayerEncoding(stage.GetRootLayer(), "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(stage.GetRootLayer()), "usdc")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(stage.GetRootLayer()))
         self.assertIsValidUsd(stage)
 
@@ -63,7 +63,7 @@ class CreateStageTestCase(usdex.test.TestCase):
         stage = usdex.core.createStage(identifier, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
         self.assertIsInstance(stage, Usd.Stage)
         self.assertSdfLayerIdentifier(stage.GetRootLayer(), identifier)
-        self.assertUsdLayerEncoding(stage.GetRootLayer(), "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(stage.GetRootLayer()), "usdc")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(stage.GetRootLayer()))
         self.assertIsValidUsd(stage)
 
@@ -268,7 +268,7 @@ class CreateStageTestCase(usdex.test.TestCase):
         )
         self.assertIsInstance(stage, Usd.Stage)
         self.assertSdfLayerIdentifier(stage.GetRootLayer(), identifier)
-        self.assertUsdLayerEncoding(stage.GetRootLayer(), "usda")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(stage.GetRootLayer()), "usda")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(stage.GetRootLayer()))
         self.assertIsValidUsd(stage)
 
@@ -286,7 +286,7 @@ class CreateStageTestCase(usdex.test.TestCase):
         )
         self.assertIsInstance(stage, Usd.Stage)
         self.assertSdfLayerIdentifier(stage.GetRootLayer(), identifier)
-        self.assertUsdLayerEncoding(stage.GetRootLayer(), "usdc")
+        self.assertEqual(usdex.core.getUsdLayerEncoding(stage.GetRootLayer()), "usdc")
         self.assertTrue(usdex.core.hasLayerAuthoringMetadata(stage.GetRootLayer()))
         self.assertIsValidUsd(stage)
 

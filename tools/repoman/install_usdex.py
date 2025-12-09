@@ -308,6 +308,7 @@ def __install(
             "usdPhysics",
             "usdShade",
             "usdUtils",
+            "usdUI",
             "vt",
             "work",
         ]
@@ -319,6 +320,7 @@ def __install(
             "usdLux",
             "usdPhysics",
             "usdShade",
+            "usdUI",
         ]
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdLibs.append("ts")
@@ -409,6 +411,7 @@ def __install(
             ("pxr/UsdPhysics", "_usdPhysics"),
             ("pxr/UsdShade", "_usdShade"),
             ("pxr/UsdUtils", "_usdUtils"),
+            ("pxr/UsdUI", "_usdUI"),
             ("pxr/Vt", "_vt"),
             ("pxr/Work", "_work"),
         ]
@@ -497,7 +500,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         "--usd-version",
         dest="usd_ver",
         default=usd_ver,
-        choices=["25.08", "25.05", "25.02", "24.11", "24.08", "24.05"],  # public versions only
+        choices=["25.11", "25.08", "25.05", "25.02", "24.11", "24.08", "24.05"],  # public versions only
         help=f"The OpenUSD version to install. Defaults to `{usd_ver}`",
     )
     parser.add_argument(
