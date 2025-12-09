@@ -106,6 +106,12 @@ namespace usdex::core
 //! However, support for storing a display name on a Prim is not consistent across all versions of OpenUsd. To make this more consistent,
 //! we provide functions to manipulate the display name metadata in any OpenUSD runtime.
 //!
+//! In OpenUSD v25.11, the `displayName` metadata field was deprecated, along with the `UsdObject::Get/SetDisplayName()` functions in favor of
+//! using the `uiHints` dictionary metadata fields and UsdUIObjectHints API. The
+//! [UI Hints proposal](https://openusd.org/release/api/usd_u_i_page_front.html#usdUI_hintsOverview) outlines this change in more detail.
+//! Currently, the `displayName` helper functions in this library only access the original `displayName` metadata field
+//! and do not read or write the new `uiHints` dictionary.
+//!
 //! @{
 
 //! Produce a valid prim name from the input name
