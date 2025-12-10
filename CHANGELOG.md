@@ -1,9 +1,10 @@
-# 2.2.0-a1
+# 2.2.0-rc1
 
 ## Core
 
 ### Features
 
+- Added USD 25.11 support
 - Added `defineXform` overload which takes `GfMatrix` (in addition to the existing signature with `GfTransform`)
 - Added `computeMeshNormals` for provided mesh topology data
   - It operates on the arrays rather than the authored Prim to allow computing normals _before authoring the mesh_
@@ -13,6 +14,8 @@
     - For production-quality rendering with sharp edges or complex shading requirements, users should prefer
       specialized mesh processing libraries which provide full edge connectivity analysis and advanced
       normal computation algorithms
+- Added `getUsdLayerEncoding` to help determine the underlying encoding of USD Layers
+  - In USD 25.11 the `SdfFileFormatPlugins` for USDC and USDA were moved from `Usd` to `Sdf` & this function avoids the need for pre-compiler macros
 
 ## Test
 
@@ -27,9 +30,25 @@
 
 - Deprecated `assertMatricesAlmostEqual` and `assertVecAlmostEqual`
   - Users should migrate to `Gf.IsClose` instead as these types are natively supported
+- Deprecated `assertUsdLayerEncoding` and `getUsdEncoding`
+  - Use `usdex.core.getUsdLayerEncoding` instead
+
+## Dev Tools
+
+### Features
+
+- Added USD 25.11 support via `install_usdex`
+  - USD 25.08+ flavors use oneTBB
+  - The python wheels remain on USD 25.05
+- Added `UsdUI` to the runtime tree, for both `install_usdex` and python wheels
+  - In USD 25.11 it is a strict dependency of `UsdUtils`
+  - This is not linked by the `usdex_core` shared library, it is only a dependency if using python & `UsdUtils`
+  - This is *not* a dependency on any GUI. It provides schemas for UI features like NodeGraph color/position
 
 ## Documentation
 
+- Updated USD Authoring Guide with an explanation of the `Usd` to `Sdf` API breaks in USD 25.11 and how to query USDC & USDA Version
+- Updated `NameAlgo` docs to explain that `uiHint` based `displayName` introduced in USD 25.11 is ignored for now
 - Fixed Native Application Guide Makefile for aarch64 (Linux ARM) builds
 - Fixed python doc string argument listings for `usdex.test`
 
@@ -38,7 +57,7 @@
 ### Runtime Deps
 
 - OpenUSD 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
-- Omni Asset Validator 1.4.2
+- Omni Asset Validator 1.9.1
 - Python 3.12.12, 3.11.14, 3.10.19 (default)
 - pybind 2.11.1
 
