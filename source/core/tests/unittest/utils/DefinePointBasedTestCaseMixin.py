@@ -169,7 +169,7 @@ class DefinePointBasedTestCaseMixin(ABC):
         # If the array size matches the uniform size then a uniform primvar is authored
         if UsdGeom.Tokens.uniform in self.primvarSizes:
             path = parentPath.AppendChild("UniformValue")
-            values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0)])
+            values = Vt.Vec3fArray([Gf.Vec3f(0.0, 1.0, 0.0)])
             indices = Vt.IntArray([0 for _ in range(self.primvarSizes[UsdGeom.Tokens.uniform])])
             normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.uniform, values, indices)
             result = self.defineFunc(stage, path, *self.requiredArgs, normals=normals)
@@ -189,7 +189,7 @@ class DefinePointBasedTestCaseMixin(ABC):
             if self.primvarSizes[UsdGeom.Tokens.varying] != self.primvarSizes[UsdGeom.Tokens.vertex]:
                 # If the array size matches the number of points a vertex primvar is authored
                 path = parentPath.AppendChild("VertexValue")
-                values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0)])
+                values = Vt.Vec3fArray([Gf.Vec3f(0.0, 1.0, 0.0)])
                 indices = Vt.IntArray([0 for _ in range(self.primvarSizes[UsdGeom.Tokens.vertex])])
                 normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, values, indices)
                 result = self.defineFunc(stage, path, *self.requiredArgs, normals=normals)
@@ -198,7 +198,7 @@ class DefinePointBasedTestCaseMixin(ABC):
         else:
             # If the array size matches the number of points a vertex primvar is authored
             path = parentPath.AppendChild("VertexValue")
-            values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0)])
+            values = Vt.Vec3fArray([Gf.Vec3f(0.0, 1.0, 0.0)])
             indices = Vt.IntArray([0 for _ in range(self.primvarSizes[UsdGeom.Tokens.vertex])])
             normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, values, indices)
             result = self.defineFunc(stage, path, *self.requiredArgs, normals=normals)
@@ -208,7 +208,7 @@ class DefinePointBasedTestCaseMixin(ABC):
         # If the array size matches the number of face vertices a face varying primvar is authored
         if UsdGeom.Tokens.faceVarying in self.primvarSizes:
             path = parentPath.AppendChild("FaceVaryingValue")
-            values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0)])
+            values = Vt.Vec3fArray([Gf.Vec3f(0.0, 1.0, 0.0)])
             indices = Vt.IntArray([0 for _ in range(self.primvarSizes[UsdGeom.Tokens.faceVarying])])
             normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, values, indices)
             result = self.defineFunc(stage, path, *self.requiredArgs, normals=normals)
