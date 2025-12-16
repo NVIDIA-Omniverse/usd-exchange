@@ -1,4 +1,4 @@
-# 2.2.0-rc2
+# 2.2.0
 
 ## Core
 
@@ -56,14 +56,14 @@
 
 ### Runtime Deps
 
-- OpenUSD 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
+- OpenUSD 25.11, 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
 - Omni Asset Validator 1.9.2
 - Python 3.12.12, 3.11.14, 3.10.19 (default)
 - pybind 2.11.1
 
 ### Dev Tools
 
-- packman 7.33
+- packman 7.34
 - repo_tools (all matching latest public)
 - doctest 2.4.5
 - cxxopts 2.2.0
