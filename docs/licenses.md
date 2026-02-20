@@ -36,6 +36,7 @@ These licenses pertain to the `usdex_core` shared library.
 - OpenUSD Exchange :ref:`(jump to license) <usdexlicense>`
 - OpenUSD `(jump to license) <usd LICENSE_>`_
 - TBB :ref:`(jump to license) <tbblicense>`
+- hwloc :ref:`(jump to license) <hwloclicense>`
 - zlib :ref:`(jump to license) <zliblicense>`
 ```
 
@@ -61,6 +62,7 @@ These licenses pertain to the `usdex.core` python module, its compiled bindings 
 - OpenUSD Exchange :ref:`(jump to license) <usdexlicense>`
 - OpenUSD `(jump to license) <usd LICENSE_>`_
 - TBB :ref:`(jump to license) <tbblicense>`
+- hwloc :ref:`(jump to license) <hwloclicense>`
 - zlib :ref:`(jump to license) <zliblicense>`
 - Python `(jump to license) <python LICENSE_>`_
 - Boost :ref:`(jump to license) <boostlicense>`
@@ -101,6 +103,7 @@ These licenses pertain to the `usdex.test` python module, which is based on pyth
 - OpenUSD `(jump to license) <usd LICENSE_>`_
 - Omni Asset Validator `(jump to license) <omni.asset_validator LICENSE_>`_
 - TBB :ref:`(jump to license) <tbblicense>`
+- hwloc :ref:`(jump to license) <hwloclicense>`
 - zlib :ref:`(jump to license) <zliblicense>`
 - Python `(jump to license) <python LICENSE_>`_
 - Boost :ref:`(jump to license) <boostlicense>`
@@ -141,6 +144,12 @@ usd-exchange License
 .. _tbblicense:
 
 .. include-licenses:: /_build/target-deps/usd/release/PACKAGE-LICENSES/*tbb-LICENSE*
+
+.. Workaround for hwloc as the license file only applies to oneTBB packages, but our docs build with older TBB
+
+.. _hwloclicense:
+
+.. include-licenses:: /tools/extra-licenses/hwloc-COPYING.txt
 
 .. Workaround for zlib as the name of the license file varies between packages
 

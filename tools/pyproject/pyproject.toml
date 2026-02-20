@@ -10,6 +10,7 @@ license-files = [
     "pyboost11-LICENSE.txt",
     "usd-license.txt",
     "*tbb-LICENSE*",
+    "*hwloc*",
     "zlib-LICENSE*",
 ]
 requires-python = ">=3.10,<3.13"
