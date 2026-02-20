@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 import argparse
@@ -254,7 +254,8 @@ def __install(
     validator_path = f"{targetDepsDir}/omni_asset_validator"
 
     libInstallDir = "${install_dir}/lib"
-    usdPluginSourceDir = f"{usd_path}/lib/usd"
+    usdNativePluginSourceDir = f"{usd_path}/lib/usd"
+    usdPluginSourceDir = f"{usd_path}/plugin/usd"
     usdPluginInstallDir = "${install_dir}/lib/usd"
 
     prebuild_dict = {
@@ -285,8 +286,11 @@ def __install(
             "usdUI",
             "usdVol",
         ]
+        usdPluginLibs = []
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdPlugins.append("usdSemantics")
+        if __SemVersion(usd_ver) >= __SemVersion("25.05"):
+            usdPlugins.append("usdShaders")
         if __SemVersion(usd_ver) < __SemVersion("25.08"):
             usdPlugins.append("ndr")
     else:
@@ -320,7 +324,11 @@ def __install(
             "usdLux",
             "usdPhysics",
             "usdShade",
+            "usdShaders",
             "usdUI",
+        ]
+        usdPluginLibs = [
+            "usdShaders",
         ]
         if __SemVersion(usd_ver) >= __SemVersion("24.11"):
             usdLibs.append("ts")
@@ -338,7 +346,7 @@ def __install(
     # allow for extra user supplied plugins
     for extra in extraPlugins:
         extraLibExists = os.path.exists(omni.repo.man.resolve_tokens(usd_path + "/lib/${lib_prefix}" + usdLibMidfix + extra + "${lib_ext}"))
-        extraPluginExists = os.path.exists(f"{usdPluginSourceDir}/{extra}")
+        extraPluginExists = os.path.exists(f"{usdNativePluginSourceDir}/{extra}")
         if not extraLibExists and not extraPluginExists:
             print(f"Warning: Skipping {extra} as neither the plugInfo nor the library exist in this USD flavor")
             continue
@@ -349,9 +357,16 @@ def __install(
 
     for lib in usdLibs:
         prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}" + usdLibMidfix + lib + "${lib_ext}", libInstallDir])
-    prebuild_dict["copy"].append([f"{usdPluginSourceDir}/plugInfo.json", f"{usdPluginInstallDir}/plugInfo.json"])
+    prebuild_dict["copy"].append([f"{usdNativePluginSourceDir}/plugInfo.json", f"{usdPluginInstallDir}/plugInfo.json"])
     for plugin in usdPlugins:
-        prebuild_dict["copy"].append([f"{usdPluginSourceDir}/{plugin}", f"{usdPluginInstallDir}/{plugin}"])
+        if os.path.exists(f"{usdNativePluginSourceDir}/{plugin}"):
+            prebuild_dict["copy"].append([f"{usdNativePluginSourceDir}/{plugin}", f"{usdPluginInstallDir}/{plugin}"])
+        elif os.path.exists(f"{usdPluginSourceDir}/{plugin}"):
+            prebuild_dict["copy"].append([f"{usdPluginSourceDir}/{plugin}", f"{usdPluginInstallDir}/{plugin}"])
+        else:
+            raise omni.repo.man.exceptions.ConfigurationError(f"Plugin {plugin} not found in {usdNativePluginSourceDir} or {usdPluginSourceDir}")
+    for lib in usdPluginLibs:
+        prebuild_dict["copy"].append([f"{usdPluginSourceDir}/{lib}" + "${lib_ext}", usdPluginInstallDir])
 
     # 25.08+ uses the new oneTBB API, and the lib name on Windows was changed to tbb12
     if __SemVersion(usd_ver) < __SemVersion("25.08"):
