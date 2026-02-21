@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -629,6 +629,9 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         # tex coord input is driven by the tex coord reader
         self.assertTrue(textureReader.GetInput("st").HasConnectedSource())
         self.assertEqual(textureReader.GetInput("st").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), uvReader.GetOutput("result").GetAttr())
+        # wrap mode is set to repeat
+        self.assertEqual(textureReader.GetInput("wrapS").GetAttr().Get(), "repeat")
+        self.assertEqual(textureReader.GetInput("wrapT").GetAttr().Get(), "repeat")
 
         surface = usdex.core.computeEffectivePreviewSurfaceShader(material)
         self.assertTrue(surface)

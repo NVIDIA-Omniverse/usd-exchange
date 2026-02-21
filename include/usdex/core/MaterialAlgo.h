@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -166,7 +166,8 @@ USDEX_API pxr::UsdShadeMaterial definePreviewMaterial(
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
-//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 //!
 //! @note If you intend to create a Material Interface, it is preferable to author all initial shader attributes (including textures)
 //! *before* calling `addPreviewMaterialInterface()`. This function will not attempt to reconcile any existing inputs on the Material.
@@ -180,7 +181,8 @@ USDEX_API bool addDiffuseTextureToPreviewMaterial(pxr::UsdShadeMaterial& materia
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
-//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 //!
 //! The UsdPreviewSurface specification requires the texture reader to provide data that is properly scaled and ready to be consumed as a
 //! tangent space normal. Textures stored in 8-bit file formats require scale and bias adjustment to transform the normals into tangent space.
@@ -206,7 +208,8 @@ USDEX_API bool addNormalTextureToPreviewMaterial(pxr::UsdShadeMaterial& material
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
-//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 //!
 //! @note If you intend to create a Material Interface, it is preferable to author all initial shader attributes (including textures)
 //! *before* calling `addPreviewMaterialInterface()`. This function will not attempt to reconcile any existing inputs on the Material.
@@ -220,7 +223,8 @@ USDEX_API bool addOrmTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, c
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
-//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 //!
 //! @note If you intend to create a Material Interface, it is preferable to author all initial shader attributes (including textures)
 //! *before* calling `addPreviewMaterialInterface()`. This function will not attempt to reconcile any existing inputs on the Material.
@@ -234,7 +238,8 @@ USDEX_API bool addRoughnessTextureToPreviewMaterial(pxr::UsdShadeMaterial& mater
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
-//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 //!
 //! @note If you intend to create a Material Interface, it is preferable to author all initial shader attributes (including textures)
 //! *before* calling `addPreviewMaterialInterface()`. This function will not attempt to reconcile any existing inputs on the Material.
@@ -248,7 +253,8 @@ USDEX_API bool addMetallicTextureToPreviewMaterial(pxr::UsdShadeMaterial& materi
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
-//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 //!
 //! In addition to driving the `opacity` input, these additional shader inputs will be set explicitly, to produce better masked geometry:
 //! - UsdPreviewSurface: `ior = 1.0`
