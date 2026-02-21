@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -168,7 +168,8 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
-            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``).
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 
             Args:
                 material: The material prim
@@ -189,7 +190,8 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
-            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``).
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 
             The UsdPreviewSurface specification requires the texture reader to provide data that is properly scaled and ready to be consumed as a
             tangent space normal. Textures stored in 8-bit file formats require scale and bias adjustment to transform the normals into tangent space.
@@ -222,7 +224,8 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
-            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``).
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 
             Args:
                 material: The material prim
@@ -243,7 +246,8 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
-            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``).
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 
             Args:
                 material: The material prim
@@ -264,7 +268,8 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
-            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``).
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 
             Args:
                 material: The material prim
@@ -285,7 +290,8 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
-            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``).
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
 
             Args:
                 material: The material prim

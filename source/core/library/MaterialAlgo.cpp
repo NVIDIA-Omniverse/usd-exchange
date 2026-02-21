@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -60,6 +60,8 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((r, "r"))
     ((g, "g"))
     ((b, "b"))
+    ((wrapS, "wrapS"))
+    ((wrapT, "wrapT"))
     // UsdPrimvarReader_float2 I/O
     ((varname, "varname"))
     ((result, "result"))
@@ -195,6 +197,20 @@ TfToken getPrimvarShaderName(const std::string& primvarName, const std::string& 
     std::replace(validPrimvarName.begin(), validPrimvarName.end(), ':', '_');
     std::string validShaderName = TfStringPrintf("%s%s_%s", primvarReaderNamePrefix, validPrimvarName.c_str(), typeRoleName.c_str());
     return usdex::core::getValidPrimName(validShaderName);
+}
+
+//! Set the texture wrap mode for a given shader
+//!
+//! @param shader The shader to set the texture wrap mode for
+//! @param wrapMode The wrap mode to set
+void setTextureWrapMode(UsdShadeShader& shader, const std::string& wrapMode)
+{
+    const TfToken wrapModeToken = TfToken(wrapMode);
+    if (isShaderType(shader, _tokens->uvTexId))
+    {
+        shader.CreateInput(_tokens->wrapS, SdfValueTypeNames->Token).Set(wrapModeToken);
+        shader.CreateInput(_tokens->wrapT, SdfValueTypeNames->Token).Set(wrapModeToken);
+    }
 }
 
 } // namespace
@@ -460,6 +476,9 @@ bool usdex::core::addDiffuseTextureToPreviewMaterial(pxr::UsdShadeMaterial& mate
     // Connect the PreviewSurface shader "diffuseColor" to the diffuse texture shader output
     colorInput.ConnectToSource(textureReader.CreateOutput(_tokens->rgb, SdfValueTypeNames->Float3));
 
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
+
     return true;
 }
 
@@ -489,6 +508,9 @@ bool usdex::core::addNormalTextureToPreviewMaterial(UsdShadeMaterial& material, 
         textureReader.CreateInput(_tokens->scale, SdfValueTypeNames->Float4).Set(GfVec4f(2, 2, 2, 1));
         textureReader.CreateInput(_tokens->bias, SdfValueTypeNames->Float4).Set(GfVec4f(-1, -1, -1, 0));
     }
+
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
 
     return true;
 }
@@ -556,6 +578,9 @@ bool usdex::core::addOrmTextureToPreviewMaterial(UsdShadeMaterial& material, con
     roughnessInput.ConnectToSource(textureReader.CreateOutput(_tokens->g, SdfValueTypeNames->Float));
     metallicInput.ConnectToSource(textureReader.CreateOutput(_tokens->b, SdfValueTypeNames->Float));
 
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
+
     return true;
 }
 
@@ -600,6 +625,9 @@ bool usdex::core::addRoughnessTextureToPreviewMaterial(UsdShadeMaterial& materia
     // Connect the PreviewSurface shader "roughness" to the roughness tex shader output
     roughnessInput.ConnectToSource(textureReader.CreateOutput(_tokens->r, SdfValueTypeNames->Float));
 
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
+
     return true;
 }
 
@@ -643,6 +671,9 @@ bool usdex::core::addMetallicTextureToPreviewMaterial(UsdShadeMaterial& material
 
     // Connect the PreviewSurface "metallic" to the metallic tex shader output
     metallicInput.ConnectToSource(textureReader.CreateOutput(_tokens->r, SdfValueTypeNames->Float));
+
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
 
     return true;
 }
@@ -692,6 +723,9 @@ bool usdex::core::addOpacityTextureToPreviewMaterial(UsdShadeMaterial& material,
     surface.CreateInput(_tokens->ior, SdfValueTypeNames->Float).Set(1.0f);
     // Geometric cutouts work better with opacity threshold set to above 0
     surface.CreateInput(_tokens->opacityThreshold, SdfValueTypeNames->Float).Set(std::numeric_limits<float>::epsilon());
+
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
 
     return true;
 }
