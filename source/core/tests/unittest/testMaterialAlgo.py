@@ -1678,13 +1678,21 @@ class ConnectPrimvarShaderTest(usdex.test.TestCase):
             result = shader.GetOutput("result")
 
             shaderNodeDef = Sdr.Registry().GetShaderNodeByIdentifier(shader.GetShaderId())
-            inputProperty = shaderNodeDef.GetInput("fallback")
+            inputProperty = shaderNodeDef.GetShaderInput("fallback")
             self.assertTrue(inputProperty)
-            outputProperty = shaderNodeDef.GetOutput("result")
+            outputProperty = shaderNodeDef.GetShaderOutput("result")
             self.assertTrue(outputProperty)
 
-            self.assertEqual(fallback.GetTypeName(), inputProperty.GetTypeAsSdfType().GetSdfType())
-            self.assertEqual(result.GetTypeName(), outputProperty.GetTypeAsSdfType().GetSdfType())
+            # In USD 24.11, SdfTypeIndicator was converted from a std::pair to a full class
+            if isinstance(inputProperty.GetTypeAsSdfType(), tuple):
+                inputPropertySdfType = inputProperty.GetTypeAsSdfType()[0]
+                outputPropertySdfType = outputProperty.GetTypeAsSdfType()[0]
+            else:
+                inputPropertySdfType = inputProperty.GetTypeAsSdfType().GetSdfType()
+                outputPropertySdfType = outputProperty.GetTypeAsSdfType().GetSdfType()
+
+            self.assertEqual(fallback.GetTypeName(), inputPropertySdfType)
+            self.assertEqual(result.GetTypeName(), outputPropertySdfType)
 
     def testOverwriteOutputType(self):
         shaderInput = self.shader.CreateInput("roughness", Sdf.ValueTypeNames.Float)

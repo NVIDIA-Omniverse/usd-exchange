@@ -132,7 +132,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             for plugInfo in glob.glob(f"{stagingDir}/usd_exchange.libs/usd/*/resources/plugInfo.json"):
                 with open(plugInfo, "r") as f:
                     # remove illegal python style comments from json
-                    plugContents = "".join([x for x in f.readlines() if not x.startswith("#")])
+                    plugContents = "".join([x for x in f.readlines() if not x.lstrip().startswith("#")])
                 plugData = json.loads(plugContents)
                 for plug in plugData.get("Plugins", []):
                     if "LibraryPath" in plug:
