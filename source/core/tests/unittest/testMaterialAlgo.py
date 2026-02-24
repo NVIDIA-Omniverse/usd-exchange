@@ -1675,9 +1675,9 @@ class ConnectPrimvarShaderTest(usdex.test.TestCase):
             result = shader.GetOutput("result")
 
             shaderNodeDef = Sdr.Registry().GetShaderNodeByIdentifier(shader.GetShaderId())
-            inputProperty = shaderNodeDef.GetInput("fallback")
+            inputProperty = shaderNodeDef.GetShaderInput("fallback")
             self.assertTrue(inputProperty)
-            outputProperty = shaderNodeDef.GetOutput("result")
+            outputProperty = shaderNodeDef.GetShaderOutput("result")
             self.assertTrue(outputProperty)
 
             # In USD 24.11, SdfTypeIndicator was converted from a std::pair to a full class
