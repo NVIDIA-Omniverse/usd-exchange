@@ -1,3 +1,43 @@
+# 2.2.1
+
+## Core
+
+### Fixes
+
+- Set the `wrapS` and `wrapT` property of Preview Material textures to "repeat" by default
+
+## Documentation
+
+- Add hwloc to license notice for oneTBB flavors
+
+## Dev Tools
+
+### Fixes
+
+- Updated `install_usdex` and the wheels to include the `usdShaders` plugin so the `Sdr` registry is functional
+  - This inherently activates a previously "hidden" Asset Validator check for `Sdr` compliance with materials.
+    Some material prims which previously passed validation may start failing. Any materials created via USDEX
+    MaterialAlgo do pass this check by default, so failures should be only for post-processed or bespoke materials.
+
+## Dependencies
+
+### Runtime Deps
+
+- OpenUSD 25.11, 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
+- Omni Asset Validator 1.11.1
+- Python 3.12.12, 3.11.14, 3.10.19 (default)
+- pybind 2.11.1
+
+### Dev Tools
+
+- packman 7.34
+- repo_tools (all matching latest public)
+- doctest 2.4.5
+- cxxopts 2.2.0
+- Premake 5.0.0-beta4
+- GCC 11.4.0
+- MSVC 2019-16.11
+
 # 2.2.0
 
 ## Core
