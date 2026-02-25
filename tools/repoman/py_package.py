@@ -135,6 +135,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                     plugContents = "".join([x for x in f.readlines() if not x.lstrip().startswith("#")])
                 plugData = json.loads(plugContents)
                 for plug in plugData.get("Plugins", []):
+                    # usdShaders is a special case, it is not used by the python modules
+                    # but it does have a LibraryPath value that needs to be relative to the plugInfo file
+                    if plug["Name"] == "usdShaders":
+                        continue
                     if "LibraryPath" in plug:
                         plug["LibraryPath"] = ""
                 with open(plugInfo, "w") as f:
