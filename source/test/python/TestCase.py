@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -95,7 +95,7 @@ class TestCase(unittest.TestCase):
         issues = self.__validateUsd(asset=asset, engine=self.validationEngine, issuePredicates=ips)
         if issues:
             if msg is None:
-                msg = "\n".join(str(issue) for issue in list(issues))
+                msg = "\n".join(self.__issueToString(issue) for issue in list(issues))
             self.fail(msg=msg)
 
     def assertIsInvalidUsd(self, asset: omni.asset_validator.AssetType, issuePredicates: omni.asset_validator.IssuePredicates):
@@ -126,7 +126,7 @@ class TestCase(unittest.TestCase):
 
         if unexpectedIssues:
             msg += "The following unexpected issues occurred:\n"
-            msg = msg + "\n".join(str(issue) for issue in unexpectedIssues) + "\n"
+            msg = msg + "\n".join(self.__issueToString(issue) for issue in unexpectedIssues) + "\n"
 
         self.fail(msg=msg)
 
@@ -390,3 +390,23 @@ class TestCase(unittest.TestCase):
 
         def __repr__(self):
             return f"__SemVersion({'.'.join(map(str, self.parts))})"
+
+    def __issueToString(self, issue: omni.asset_validator.Issue) -> str:
+        """Convert an ``omni.asset_validator.Issue`` to a string
+
+        Args:
+            issue: The ``omni.asset_validator.Issue`` to convert
+
+        Returns:
+            A string representation of the issue
+        """
+        tokens = [f"{issue.rule.__name__}:"]
+        tokens.append(issue.message)
+        if issue.at:
+            tokens.append("At")
+            if isinstance(issue.at, list):
+                tokens.append(", ".join([at.as_str() for at in issue.at]))
+            else:
+                tokens.append(issue.at.as_str())
+
+        return " ".join(tokens)
