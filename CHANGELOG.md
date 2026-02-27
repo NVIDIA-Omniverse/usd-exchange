@@ -1,3 +1,11 @@
+# 2.2.2
+
+## Test
+
+### Fixes
+
+- Improve user facing message for `TestCase.assertIsValidUsd` and `TestCase.assertIsInvalidUsd`
+
 # 2.2.1
 
 ## Core
