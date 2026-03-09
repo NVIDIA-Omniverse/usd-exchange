@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -167,6 +167,21 @@ USDEX_API Vec3fPrimvarData computeMeshNormals(
     const pxr::VtIntArray& faceVertexCounts,
     const pxr::VtIntArray& faceVertexIndices,
     const pxr::VtVec3fArray& points,
+    const pxr::TfToken& interpolation = pxr::UsdGeomTokens->uniform,
+    const pxr::GfVec3f& fallback = pxr::GfVec3f(0.0f, 0.0f, 1.0f)
+);
+
+//! Computes mesh normals and updates the mesh with the computed normals.
+//!
+//! This is an overloaded member function, provided for convenience.
+//!
+//! @param mesh Mesh prim
+//! @param interpolation The desired interpolation type for the computed normals
+//! @param fallback The fallback normal to use for degenerate faces and vertices with no contributing faces
+//!
+//! @returns Vec3fPrimvarData containing the computed normals, or an invalid one if computation fails.
+USDEX_API Vec3fPrimvarData computeMeshNormals(
+    pxr::UsdGeomMesh mesh,
     const pxr::TfToken& interpolation = pxr::UsdGeomTokens->uniform,
     const pxr::GfVec3f& fallback = pxr::GfVec3f(0.0f, 0.0f, 1.0f)
 );

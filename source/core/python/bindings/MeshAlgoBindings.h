@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -159,7 +159,7 @@ void bindMeshAlgo(module& m)
 
     m.def(
         "computeMeshNormals",
-        &computeMeshNormals,
+        overload_cast<const VtIntArray&, const VtIntArray&, const VtVec3fArray&, const TfToken&, const GfVec3f&>(&computeMeshNormals),
         arg("faceVertexCounts"),
         arg("faceVertexIndices"),
         arg("points"),
@@ -184,15 +184,36 @@ void bindMeshAlgo(module& m)
                 full edge connectivity analysis and advanced normal computation algorithms.
 
             Args:
-                faceVertexCounts: The number of vertices in each face of the mesh
-                faceVertexIndices: Indices of the positions from the ``points`` to use for each face vertex
-                points: Vertex positions for the mesh described in local space
-                interpolation: The desired interpolation type for the computed normals
-                fallback: The fallback normal to use for degenerate faces and vertices with no contributing faces
+                - **faceVertexCounts** - The number of vertices in each face of the mesh
+                - **faceVertexIndices** - Indices of the positions from the ``points`` to use for each face vertex
+                - **points** - Vertex positions for the mesh described in local space
+                - **interpolation** - The desired interpolation type for the computed normals
+                - **fallback** - The fallback normal to use for degenerate faces and vertices with no contributing faces
 
             Returns:
                 Vec3fPrimvarData containing the computed normals, or an invalid one if computation fails.
 
+        )"
+    );
+
+    m.def(
+        "computeMeshNormals",
+        overload_cast<UsdGeomMesh, const TfToken&, const GfVec3f&>(&computeMeshNormals),
+        arg("mesh"),
+        arg("interpolation") = UsdGeomTokens->uniform,
+        arg("fallback") = GfVec3f(0.0f, 0.0f, 1.0f),
+        R"(
+            Computes mesh normals and updates the mesh with the computed normals.
+
+            This is an overloaded member function, provided for convenience.
+
+            Parameters:
+                - **mesh** - Mesh prim to compute the normals for.
+                - **interpolation** - The desired interpolation type for the computed normals
+                - **fallback** - The fallback normal to use for degenerate faces and vertices with no contributing faces
+
+            Returns:
+                Vec3fPrimvarData containing the computed normals, or an invalid one if computation fails.
         )"
     );
 }

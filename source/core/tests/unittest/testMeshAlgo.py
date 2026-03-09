@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -517,3 +517,129 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         self.assertTrue(normals.isValid())
         self.assertEqual(normals.interpolation(), UsdGeom.Tokens.vertex)
         self.assertEqual(normals.effectiveSize(), 4)
+
+    def testComputeMeshNormalsSmallVertices(self):
+        faceVertexCounts = Vt.IntArray([4])
+        faceVertexIndices = Vt.IntArray([0, 1, 2, 3])
+
+        # Testing on a rectangle with normal (0, 1, 0).
+        _vertices = [
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(0.5, 0.0, 0.0),
+            Gf.Vec3f(0.5, 0.0, -0.5),
+            Gf.Vec3f(0, 0.0, -0.5),
+        ]
+        n = Gf.Vec3f(0.0, 1.0, 0.0)
+
+        scale = 1.0
+        for i in range(6):
+            vertices = [v * scale for v in _vertices]
+            points = Vt.Vec3fArray(vertices)
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.uniform)
+            self.assertTrue(normals.isValid())
+            self.assertEqual(normals.interpolation(), UsdGeom.Tokens.uniform)
+            self.assertEqual(normals.effectiveSize(), 1)
+            n_dot = Gf.Dot(normals.values()[0], n)
+            self.assertAlmostEqual(n_dot, 1.0, places=6)
+            scale *= 0.1
+
+        # Testing normals for free-orientation rectangles.
+        # These are vertices on the same plane.
+        _vertices = [
+            Gf.Vec3f(0.996, 2.591, -0.828),
+            Gf.Vec3f(10.579, 5.449, -0.828),
+            Gf.Vec3f(9.003, 10.733, -9.171),
+            Gf.Vec3f(-0.579, 7.875, -9.171),
+        ]
+
+        # Calculate the normal for the rectangle.
+        e1 = _vertices[1] - _vertices[0]
+        e2 = _vertices[2] - _vertices[1]
+        n = Gf.Cross(e1, e2).GetNormalized()
+
+        scale = 1.0
+        for i in range(6):
+            vertices = [v * scale for v in _vertices]
+            points = Vt.Vec3fArray(vertices)
+            normals = usdex.core.computeMeshNormals(faceVertexCounts, faceVertexIndices, points, UsdGeom.Tokens.uniform)
+            self.assertTrue(normals.isValid())
+            self.assertEqual(normals.interpolation(), UsdGeom.Tokens.uniform)
+            self.assertEqual(normals.effectiveSize(), 1)
+            n_dot = Gf.Dot(normals.values()[0], n)
+            self.assertAlmostEqual(n_dot, 1.0, places=6)
+            scale *= 0.1
+
+    def testComputeMeshNormalsWithExistingMesh(self):
+        stage = self.createTestStage()
+
+        # Create a mesh with no normal vectors.
+        path = Sdf.Path("/World/TestMesh_normals_uniform")
+        mesh_normals_uniform = usdex.core.definePolyMesh(stage, path, FACE_VERTEX_COUNTS, FACE_VERTEX_INDICES, POINTS)
+        self.assertTrue(mesh_normals_uniform.GetPrim().IsValid())
+
+        path = Sdf.Path("/World/TestMesh_normals_vertex")
+        mesh_normals_vertex = usdex.core.definePolyMesh(stage, path, FACE_VERTEX_COUNTS, FACE_VERTEX_INDICES, POINTS)
+        self.assertTrue(mesh_normals_vertex.GetPrim().IsValid())
+
+        path = Sdf.Path("/World/TestMesh_normals_faceVarying")
+        mesh_normals_faceVarying = usdex.core.definePolyMesh(stage, path, FACE_VERTEX_COUNTS, FACE_VERTEX_INDICES, POINTS)
+        self.assertTrue(mesh_normals_faceVarying.GetPrim().IsValid())
+
+        # Verify that the mesh has no normals.
+        self.assertFalse(mesh_normals_uniform.GetNormalsAttr().IsAuthored())
+        self.assertFalse(mesh_normals_vertex.GetNormalsAttr().IsAuthored())
+        self.assertFalse(mesh_normals_faceVarying.GetNormalsAttr().IsAuthored())
+        primvarsAPI = UsdGeom.PrimvarsAPI(mesh_normals_uniform.GetPrim())
+        primvar = primvarsAPI.GetPrimvar(UsdGeom.Tokens.normals)
+        self.assertFalse(primvar.HasAuthoredValue())
+        primvarsAPI = UsdGeom.PrimvarsAPI(mesh_normals_vertex.GetPrim())
+        primvar = primvarsAPI.GetPrimvar(UsdGeom.Tokens.normals)
+        self.assertFalse(primvar.HasAuthoredValue())
+        primvarsAPI = UsdGeom.PrimvarsAPI(mesh_normals_faceVarying.GetPrim())
+        primvar = primvarsAPI.GetPrimvar(UsdGeom.Tokens.normals)
+        self.assertFalse(primvar.HasAuthoredValue())
+
+        # Compute mesh normals (uniform).
+        normals = usdex.core.computeMeshNormals(mesh_normals_uniform, UsdGeom.Tokens.uniform)
+        self.assertTrue(normals.isValid())
+        self.assertEqual(normals.interpolation(), UsdGeom.Tokens.uniform)
+        self.assertEqual(normals.effectiveSize(), 2)
+
+        # Verify that the normals are stored in the mesh.
+        primvarsAPI = UsdGeom.PrimvarsAPI(mesh_normals_uniform.GetPrim())
+        primvar = primvarsAPI.GetPrimvar(UsdGeom.Tokens.normals)
+        self.assertTrue(primvar.IsDefined())
+        self.assertTrue(primvar.HasAuthoredValue())
+        self.assertTrue(primvar.GetInterpolation() == UsdGeom.Tokens.uniform)
+        self.assertTrue(len(primvar.Get()) > 0)
+        self.assertEqual(len(primvar.GetIndices()), 2)
+
+        # Compute mesh normals (vertex).
+        normals = usdex.core.computeMeshNormals(mesh_normals_vertex, UsdGeom.Tokens.vertex)
+        self.assertTrue(normals.isValid())
+        self.assertEqual(normals.interpolation(), UsdGeom.Tokens.vertex)
+        self.assertEqual(normals.effectiveSize(), 6)
+
+        # Verify that the normals are stored in the mesh.
+        primvarsAPI = UsdGeom.PrimvarsAPI(mesh_normals_vertex.GetPrim())
+        primvar = primvarsAPI.GetPrimvar(UsdGeom.Tokens.normals)
+        self.assertTrue(primvar.IsDefined())
+        self.assertTrue(primvar.HasAuthoredValue())
+        self.assertTrue(primvar.GetInterpolation() == UsdGeom.Tokens.vertex)
+        self.assertTrue(len(primvar.Get()) > 0)
+        self.assertEqual(len(primvar.GetIndices()), 6)
+
+        # Compute mesh normals (faceVarying).
+        normals = usdex.core.computeMeshNormals(mesh_normals_faceVarying, UsdGeom.Tokens.faceVarying)
+        self.assertTrue(normals.isValid())
+        self.assertEqual(normals.interpolation(), UsdGeom.Tokens.faceVarying)
+        self.assertEqual(normals.effectiveSize(), 8)
+
+        # Verify that the normals are stored in the mesh.
+        primvarsAPI = UsdGeom.PrimvarsAPI(mesh_normals_faceVarying.GetPrim())
+        primvar = primvarsAPI.GetPrimvar(UsdGeom.Tokens.normals)
+        self.assertTrue(primvar.IsDefined())
+        self.assertTrue(primvar.HasAuthoredValue())
+        self.assertTrue(primvar.GetInterpolation() == UsdGeom.Tokens.faceVarying)
+        self.assertTrue(len(primvar.Get()) > 0)
+        self.assertEqual(len(primvar.GetIndices()), 8)
