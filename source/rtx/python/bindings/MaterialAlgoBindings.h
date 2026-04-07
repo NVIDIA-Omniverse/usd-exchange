@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -197,6 +197,25 @@ void bindMaterialAlgo(module& m)
         )"
     );
     m.def(
+        "addEmissiveColorToPbrMaterial",
+        &addEmissiveColorToPbrMaterial,
+        arg("material"),
+        arg("color"),
+        arg("intensity"),
+        R"(
+            Add an emissive color to a PBR material
+
+            It is expected that the material was created by ``usdex.rtx.definePbrMaterial()``.
+
+            Args:
+                material: The UsdShade.Material prim to add the color
+                color: The emissive color
+                intensity: The intensity of the emissive color
+            Returns:
+                Whether or not the color was added to the material
+        )"
+    );
+    m.def(
         "addDiffuseTextureToPbrMaterial",
         &addDiffuseTextureToPbrMaterial,
         arg("material"),
@@ -321,6 +340,28 @@ void bindMaterialAlgo(module& m)
             - MDL OmniPBR: ``opacity_threshold = float_epsilon`` (just greater than zero)
             - UsdPreviewSurface: ``ior = 1.0``
             - UsdPreviewSurface: ``opacityThreshold = float_epsilon`` (just greater than zero)
+
+            Args:
+                material: The UsdShade.Material prim to add the texture
+                texturePath: The Sdf.AssetPath for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+    m.def(
+        "addEmissiveTextureToPbrMaterial",
+        &addEmissiveTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Add an emissive texture to a PBR material
+
+            It is expected that the material was created by ``usdex.rtx.definePbrMaterial()``.
+
+            Note:
+                The material prim's "EmissiveColor" input will be removed and replaced with "EmissiveTexture".
+                Due to the input removal this function should be used at initial authoring time rather than in a stronger layer.
 
             Args:
                 material: The UsdShade.Material prim to add the texture

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -169,6 +169,16 @@ USDEX_RTX_API pxr::UsdShadeMaterial definePbrMaterial(
     const float metallic = 0.0f
 );
 
+//! Adds an emissive color to the PBR material
+//!
+//! It is expected that the material was created by `usdex::rtx::definePbrMaterial()`.
+//!
+//! @param material The UsdShadeMaterial prim to add the color
+//! @param color The emissive color
+//! @param intensity The intensity of the emissive color
+//! @returns Whether or not the color was added to the material
+USDEX_RTX_API bool addEmissiveColorToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::GfVec3f& color, const float intensity);
+
 //! Adds a diffuse texture to the PBR material
 //!
 //! It is expected that the material was created by `usdex::rtx::definePbrMaterial()`.
@@ -242,6 +252,18 @@ USDEX_RTX_API bool addMetallicTextureToPbrMaterial(pxr::UsdShadeMaterial& materi
 //! @param texturePath The SdfAssetPath to the texture file
 //! @returns Whether or not the texture was added to the material
 USDEX_RTX_API bool addOpacityTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds an emissive texture to the PBR material
+//!
+//! It is expected that the material was created by `usdex::rtx::definePbrMaterial()`.
+//!
+//! @note The material prim's "EmissiveColor" input will be removed and replaced with "EmissiveTexture".
+//!       Due to the input removal this function should be used at initial authoring time rather than in a stronger layer.
+//!
+//! @param material The UsdShadeMaterial prim to add the texture
+//! @param texturePath The SdfAssetPath to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_RTX_API bool addEmissiveTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
 
 //! Defines a Glass `UsdShadeMaterial` interface that drives both an RTX render context and the universal render context.
 //!

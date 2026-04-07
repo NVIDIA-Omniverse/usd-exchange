@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 """
@@ -16,12 +16,14 @@ __all__ = [
     # Need to be split up to handle UPS, Mtlx, Mdl
     "defineOmniPbrMaterial",
     "defineOmniGlassMaterial",
+    "addEmissiveColorToPbrMaterial",
     "addDiffuseTextureToPbrMaterial",
     "addNormalTextureToPbrMaterial",
     "addOrmTextureToPbrMaterial",
     "addRoughnessTextureToPbrMaterial",
     "addMetallicTextureToPbrMaterial",
     "addOpacityTextureToPbrMaterial",
+    "addEmissiveTextureToPbrMaterial",
 ]
 
 import os

@@ -40,8 +40,10 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((uvTexRoughnessName, "RoughnessTexture"))
     ((uvTexMetallicName, "MetallicTexture"))
     ((uvTexOpacityName, "OpacityTexture"))
+    ((uvTexEmissiveName, "EmissiveTexture"))
     // UsdPreviewSurface I/O
     ((color, "diffuseColor"))
+    ((emissiveColor, "emissiveColor"))
     ((normal, "normal"))
     ((occlusion, "occlusion"))
     ((metallic, "metallic"))
@@ -435,6 +437,36 @@ UsdShadeMaterial usdex::core::definePreviewMaterial(
     return usdex::core::definePreviewMaterial(stage, path, color, opacity, roughness, metallic);
 }
 
+bool usdex::core::addEmissiveColorToPreviewMaterial(UsdShadeMaterial& material, const GfVec3f& color)
+{
+    UsdShadeShader surface = usdex::core::computeEffectivePreviewSurfaceShader(material);
+    if (!isShaderType(surface, _tokens->upsId))
+    {
+        TF_WARN("Material <%s> must first be defined using definePreviewMaterial()", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    if (color[0] < 0.0 || color[1] < 0.0 || color[2] < 0.0)
+    {
+        const std::string reason = TfStringPrintf(
+            "Color value (%g, %g, %g) is invalid: each component must be at least 0 (no upper bound).",
+            color[0],
+            color[1],
+            color[2]
+        );
+        TF_RUNTIME_ERROR(
+            "Unable to add emissive color to preview material at \"%s\" due to an invalid shader parameter value: %s",
+            material.GetPath().GetAsString().c_str(),
+            reason.c_str()
+        );
+        return false;
+    }
+
+    UsdShadeInput emissiveColorInput = surface.CreateInput(_tokens->emissiveColor, SdfValueTypeNames->Color3f);
+    emissiveColorInput.Set(color);
+    return true;
+}
+
 bool usdex::core::addDiffuseTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath)
 {
     UsdShadeShader surface = usdex::core::computeEffectivePreviewSurfaceShader(material);
@@ -723,6 +755,52 @@ bool usdex::core::addOpacityTextureToPreviewMaterial(UsdShadeMaterial& material,
     surface.CreateInput(_tokens->ior, SdfValueTypeNames->Float).Set(1.0f);
     // Geometric cutouts work better with opacity threshold set to above 0
     surface.CreateInput(_tokens->opacityThreshold, SdfValueTypeNames->Float).Set(std::numeric_limits<float>::epsilon());
+
+    // Set the texture wrap mode to repeat
+    setTextureWrapMode(textureReader, "repeat");
+
+    return true;
+}
+
+bool usdex::core::addEmissiveTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath)
+{
+    UsdShadeShader surface = usdex::core::computeEffectivePreviewSurfaceShader(material);
+    if (!isShaderType(surface, _tokens->upsId))
+    {
+        TF_WARN("Material <%s> must first be defined using definePreviewMaterial()", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    // read the current emissive color to use as the fallback for when the texture is missing
+    GfVec3f emissiveColor(0.0f, 0.0f, 0.0f);
+    UsdShadeInput emissiveColorInput = surface.GetInput(_tokens->emissiveColor);
+    if (emissiveColorInput)
+    {
+        UsdShadeAttributeVector valueAttrs = emissiveColorInput.GetValueProducingAttributes();
+        if (!valueAttrs.empty())
+        {
+            valueAttrs[0].Get(&emissiveColor);
+            if (valueAttrs[0] == emissiveColorInput.GetAttr())
+            {
+                emissiveColorInput.GetAttr().Clear();
+            }
+        }
+    }
+    else
+    {
+        emissiveColorInput = surface.CreateInput(_tokens->emissiveColor, SdfValueTypeNames->Color3f);
+    }
+
+    GfVec4f fallback(emissiveColor[0], emissiveColor[1], emissiveColor[2], /* unused */ 1.0f);
+
+    UsdShadeShader textureReader = ::acquireTextureReader(material, _tokens->uvTexEmissiveName, texturePath, ColorSpace::eAuto, fallback);
+    if (!textureReader)
+    {
+        return false;
+    }
+
+    // Connect the PreviewSurface "emissiveColor" to the emissive tex shader output
+    emissiveColorInput.ConnectToSource(textureReader.CreateOutput(_tokens->rgb, SdfValueTypeNames->Float3));
 
     // Set the texture wrap mode to repeat
     setTextureWrapMode(textureReader, "repeat");

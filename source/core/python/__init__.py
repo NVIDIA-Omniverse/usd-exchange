@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 """
@@ -109,12 +109,14 @@ __all__ = [
     "bindMaterial",
     "computeEffectivePreviewSurfaceShader",
     "definePreviewMaterial",
+    "addEmissiveColorToPreviewMaterial",
     "addDiffuseTextureToPreviewMaterial",
     "addNormalTextureToPreviewMaterial",
     "addOrmTextureToPreviewMaterial",
     "addRoughnessTextureToPreviewMaterial",
     "addMetallicTextureToPreviewMaterial",
     "addOpacityTextureToPreviewMaterial",
+    "addEmissiveTextureToPreviewMaterial",
     "addPrimvarShaderToPreviewMaterial",
     "connectPrimvarShader",
     "addPreviewMaterialInterface",

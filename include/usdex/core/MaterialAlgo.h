@@ -162,6 +162,15 @@ USDEX_API pxr::UsdShadeMaterial definePreviewMaterial(
     const float metallic = 0.0f
 );
 
+//! Adds an emissive color to a preview material
+//!
+//! It is expected that the material was created by `definePreviewMaterial()`
+//!
+//! @param material The material prim
+//! @param color The emissive color
+//! @returns Whether or not the emissive color was added to the material
+USDEX_API bool addEmissiveColorToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::GfVec3f& color);
+
 //! Adds a diffuse texture to a preview material
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
@@ -267,6 +276,21 @@ USDEX_API bool addMetallicTextureToPreviewMaterial(pxr::UsdShadeMaterial& materi
 //! @param texturePath The `SdfAssetPath` to the texture file
 //! @returns Whether or not the texture was added to the material
 USDEX_API bool addOpacityTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds an emissive color texture to a preview material
+//!
+//! It is expected that the material was created by `definePreviewMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`)
+//! and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
+//!
+//! @note If you intend to create a Material Interface, it is preferable to author all initial shader attributes (including textures)
+//! *before* calling `addPreviewMaterialInterface()`. This function will not attempt to reconcile any existing inputs on the Material.
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addEmissiveTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
 
 //! Adds a primvar reader shader to the material prim and connects it to a surface input.
 //!
