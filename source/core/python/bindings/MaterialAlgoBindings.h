@@ -159,6 +159,25 @@ void bindMaterialAlgo(module& m)
     );
 
     m.def(
+        "addEmissiveColorToPreviewMaterial",
+        &addEmissiveColorToPreviewMaterial,
+        arg("material"),
+        arg("color"),
+        R"(
+            Adds an emissive color to a preview material
+
+            It is expected that the material was created by ``definePreviewMaterial()``
+
+            Args:
+                material: The material prim
+                color: The emissive color
+
+            Returns:
+                Whether or not the emissive color was added to the material
+        )"
+    );
+
+    m.def(
         "addDiffuseTextureToPreviewMaterial",
         &addDiffuseTextureToPreviewMaterial,
         arg("material"),
@@ -287,6 +306,28 @@ void bindMaterialAlgo(module& m)
         arg("texturePath"),
         R"(
             Adds a single channel opacity texture to a preview material
+
+            It is expected that the material was created by ``definePreviewMaterial()``
+
+            The texture will be sampled using texture coordinates from the default UV set (generally named ``primvars:st``)
+            and will be set to "repeat", wrapping around the texture if UV coordinates exceed the [0,1] range in either axis.
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addEmissiveTextureToPreviewMaterial",
+        &addEmissiveTextureToPreviewMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds an emissive color texture to a preview material
 
             It is expected that the material was created by ``definePreviewMaterial()``
 

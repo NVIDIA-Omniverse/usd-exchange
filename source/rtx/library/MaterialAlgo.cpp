@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -44,8 +44,12 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((omniPbrOpacityTexture, "opacity_texture"))
     ((omniPbrOpacityTextureEnabled, "enable_opacity_texture"))
     ((omniPbrOpacityThreshold, "opacity_threshold"))
+    ((omniPbrEmissiveColor, "emissive_color"))
+    ((omniPbrEmissiveEnableEmission, "enable_emission"))
+    ((omniPbrEmissiveIntensity, "emissive_intensity"))
     ((omniPbrDiffuseTexture, "diffuse_texture"))
     ((omniPbrNormalTexture, "normalmap_texture"))
+    ((omniPbrEmissiveTexture, "emissive_color_texture"))
     ((omniPbrOrmTexture, "ORM_texture"))
     ((omniGlass, "OmniGlass"))
     ((omniGlassColor, "glass_color"))
@@ -59,6 +63,7 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((usdPreviewSurfaceOcclusion, "occlusion"))
     ((usdPreviewSurfaceOpacity, "opacity"))
     ((usdPreviewSurfaceRoughness, "roughness"))
+    ((usdPreviewSurfaceEmissiveColor, "emissiveColor"))
     ((materialColor, "diffuseColor"))
     ((materialColorInputs, "inputs:diffuseColor"))
     ((materialOpacity, "opacity"))
@@ -68,12 +73,17 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((materialMetallic, "metallic"))
     ((materialMetallicInputs, "inputs:metallic"))
     ((materialIor, "ior"))
+    ((materialEmissiveColor, "emissiveColor"))
+    ((materialEmissiveColorInputs, "inputs:emissiveColor"))
+    ((materialEmissiveEnable, "emissiveEnable"))
+    ((materialEmissiveIntensity, "emissiveIntensity"))
     ((materialDiffuseTexture, "DiffuseTexture"))
     ((materialNormalTexture, "NormalTexture"))
     ((materialOpacityTexture, "OpacityTexture"))
     ((materialOrmTexture, "ORMTexture"))
     ((materialRoughnessTexture, "RoughnessTexture"))
     ((materialMetallicTexture, "MetallicTexture"))
+    ((materialEmissiveTexture, "EmissiveTexture"))
 );
 
 void setFractionalOpacity(UsdStagePtr stage, bool isOn = true)
@@ -149,6 +159,28 @@ UsdShadeInput createMaterialLinkedMdlFileInput(
     UsdShadeInput surfaceInput = shaderPrim.CreateInput(shaderInputName, SdfValueTypeNames->Asset);
     surfaceInput.ConnectToSource(matTextureInput);
     return matTextureInput;
+}
+
+bool verifyValidOmniPbrMaterial(UsdShadeMaterial& material)
+{
+    if (!material)
+    {
+        TF_WARN("UsdShadeMaterial <%s> is not a valid material", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+    UsdShadeShader psShader = usdex::core::computeEffectivePreviewSurfaceShader(material);
+    if (!psShader)
+    {
+        TF_WARN("UsdShadeMaterial <%s> does not have a valid USD Preview Surface Shader", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+    UsdShadeShader mdlShader = usdex::rtx::computeEffectiveMdlSurfaceShader(material);
+    if (!mdlShader || (mdlShader.GetPrim() == psShader.GetPrim()))
+    {
+        TF_WARN("UsdShadeMaterial <%s> does not have a valid MDL Shader", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+    return true;
 }
 
 // Common function to check that a material has an OmniPBR-based MDL & USD Preview Surface shaders
@@ -534,6 +566,76 @@ UsdShadeMaterial usdex::rtx::definePbrMaterial(UsdPrim prim, const GfVec3f& colo
     return usdex::rtx::definePbrMaterial(stage, path, color, opacity, roughness, metallic);
 }
 
+bool usdex::rtx::addEmissiveColorToPbrMaterial(UsdShadeMaterial& material, const GfVec3f& color, const float intensity)
+{
+    if (!verifyValidOmniPbrMaterial(material))
+    {
+        return false;
+    }
+
+    if (color[0] < 0.0 || color[1] < 0.0 || color[2] < 0.0)
+    {
+        const std::string reason = TfStringPrintf(
+            "Color value (%g, %g, %g) is invalid: each component must be at least 0 (no upper bound).",
+            color[0],
+            color[1],
+            color[2]
+        );
+        TF_RUNTIME_ERROR(
+            "Unable to add emissive color to PBR material at \"%s\" due to an invalid shader parameter value: %s",
+            material.GetPath().GetAsString().c_str(),
+            reason.c_str()
+        );
+        return false;
+    }
+    if (intensity < 0.0)
+    {
+        const std::string reason = TfStringPrintf("Intensity value %g is invalid: must be at least 0.0 (no upper bound).", intensity);
+        TF_RUNTIME_ERROR(
+            "Unable to add emissive color to PBR material at \"%s\" due to an invalid shader parameter value: %s",
+            material.GetPath().GetAsString().c_str(),
+            reason.c_str()
+        );
+        return false;
+    }
+
+    if (!usdex::core::addEmissiveColorToPreviewMaterial(material, color))
+    {
+        // Do not report the reason as the function we called will have already logged the diagnostic for us.
+        return false;
+    }
+
+    UsdShadeShader mdlShader = usdex::rtx::computeEffectiveMdlSurfaceShader(material);
+
+    // Expose inputs on the material that will be connected to the corresponding inputs on the surface shaders
+    // This acts as a Material interface from which value changes will be reflected across multiple renderers
+    UsdShadeInput materialEmissiveColorInput = material.CreateInput(_tokens->materialEmissiveColor, SdfValueTypeNames->Color3f);
+    UsdShadeInput materialEmissiveEnableInput = material.CreateInput(_tokens->materialEmissiveEnable, SdfValueTypeNames->Bool);
+    UsdShadeInput materialEmissiveIntensityInput = material.CreateInput(_tokens->materialEmissiveIntensity, SdfValueTypeNames->Float);
+
+    // Set the default metadata on the material interface
+    materialEmissiveColorInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(GfVec3f(1.0f, 0.1f, 0.1f)));
+    materialEmissiveEnableInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(false));
+    materialEmissiveIntensityInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(40.0f));
+
+    // Set the supplied values on the material interface
+    materialEmissiveColorInput.Set(color);
+    materialEmissiveEnableInput.Set(true);
+    materialEmissiveIntensityInput.Set(intensity);
+
+    // Create MDL shader inputs to produce a physically based rendering result with the supplied values
+    // Inputs are either set or connected to the material interface
+    mdlShader.CreateInput(_tokens->omniPbrEmissiveColor, SdfValueTypeNames->Color3f).ConnectToSource(materialEmissiveColorInput);
+    mdlShader.CreateInput(_tokens->omniPbrEmissiveEnableEmission, SdfValueTypeNames->Bool).ConnectToSource(materialEmissiveEnableInput);
+    mdlShader.CreateInput(_tokens->omniPbrEmissiveIntensity, SdfValueTypeNames->Float).ConnectToSource(materialEmissiveIntensityInput);
+
+    // Create preview shader inputs to produce a physically based rendering result with the supplied values
+    UsdShadeShader previewShader = usdex::core::computeEffectivePreviewSurfaceShader(material);
+    previewShader.CreateInput(_tokens->usdPreviewSurfaceEmissiveColor, SdfValueTypeNames->Color3f).ConnectToSource(materialEmissiveColorInput);
+
+    return true;
+}
+
 bool usdex::rtx::addDiffuseTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
 {
     if (!verifyValidOmniPbrMaterial(material, texturePath))
@@ -741,6 +843,47 @@ bool usdex::rtx::addOrmTextureToPbrMaterial(UsdShadeMaterial& material, const Sd
     // and `addOrmTextureToPreviewMaterial` in the core library. If those implementations change, this code needs to be adjusted to match.
     UsdShadeShader previewSurface = usdex::core::computeEffectivePreviewSurfaceShader(material);
     UsdShadeConnectionSourceInfo info = previewSurface.GetInput(_tokens->usdPreviewSurfaceOcclusion).GetConnectedSources()[0];
+    info.source.GetInput(_tokens->usdPreviewSurfaceFile).ConnectToSource(matTextureInput);
+
+    return true;
+}
+
+bool usdex::rtx::addEmissiveTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
+{
+    if (!verifyValidOmniPbrMaterial(material, texturePath))
+    {
+        return false;
+    }
+
+    if (!usdex::core::addEmissiveTextureToPreviewMaterial(material, texturePath))
+    {
+        // Do not report the reason as the function we called will have already logged the diagnostic for us.
+        return false;
+    }
+
+    // Because we have a texture, remove this "Color" material input that USDEX created
+    // Copy the value and set it to the MDL color input
+    GfVec3f color(1.0f);
+    UsdShadeInput matEmissiveColorInput = material.GetInput(_tokens->materialEmissiveColor);
+    if (matEmissiveColorInput)
+    {
+        matEmissiveColorInput.Get<GfVec3f>(&color);
+        createMdlShaderInput(material, _tokens->omniPbrEmissiveColor, VtValue(color), SdfValueTypeNames->Color3f);
+        ::removeProperty(material.GetPrim().GetStage(), material.GetPrim().GetPath(), _tokens->materialEmissiveColorInputs);
+    }
+
+    UsdShadeInput matTextureInput = ::createMaterialLinkedMdlFileInput(
+        material,
+        _tokens->materialEmissiveTexture,
+        _tokens->omniPbrEmissiveTexture,
+        texturePath,
+        _tokens->colorSpaceAuto
+    );
+
+    // Connect the texture shader to the material interface. Note this makes unchecked assumptions about the behavior of `definePreviewMaterial`
+    // and `addEmissiveTextureToPreviewMaterial` in the core library. If those implementations change, this code needs to be adjusted to match.
+    UsdShadeShader previewSurface = usdex::core::computeEffectivePreviewSurfaceShader(material);
+    UsdShadeConnectionSourceInfo info = previewSurface.GetInput(_tokens->usdPreviewSurfaceEmissiveColor).GetConnectedSources()[0];
     info.source.GetInput(_tokens->usdPreviewSurfaceFile).ConnectToSource(matTextureInput);
 
     return true;

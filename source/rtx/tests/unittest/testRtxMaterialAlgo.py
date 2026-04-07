@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -611,6 +611,8 @@ class MaterialAlgoTest(usdex.test.TestCase):
         roughnessTexture2 = self.tmpFile(name="R", ext="png")
         metallicTexture = self.tmpFile(name="M", ext="png")
         metallicTexture2 = self.tmpFile(name="M", ext="png")
+        emissiveTexture = self.tmpFile(name="EmissiveColor", ext="png")
+        emissiveTexture2 = self.tmpFile(name="EmissiveColor", ext="png")
 
         red = usdex.core.sRgbToLinear(Gf.Vec3f(0.8, 0.1, 0.1))
 
@@ -837,18 +839,100 @@ class MaterialAlgoTest(usdex.test.TestCase):
         # The second time there'll be no fallback color to read from the material input
         checkOpacityTexture(material, opacityTexture, opacity, fallback=1.0)
 
+        # Add and check emissive color
+        def checkEmissiveColor(matPrim):
+            emissive_color = Gf.Vec3f(1.0, 1.0, 0.0)
+            emissive_intensity = 3000.0
+            self.assertTrue(usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color, emissive_intensity))
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveEnable")), True)
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveColor")), emissive_color)
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveIntensity")), emissive_intensity)
+
+        def checkInvalidEmissiveColor(matPrim):
+            # Invalid emissive color
+            emissive_color = Gf.Vec3f(-1.0, 1.0, 0.0)
+            emissive_intensity = 100.0
+            with usdex.test.ScopedDiagnosticChecker(
+                self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is invalid: each component must be at least 0 \(no upper bound\).")]
+            ):
+                result = usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color, emissive_intensity)
+            self.assertFalse(result)
+
+            # Invalid emissive intensity
+            emissive_color = Gf.Vec3f(1.0, 1.0, 0.0)
+            emissive_intensity = -1.0
+            with usdex.test.ScopedDiagnosticChecker(
+                self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Intensity value .* is invalid: must be at least 0.0 \(no upper bound\).")]
+            ):
+                result = usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color, emissive_intensity)
+            self.assertFalse(result)
+
+        # Add and check emissive texture
+        def checkEmissiveTexture(matPrim, tex, e, fallback=None, diffLayer=False):
+            self.assertTrue(usdex.rtx.addEmissiveTextureToPbrMaterial(matPrim, tex))
+            if diffLayer:
+                self.assertTrue(matPrim.GetInput("emissiveColor"))
+            else:
+                self.assertFalse(matPrim.GetInput("emissiveColor"))
+            # Check that many other inputs were modified and set
+            primStShader = UsdShade.Shader(stage.GetPrimAtPath(materialPath.AppendChild("TexCoordReader")))
+            self.assertTrue(isinstance(primStShader, UsdShade.Shader))
+            emissiveTexShader = UsdShade.Shader(stage.GetPrimAtPath(materialPath.AppendChild("EmissiveTexture")))
+            self.assertTrue(isinstance(emissiveTexShader, UsdShade.Shader))
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("EmissiveTexture")).path, tex)
+            self.assertEqual(matPrim.GetInput("EmissiveTexture").GetAttr().GetColorSpace(), "auto")
+            self.assertEqual(computeEffectiveShaderInputValue(mdlShader.GetInput("emissive_color")), e)
+            self.assertEqual(computeEffectiveShaderInputValue(mdlShader.GetInput("emissive_color_texture")).path, tex)
+            self.assertTrue(mdlShader.GetInput("emissive_color_texture").HasConnectedSource())
+            fallback = e if fallback is None else fallback
+            self.assertEqual(
+                computeEffectiveShaderInputValue(emissiveTexShader.GetInput("fallback")), Gf.Vec4f(fallback[0], fallback[1], fallback[2], 1.0)
+            )
+            self.assertTrue(emissiveTexShader.GetInput("file").HasConnectedSource())
+            source, sourceName, sourceType = emissiveTexShader.GetInput("file").GetConnectedSource()
+            self.assertEqual(sourceType, UsdShade.AttributeType.Input)
+            self.assertEqual(source.GetInput(sourceName), matPrim.GetInput("EmissiveTexture"))
+            self.assertEqual(computeEffectiveShaderInputValue(emissiveTexShader.GetInput("sourceColorSpace")), "auto")
+            self.assertTrue(previewShader.GetInput("emissiveColor").HasConnectedSource())
+
+        def checkInvalidEmissiveTexture(tex):
+            # Invalid material
+            material = UsdShade.Material()
+            with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*UsdShadeMaterial .* is not a valid material.*")]):
+                result = usdex.rtx.addEmissiveTextureToPbrMaterial(material, tex)
+            self.assertFalse(result)
+
+            # Materials that do not have UsdShadePreviewSurface assigned
+            empty_material = UsdShade.Material.Define(stage, materialScopePath.AppendChild("empty_material"))
+            with usdex.test.ScopedDiagnosticChecker(
+                self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*UsdShadeMaterial .* does not have a valid USD Preview Surface Shader.*")]
+            ):
+                result = usdex.rtx.addEmissiveTextureToPbrMaterial(empty_material, tex)
+            self.assertFalse(result)
+
+        emissive_color = Gf.Vec3f(1.0, 1.0, 0.0)
+        checkEmissiveColor(material)
+        checkEmissiveTexture(material, emissiveTexture2, emissive_color)
+        # The second time there'll be no fallback color to read from the material input
+        checkEmissiveTexture(material, emissiveTexture, emissive_color, fallback=Gf.Vec3f(0.0))
+        # Invalid emissive color
+        checkInvalidEmissiveColor(material)
+        # Invalid emissive texture
+        checkInvalidEmissiveTexture(emissiveTexture)
+
         # Make a new material to mess with from the session layer (not unlike a .live layer)
         materialPath = materialScopePath.AppendChild("RootLayer_Material")
         mdlShaderPath = materialPath.AppendChild(mdlShaderName)
         previewShaderPath = materialPath.AppendChild(usdShaderName)
         material = usdex.rtx.definePbrMaterial(stage, materialPath, color=red, roughness=roughness, metallic=metallic)
+        checkEmissiveColor(material)
         usdex.core.bindMaterial(cylinder, material)
         usdex.core.bindMaterial(plane, material)
         mdlShader = UsdShade.Shader(stage.GetPrimAtPath(mdlShaderPath))
         previewShader = UsdShade.Shader(stage.GetPrimAtPath(previewShaderPath))
 
         stage.SetEditTarget(Usd.EditTarget(stage.GetSessionLayer()))
-        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*doesn't exist in the current edit target layer")] * 6):
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*doesn't exist in the current edit target layer")] * 7):
             checkDiffuseTexture(material, diffuseTexture, red, diffLayer=True)
             checkNormalTexture(material, normalTexture)
             checkOrmTexture(material, ormTexture, roughness, metallic, diffLayer=True)
@@ -856,6 +940,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
             checkRoughnessTexture(material, roughnessTexture, roughness, fallback=0.5, diffLayer=True)
             checkMetallicTexture(material, metallicTexture, metallic, fallback=0.0, diffLayer=True)
             checkOpacityTexture(material, opacityTexture, opacity, diffLayer=True)
+            checkEmissiveTexture(material, emissiveTexture, emissive_color, diffLayer=True)
 
         expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(3, "OmniPBR.mdl")
         with usdex.test.ScopedDiagnosticChecker(self, expected):
@@ -874,13 +959,14 @@ class MaterialAlgoTest(usdex.test.TestCase):
         previewShaderPath = materialPath.AppendChild(usdShaderName)
 
         def checkNoTextureAdds(material):
-            with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot add texture")] * 6):
+            with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot add texture")] * 7):
                 self.assertFalse(usdex.rtx.addDiffuseTextureToPbrMaterial(material, "my_diffuse_texture_path"))
                 self.assertFalse(usdex.rtx.addNormalTextureToPbrMaterial(material, "my_normal_texture_path"))
                 self.assertFalse(usdex.rtx.addOrmTextureToPbrMaterial(material, "my_orm_texture_path"))
                 self.assertFalse(usdex.rtx.addRoughnessTextureToPbrMaterial(material, "my_roughness_texture_path"))
                 self.assertFalse(usdex.rtx.addMetallicTextureToPbrMaterial(material, "my_metallic_texture_path"))
                 self.assertFalse(usdex.rtx.addOpacityTextureToPbrMaterial(material, "my_opacity_texture_path"))
+                self.assertFalse(usdex.rtx.addEmissiveTextureToPbrMaterial(material, "my_emissive_texture_path"))
 
         # different MDL
         # "Cannot add texture <%s>, the MDL UsdShadShader <%s> does not have the correct source asset <OmniPBR.mdl>. It is using <OmniGlass.mdl>"

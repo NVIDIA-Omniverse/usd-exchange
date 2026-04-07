@@ -1079,6 +1079,115 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
 
         self.assertIsValidUsd(stage)
 
+    def testAddEmissiveColor(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # a valid preview material will successfully add a emissive color
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+        result = usdex.core.addEmissiveColorToPreviewMaterial(material, Gf.Vec3f(1.0, 1.0, 0.0))
+        self.assertTrue(result)
+        surface = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertEqual(surface.GetInput("emissiveColor").GetAttr().Get(), Gf.Vec3f(1.0, 1.0, 0.0))
+
+        self.assertIsValidUsd(stage)
+
+    def testInvalidAddEmissiveColor(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # Invalid emissive color
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is invalid: each component must be at least 0 \(no upper bound\).")]
+        ):
+            result = usdex.core.addEmissiveColorToPreviewMaterial(material, Gf.Vec3f(-1.0, 1.0, 0.0))
+        self.assertFalse(result)
+
+        # Specify invalid material
+        material = UsdShade.Material()
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Material .* must first be defined using definePreviewMaterial()")]
+        ):
+            result = usdex.core.addEmissiveColorToPreviewMaterial(material, Gf.Vec3f(1.0, 1.0, 0.0))
+        self.assertFalse(result)
+
+        # Materials that do not have UsdPreviewSurface assigned
+        material = UsdShade.Material.Define(stage, materials.GetPrim().GetPath().AppendChild("empty_material"))
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Material .* must first be defined using definePreviewMaterial()")]
+        ):
+            result = usdex.core.addEmissiveColorToPreviewMaterial(material, Gf.Vec3f(1.0, 1.0, 0.0))
+        self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
+    def testAddEmissiveTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        texture = Sdf.AssetPath(self.tmpFile(name="emissive", ext="png"))
+
+        self.assertInvalidPreviewMaterialForTextureFunctions(parent=materials, texture=texture)
+
+        # a valid preview material will successfully add a emissive texture
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+        result = usdex.core.addEmissiveTextureToPreviewMaterial(material, texture)
+        self.assertTrue(result)
+        self.assertValidPreviewMaterialTextureNetwork(
+            material,
+            texture,
+            textureReaderName="EmissiveTexture",
+            colorSpace=usdex.core.ColorSpace.eAuto,
+            fallbackColor=Gf.Vec3f(0.0, 0.0, 0.0),
+            connectionInfo=[("emissiveColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+        )
+
+        # the originally defined emissive color value is used in the fallback
+        material = usdex.core.definePreviewMaterial(materials, "InitialValues", Gf.Vec3f(0.2, 0.2, 0.2))
+        result = usdex.core.addEmissiveColorToPreviewMaterial(material, Gf.Vec3f(1.0, 1.0, 0.2))
+        self.assertTrue(result)
+        result = usdex.core.addEmissiveTextureToPreviewMaterial(material, texture)
+        self.assertTrue(result)
+        self.assertValidPreviewMaterialTextureNetwork(
+            material,
+            texture,
+            textureReaderName="EmissiveTexture",
+            colorSpace=usdex.core.ColorSpace.eAuto,
+            fallbackColor=Gf.Vec3f(1.0, 1.0, 0.2),
+            connectionInfo=[("emissiveColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+        )
+
+        self.assertIsValidUsd(stage)
+
+    def testInvalidAddEmissiveTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        texture = Sdf.AssetPath(self.tmpFile(name="emissive", ext="png"))
+
+        self.assertInvalidPreviewMaterialForTextureFunctions(parent=materials, texture=texture)
+
+        # Specify invalid material
+        material = UsdShade.Material()
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Material .* must first be defined using definePreviewMaterial()")]
+        ):
+            result = usdex.core.addEmissiveTextureToPreviewMaterial(material, texture)
+        self.assertFalse(result)
+
+        # Materials that do not have UsdPreviewSurface assigned
+        empty_material = UsdShade.Material.Define(stage, materials.GetPrim().GetPath().AppendChild("empty_material"))
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Material .* must first be defined using definePreviewMaterial()")]
+        ):
+            result = usdex.core.addEmissiveTextureToPreviewMaterial(empty_material, texture)
+        self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
     def testAddPrimvarShaderToInvalidMaterial(self):
         stage = Usd.Stage.CreateInMemory()
         usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
