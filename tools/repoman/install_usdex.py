@@ -416,6 +416,8 @@ def __install(
         # usd dependencies
         if __SemVersion(usd_ver) < __SemVersion("24.11"):
             prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}*boost_python*${lib_ext}*", libInstallDir])
+        elif monolithic:
+            pass  # monolithic builds with python support already have the python bindings embedded
         else:
             prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}" + usdLibMidfix + "python${lib_ext}", libInstallDir])
         if installPythonLibs:
