@@ -30,7 +30,8 @@
 
 #include <pybind11/pybind11.h>
 
-#include <pxr/pxr.h>
+#include <usdex/core/Api.h>
+
 #ifdef PXR_USE_INTERNAL_BOOST_PYTHON
 #include <pxr/external/boost/python.hpp>
 #define USDEX_BOOST_PYTHON_NAMESPACE PXR_BOOST_PYTHON_NAMESPACE
