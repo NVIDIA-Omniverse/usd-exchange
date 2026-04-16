@@ -161,7 +161,7 @@ usd-exchange License
 
 .. include-licenses:: /_build/target-deps/doctest/PACKAGE-LICENSES/doctest-LICENSE.txt
 
-.. include-licenses:: /_build/target-deps/usd/release/PACKAGE-LICENSES/python-LICENSE.txt
+.. include-licenses:: /_build/target-deps/python/PACKAGE-LICENSES/python-LICENSE.txt
 
 .. Workaround for Boost as the name of the license file varies between packages
 
