@@ -44,7 +44,7 @@ body:
     attributes:
       label: OpenUSD Version
       description: What version of OpenUSD are you using?
-      placeholder: "example: 24.05"
+      placeholder: "example: 25.05"
     validations:
       required: true
 
