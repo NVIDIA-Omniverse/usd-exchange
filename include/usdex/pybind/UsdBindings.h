@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -42,6 +42,7 @@
 #include <pxr/usd/usdGeom/primvar.h>
 #include <pxr/usd/usdGeom/scope.h>
 #include <pxr/usd/usdGeom/sphere.h>
+#include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdGeom/xformable.h>
 #include <pxr/usd/usdLux/distantLight.h>
@@ -126,6 +127,8 @@ PYBOOST11_TYPE_CASTER(pxr::UsdGeomPoints, _("pxr.UsdGeom.Points"));
 PYBOOST11_TYPE_CASTER(pxr::UsdGeomPrimvar, _("pxr.UsdGeom.Primvar"));
 //! pybind11 interoperability for `UsdGeomScope`
 PYBOOST11_TYPE_CASTER(pxr::UsdGeomScope, _("pxr.UsdGeom.Scope"));
+//! pybind11 interoperability for `UsdGeomSubset`
+PYBOOST11_TYPE_CASTER(pxr::UsdGeomSubset, _("pxr.UsdGeom.Subset"));
 //! pybind11 interoperability for `UsdGeomXform`
 PYBOOST11_TYPE_CASTER(pxr::UsdGeomXform, _("pxr.UsdGeom.Xform"));
 //! pybind11 interoperability for `UsdGeomXformable`

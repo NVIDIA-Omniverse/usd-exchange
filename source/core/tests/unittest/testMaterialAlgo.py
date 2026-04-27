@@ -10,7 +10,7 @@ from typing import Any, List, Tuple
 
 import usdex.core
 import usdex.test
-from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdShade, UsdUtils
+from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 
 class MaterialAlgoTest(usdex.test.TestCase):
@@ -105,6 +105,120 @@ class MaterialAlgoTest(usdex.test.TestCase):
         self.assertFalse(result)
         self.assertFalse(instancedCube.HasAPI(UsdShade.MaterialBindingAPI))
         self.assertIsValidUsd(stage)
+
+    def testBindMaterialSubsets(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        geometry = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild("Geometry")).GetPrim()  # common convention
+
+        material_1 = usdex.core.createMaterial(materials, "Material_1")
+        material_2 = usdex.core.createMaterial(materials, "Material_2")
+        material_3 = usdex.core.createMaterial(materials, "Material_3")
+
+        # Create a mesh with four faces.
+        vertices = [
+            Gf.Vec3f(-50.0, 0.0, 50.0),
+            Gf.Vec3f(0.0, 0.0, 50.0),
+            Gf.Vec3f(50.0, 0.0, 50.0),
+            Gf.Vec3f(-50.0, 0.0, 0.0),
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 0.0),
+            Gf.Vec3f(-50.0, 0.0, -50.0),
+            Gf.Vec3f(0.0, 0.0, -50.0),
+            Gf.Vec3f(50.0, 0.0, -50.0),
+        ]
+        normals = [
+            Gf.Vec3f(0.0, 1.0, 0.0),
+        ]
+        uvs = [
+            Gf.Vec2f(0.0, 0.0),
+            Gf.Vec2f(0.5, 0.0),
+            Gf.Vec2f(0.5, 1.0),
+            Gf.Vec2f(0.0, 1.0),
+        ]
+        normals_indices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        uvs_indices = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+
+        points = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(vertices))
+        face_vertex_indices = [0, 1, 4, 3, 1, 2, 5, 4, 3, 4, 7, 6, 4, 5, 8, 7]
+        face_vertex_counts = [4, 4, 4, 4]
+
+        normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(normals), indices=Vt.IntArray(normals_indices))
+        uvs = usdex.core.Vec2fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec2fArray(uvs), indices=Vt.IntArray(uvs_indices))
+
+        mesh = usdex.core.definePolyMesh(
+            geometry.GetPrim(),
+            "mesh",
+            faceVertexCounts=Vt.IntArray(face_vertex_counts),
+            faceVertexIndices=Vt.IntArray(face_vertex_indices),
+            points=points.values(),
+            normals=normals,
+            uvs=uvs,
+        )
+
+        # Create three subsets of the mesh.
+        names = ["subset1", "subset2", "subset3"]
+        indices = [
+            Vt.IntArray([0, 1]),
+            Vt.IntArray([2]),
+            Vt.IntArray([3]),
+        ]
+        subsets = usdex.core.definePartitionedSubsets(mesh, names, indices)
+        self.assertEqual(len(subsets), 3)
+        subset1 = mesh.GetPrim().GetChild(names[0])
+        self.assertTrue(subset1.IsValid())
+        subset2 = mesh.GetPrim().GetChild(names[1])
+        self.assertTrue(subset2.IsValid())
+        subset3 = mesh.GetPrim().GetChild(names[2])
+        self.assertTrue(subset3.IsValid())
+
+        # Bind the materials to the subsets (parallel lists, same order).
+        result = usdex.core.bindMaterialSubsets(subsets, [material_1, material_2, material_3])
+        self.assertTrue(result)
+
+        # Check that the materials were bound to the subsets.
+        self.assertTrue(subset1.HasAPI(UsdShade.MaterialBindingAPI))
+        self.assertTrue(subset2.HasAPI(UsdShade.MaterialBindingAPI))
+        self.assertTrue(subset3.HasAPI(UsdShade.MaterialBindingAPI))
+
+        self.assertIsValidUsd(stage)
+
+        # Empty materials list.
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, "Unable to bind materials to subsets: The subsets or materials are empty.")]
+        ):
+            result = usdex.core.bindMaterialSubsets(subsets, [])
+        self.assertFalse(result)
+
+        # Mismatched number of subsets and materials.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [
+                (
+                    Tf.TF_DIAGNOSTIC_WARNING_TYPE,
+                    "Unable to bind materials to subsets: The number of subsets does not equal the number of materials.",
+                )
+            ],
+        ):
+            result = usdex.core.bindMaterialSubsets(subsets, [material_1, material_2])
+        self.assertFalse(result)
+
+        # Invalid UsdGeomSubset schema (default-constructed).
+        invalid_subset = UsdGeom.Subset()
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Unable to bind materials to subsets: The subset .* is not valid.*")]
+        ):
+            result = usdex.core.bindMaterialSubsets([invalid_subset], [material_1])
+        self.assertFalse(result)
+
+        # Invalid material. In this case, an error occurs in `bindMaterial`, which is called internally by `bindMaterialSubsets`.
+        empty_material = UsdShade.Material()
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Unable to bind materials to subsets: The material .* is not valid.*")]
+        ):
+            result = usdex.core.bindMaterialSubsets([subsets[0]], [empty_material])
+        self.assertFalse(result)
 
     def testComputeEffectiveSurfaceShader(self):
         stage = Usd.Stage.CreateInMemory()

@@ -8,8 +8,12 @@
 
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdGeom/tokens.h>
+#include <pxr/usd/usdShade/tokens.h>
 #include <pxr/usd/usdUtils/pipeline.h>
+
+#include <numeric>
 
 
 using namespace usdex::core;
@@ -286,6 +290,200 @@ Vec3fPrimvarData getInvalidPrimvar()
 {
     // Return an invalid primvar to indicate failure
     return Vec3fPrimvarData(UsdGeomTokens->constant, VtVec3fArray());
+}
+
+// Remove the subsets from the stage
+void removeSubsetsFromStage(UsdPrim prim, const TfToken& familyName, const std::vector<UsdGeomSubset>& subsets)
+{
+    // Remove the 'subsetFamily:<familyName>:familyType' property
+    const std::string propName = TfStringPrintf("subsetFamily:%s:familyType", familyName.GetText());
+    if (UsdProperty prop = prim.GetProperty(TfToken(propName)))
+    {
+        prim.RemoveProperty(prop.GetName());
+    }
+
+    for (const auto& subset : subsets)
+    {
+        if (subset.GetPrim().IsValid())
+        {
+            subset.GetPrim().GetStage()->RemovePrim(subset.GetPrim().GetPath());
+        }
+    }
+}
+
+// Define a subset of the geometry prim.
+UsdGeomSubset defineGeomSubset(
+    UsdStagePtr stage,
+    UsdGeomImageable geom,
+    const SdfPath& path,
+    const VtIntArray& faceIndices,
+    const TfToken& elementType,
+    const TfToken& familyName,
+    const TfToken& familyType,
+    std::string& reason
+)
+{
+    UsdGeomSubset subset = UsdGeomSubset::Define(stage, path);
+    if (!subset)
+    {
+        reason = TfStringPrintf("Unable to define subsets due to invalid subset");
+        return UsdGeomSubset();
+    }
+
+    subset.GetIndicesAttr().Set(faceIndices);
+    subset.GetElementTypeAttr().Set(elementType);
+
+    // Allows empty familyName values.
+    // In this case, specifying "subset.SetFamilyType()" will result in an error, so it is skipped.
+    subset.GetFamilyNameAttr().Set(familyName);
+    if (!familyName.IsEmpty())
+    {
+        subset.SetFamilyType(geom, familyName, familyType);
+    }
+
+    return subset;
+}
+
+// Define multiple subsets of a mesh
+std::vector<UsdGeomSubset> defineGeomSubsets(
+    UsdGeomMesh mesh,
+    const std::vector<TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const TfToken& elementType,
+    const TfToken& familyName,
+    const TfToken& familyType,
+    std::string& reason
+)
+{
+    std::vector<UsdGeomSubset> subsets;
+
+    // Early out if the prim is invalid
+    if (!mesh)
+    {
+        reason = TfStringPrintf("Subsets cannot be defined due to an invalid prim");
+        return subsets;
+    }
+
+    // Early out if the family name is invalid.
+    if (!familyName.IsEmpty() && !SdfPath::IsValidNamespacedIdentifier(familyName.GetString()))
+    {
+        reason = TfStringPrintf("Unable to define subsets due to invalid family name: \"%s\" is not a valid USD identifier", familyName.GetText());
+        return subsets;
+    }
+
+    // Early out if the element type is invalid
+    else if (elementType != UsdGeomTokens->face && elementType != UsdGeomTokens->edge && elementType != UsdGeomTokens->point)
+    {
+        reason = TfStringPrintf("Unable to define subsets due to invalid element type for Mesh subsets: %s", elementType.GetText());
+        return subsets;
+    }
+
+    // Early out if the names or indices are empty
+    if (names.empty() || indices.empty())
+    {
+        reason = TfStringPrintf("Unable to define subsets due to invalid names or indices");
+        return subsets;
+    }
+
+    // Early out if the names are invalid
+    std::vector<TfToken> validNames;
+    for (const auto& name : names)
+    {
+        if (name.IsEmpty())
+        {
+            reason = TfStringPrintf("There is an empty subset name");
+            return subsets;
+        }
+        if (!SdfPath::IsValidIdentifier(name.GetString()))
+        {
+            reason = TfStringPrintf("Unable to define subsets due to invalid subset name: \"%s\" is not a valid USD identifier", name.GetText());
+            return subsets;
+        }
+
+        // If the name is already in the validNames, return an error.
+        if (std::find(validNames.begin(), validNames.end(), name) != validNames.end())
+        {
+            reason = TfStringPrintf("Unable to define subsets due to duplicate subset name: '%s'", name.GetText());
+            return subsets;
+        }
+        validNames.push_back(name);
+    }
+
+    // Early out if the names are invalid
+    if (names.size() != indices.size())
+    {
+        reason = TfStringPrintf("Length of names must equal length of indices. names %zu, indices %zu", names.size(), indices.size());
+        return subsets;
+    }
+
+    // Early out if the indices are empty
+    for (const auto& index : indices)
+    {
+        if (index.empty())
+        {
+            reason = TfStringPrintf("Unable to define subsets due to empty subset indices");
+            return subsets;
+        }
+    }
+
+    // Early out if the proposed prim location is invalid
+    UsdStageWeakPtr stage = mesh.GetPrim().GetStage();
+    const SdfPath path = mesh.GetPath();
+    if (!usdex::core::isEditablePrimLocation(stage, path, &reason))
+    {
+        reason = TfStringPrintf("Unable to define subsets due to invalid prim location: %s", reason.c_str());
+        return subsets;
+    }
+
+    // When subsets already exist within the given prim
+    // if the same family name exists, return an error.
+    const std::vector<UsdGeomSubset> existingSubsets = UsdGeomSubset::GetAllGeomSubsets(mesh);
+    if (!existingSubsets.empty())
+    {
+        // Check if the same family name exists.
+        for (const UsdGeomSubset& existingSubset : existingSubsets)
+        {
+            if (existingSubset.GetFamilyNameAttr().IsAuthored())
+            {
+                TfToken existingFamilyName;
+                existingSubset.GetFamilyNameAttr().Get(&existingFamilyName);
+                if (existingFamilyName == familyName)
+                {
+                    reason = TfStringPrintf("Unable to define subsets due to existing subsets with the same family name: %s", familyName.GetText());
+                    return subsets;
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < names.size(); ++i)
+    {
+        const VtIntArray subsetIndices(indices[i]);
+        const SdfPath subsetPath = path.AppendChild(names[i]);
+        UsdGeomSubset subset = ::defineGeomSubset(stage, mesh, subsetPath, subsetIndices, elementType, familyName, familyType, reason);
+        if (!subset.GetPrim().IsValid())
+        {
+            break;
+        }
+        subsets.push_back(subset);
+    }
+
+    // If there are any interrupted subsets,
+    // the reason will already contain an error string.
+    if (subsets.size() != names.size())
+    {
+        removeSubsetsFromStage(mesh.GetPrim(), familyName, subsets);
+        return {};
+    }
+
+    // Validate the entire family after the new subsets are created.
+    if (!UsdGeomSubset::ValidateFamily(mesh, elementType, familyName, &reason))
+    {
+        removeSubsetsFromStage(mesh.GetPrim(), familyName, subsets);
+        return {};
+    }
+
+    return subsets;
 }
 
 } // namespace
@@ -614,4 +812,58 @@ Vec3fPrimvarData usdex::core::computeMeshNormals(UsdGeomMesh mesh, const TfToken
     }
 
     return normals;
+}
+
+std::vector<UsdGeomSubset> usdex::core::definePartitionedSubsets(
+    UsdGeomMesh mesh,
+    const std::vector<TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const TfToken& elementType,
+    const TfToken& familyName
+)
+{
+    std::string reason;
+    std::vector<UsdGeomSubset> subsets = ::defineGeomSubsets(mesh, names, indices, elementType, familyName, UsdGeomTokens->partition, reason);
+    if (subsets.empty())
+    {
+        TF_RUNTIME_ERROR("Failed to define partitioned subsets \"%s\": %s", mesh.GetPath().GetAsString().c_str(), reason.c_str());
+        return std::vector<UsdGeomSubset>();
+    }
+    return subsets;
+}
+
+std::vector<UsdGeomSubset> usdex::core::defineNonOverlappingSubsets(
+    UsdGeomMesh mesh,
+    const std::vector<TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const TfToken& elementType,
+    const TfToken& familyName
+)
+{
+    std::string reason;
+    std::vector<UsdGeomSubset> subsets = ::defineGeomSubsets(mesh, names, indices, elementType, familyName, UsdGeomTokens->nonOverlapping, reason);
+    if (subsets.empty())
+    {
+        TF_RUNTIME_ERROR("Failed to define non-overlapping subsets \"%s\": %s", mesh.GetPath().GetAsString().c_str(), reason.c_str());
+        return std::vector<UsdGeomSubset>();
+    }
+    return subsets;
+}
+
+std::vector<UsdGeomSubset> usdex::core::defineUnrestrictedSubsets(
+    UsdGeomMesh mesh,
+    const std::vector<TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const TfToken& elementType,
+    const TfToken& familyName
+)
+{
+    std::string reason;
+    std::vector<UsdGeomSubset> subsets = ::defineGeomSubsets(mesh, names, indices, elementType, familyName, UsdGeomTokens->unrestricted, reason);
+    if (subsets.empty())
+    {
+        TF_RUNTIME_ERROR("Failed to define unrestricted subsets \"%s\": %s", mesh.GetPath().GetAsString().c_str(), reason.c_str());
+        return std::vector<UsdGeomSubset>();
+    }
+    return subsets;
 }

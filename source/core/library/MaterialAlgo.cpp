@@ -268,6 +268,64 @@ bool usdex::core::bindMaterial(UsdPrim prim, const UsdShadeMaterial& material)
     return materialBinding.Bind(material);
 }
 
+bool usdex::core::bindMaterialSubsets(const std::vector<UsdGeomSubset>& subsets, const std::vector<UsdShadeMaterial>& materials)
+{
+    if (subsets.empty() || materials.empty())
+    {
+        TF_WARN("Unable to bind materials to subsets: The subsets or materials are empty.");
+        return false;
+    }
+    if (subsets.size() != materials.size())
+    {
+        TF_WARN("Unable to bind materials to subsets: The number of subsets does not equal the number of materials.");
+        return false;
+    }
+
+    // Early out if the subsets are not valid
+    std::string reason;
+    for (const auto& subset : subsets)
+    {
+        if (!usdex::core::isEditablePrimLocation(subset.GetPrim(), &reason))
+        {
+            std::string primPath;
+            if (subset.GetPrim().IsValid())
+            {
+                primPath = subset.GetPath().GetAsString();
+            }
+            TF_WARN("Unable to bind materials to subsets: The subset <%s> is not valid: %s", primPath.c_str(), reason.c_str());
+            return false;
+        }
+    }
+
+    // Early out if the materials are not valid
+    for (const auto& material : materials)
+    {
+        if (!usdex::core::isEditablePrimLocation(material.GetPrim(), &reason))
+        {
+            std::string primPath;
+            if (material.GetPrim().IsValid())
+            {
+                primPath = material.GetPath().GetAsString();
+            }
+            TF_WARN("Unable to bind materials to subsets: The material <%s> is not valid: %s", primPath.c_str(), reason.c_str());
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < subsets.size(); ++i)
+    {
+        const UsdGeomSubset& subset = subsets[i];
+        const UsdShadeMaterial& material = materials[i];
+
+        // Bind the material to the subset
+        if (!bindMaterial(subset.GetPrim(), material))
+        {
+            TF_WARN("Unable to bind material <%s> to subset <%s>", material.GetPath().GetAsString().c_str(), subset.GetPath().GetAsString().c_str());
+        }
+    }
+    return true;
+}
+
 UsdShadeShader usdex::core::computeEffectivePreviewSurfaceShader(const UsdShadeMaterial& material)
 {
     if (!material)

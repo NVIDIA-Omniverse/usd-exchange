@@ -89,6 +89,9 @@ __all__ = [
     "defineCylinder",
     "defineCapsule",
     "computeMeshNormals",
+    "defineNonOverlappingSubsets",
+    "definePartitionedSubsets",
+    "defineUnrestrictedSubsets",
     # camera
     "defineCamera",
     # primvars
@@ -107,6 +110,7 @@ __all__ = [
     # materials
     "createMaterial",
     "bindMaterial",
+    "bindMaterialSubsets",
     "computeEffectivePreviewSurfaceShader",
     "definePreviewMaterial",
     "addEmissiveColorToPreviewMaterial",
