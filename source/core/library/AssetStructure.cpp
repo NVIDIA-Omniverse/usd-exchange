@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,6 +8,7 @@
 #include "usdex/core/NameAlgo.h"
 #include "usdex/core/StageAlgo.h"
 
+#include <pxr/base/arch/fileSystem.h>
 #include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/kind/registry.h>
@@ -189,7 +190,9 @@ UsdPrim createReferencePayloadPrim(
     }
 
     // If the source prim and reference are in the same stage, we can use an internal reference/payload
-    if (stageResolvedPath.GetPathString() == sourceResolvedPath.GetPathString())
+    // In a Windows environment, drive names may contain a mix of uppercase and lowercase letters.
+    // Normalize paths with ArchNormPath so comparisons on Windows ignore drive-letter case differences.
+    if (ArchNormPath(stageResolvedPath.GetPathString()) == ArchNormPath(sourceResolvedPath.GetPathString()))
     {
         outIsInternal = true;
         outRelativeIdentifier = "";
@@ -256,6 +259,125 @@ bool getReferencePayloadPrimPath(UsdPrim parent, UsdPrim source, std::optional<s
 
     outPrimPath = parent.GetPath().AppendChild(TfToken(primName));
     return true;
+}
+
+//! True if `sourceIdentifier` should be anchored to the referencing stage's current edit target layer when resolving it.
+//! Filesystem-relative segments (`./`, `../`, or a bare filename) use the stage anchor; absolute paths and
+//! identifiers with a URI-like scheme (`://`) are resolved without anchoring.
+bool shouldAnchorSourceIdentifierToStage(const std::string& sourceIdentifier)
+{
+    if (sourceIdentifier.empty())
+    {
+        return false;
+    }
+    if (sourceIdentifier.find("://") != std::string::npos)
+    {
+        return false;
+    }
+    return !std::filesystem::path(sourceIdentifier).is_absolute();
+}
+
+//! Resolve a `sourceIdentifier` (with optional `primPath`) into a `UsdPrim` by opening the source layer with
+//! `UsdStage::LoadNone`.
+//!
+//! Internal-vs-external detection, relative-path computation, and self-reference protection are deferred to the
+//! `UsdPrim`-based `defineReference`/`definePayload` overloads. When the source identifier already maps to a layer
+//! that is in memory (e.g., the caller's own stage), `SdfLayer::FindOrOpen` returns the cached layer, so the open
+//! is essentially free.
+//!
+//! @param stage Stage used to anchor filesystem-relative `sourceIdentifier` strings (via the root layer identifier).
+//! @param sourceIdentifier The identifier of the source USD file
+//! @param primPath Optional prim path within the source. If not provided, the source's default prim is used.
+//! @param outOpenedStage Set to the opened source stage. The caller must keep this alive for the lifetime of the returned prim.
+//! @param reason The reason for the failure
+//!
+//! @returns The resolved source prim, or an invalid prim on error (with a `TF_RUNTIME_ERROR` emitted).
+UsdPrim resolveSourcePrim(
+    UsdStagePtr stage,
+    const std::string& sourceIdentifier,
+    std::optional<SdfPath> primPath,
+    UsdStageRefPtr& outOpenedStage,
+    std::string& reason
+)
+{
+    if (!stage)
+    {
+        reason = "Unable to define reference/payload due to an invalid stage";
+        return UsdPrim();
+    }
+
+    // Resolve the source identifier; this also validates that the asset exists.
+    ArResolver& resolver = ArGetResolver();
+    ArResolvedPath resolvedPath;
+
+    if (shouldAnchorSourceIdentifierToStage(sourceIdentifier))
+    {
+        SdfLayerHandle stageLayer = stage->GetEditTarget().GetLayer();
+        if (stageLayer->IsAnonymous())
+        {
+            reason = TfStringPrintf(
+                "Unable to define reference/payload with a relative sourceIdentifier \"%s\" because the stage's current edit target layer is anonymous",
+                sourceIdentifier.c_str()
+            );
+            return UsdPrim();
+        }
+
+        ArResolvedPath anchorResolved = resolver.Resolve(stageLayer->GetIdentifier());
+        if (!anchorResolved)
+        {
+            reason = TfStringPrintf(
+                "Unable to define reference/payload because the stage's current edit target layer identifier could not be resolved: %s",
+                stageLayer->GetIdentifier().c_str()
+            );
+            return UsdPrim();
+        }
+
+        const std::string identifier = resolver.CreateIdentifier(sourceIdentifier, anchorResolved);
+        resolvedPath = resolver.Resolve(identifier);
+    }
+    else
+    {
+        resolvedPath = resolver.Resolve(sourceIdentifier);
+    }
+
+    if (!resolvedPath)
+    {
+        reason = TfStringPrintf("Unable to define reference/payload due to an invalid sourceIdentifier: %s", sourceIdentifier.c_str());
+        return UsdPrim();
+    }
+
+    outOpenedStage = UsdStage::Open(resolvedPath, UsdStage::LoadNone);
+    if (!outOpenedStage)
+    {
+        reason = TfStringPrintf("Unable to open the source identifier: %s", resolvedPath.GetPathString().c_str());
+        return UsdPrim();
+    }
+
+    // Look up the source prim at the requested path, or use the default prim.
+    UsdPrim sourcePrim;
+    if (primPath.has_value())
+    {
+        sourcePrim = outOpenedStage->GetPrimAtPath(primPath.value());
+        if (!sourcePrim)
+        {
+            reason = TfStringPrintf(
+                "Unable to get the \"%s\" prim from the source identifier: %s",
+                primPath->GetAsString().c_str(),
+                resolvedPath.GetPathString().c_str()
+            );
+            return UsdPrim();
+        }
+    }
+    else
+    {
+        sourcePrim = outOpenedStage->GetDefaultPrim();
+        if (!sourcePrim)
+        {
+            reason = TfStringPrintf("Unable to get the default prim from the source identifier: %s", resolvedPath.GetPathString().c_str());
+            return UsdPrim();
+        }
+    }
+    return sourcePrim;
 }
 
 } // namespace
@@ -794,6 +916,34 @@ UsdPrim usdex::core::defineReference(UsdPrim parent, const UsdPrim& source, std:
     return usdex::core::defineReference(parent.GetStage(), path, source);
 }
 
+UsdPrim usdex::core::defineReference(UsdStagePtr stage, const SdfPath& path, const std::string& sourceIdentifier, std::optional<SdfPath> primPath)
+{
+    // Resolve the identifier into a UsdPrim (opening the source with LoadNone) and forward to the existing
+    // UsdPrim-based overload, which handles relative-path computation, internal/external decision, self-reference
+    // protection, scope creation, and specifier/type propagation.
+    UsdStageRefPtr openedStage;
+    std::string reason;
+    UsdPrim sourcePrim = ::resolveSourcePrim(stage, sourceIdentifier, primPath, openedStage, reason);
+    if (!sourcePrim)
+    {
+        TF_RUNTIME_ERROR("%s", reason.c_str());
+        return UsdPrim();
+    }
+    return usdex::core::defineReference(stage, path, sourcePrim);
+}
+
+UsdPrim usdex::core::defineReference(UsdPrim parent, const std::string& name, const std::string& sourceIdentifier, std::optional<SdfPath> primPath)
+{
+    std::string reason;
+    if (!usdex::core::isEditablePrimLocation(parent, name, &reason))
+    {
+        TF_RUNTIME_ERROR("Unable to define reference due to an invalid location: %s", reason.c_str());
+        return UsdPrim();
+    }
+    const SdfPath path = parent.GetPath().AppendChild(TfToken(name));
+    return usdex::core::defineReference(parent.GetStage(), path, sourceIdentifier, primPath);
+}
+
 UsdPrim usdex::core::definePayload(UsdStagePtr stage, const SdfPath& path, const UsdPrim& source)
 {
     // Create the common prim structure and get the relative identifier
@@ -831,4 +981,32 @@ UsdPrim usdex::core::definePayload(UsdPrim parent, const UsdPrim& source, std::o
         return UsdPrim();
     }
     return usdex::core::definePayload(parent.GetStage(), path, source);
+}
+
+UsdPrim usdex::core::definePayload(UsdStagePtr stage, const SdfPath& path, const std::string& sourceIdentifier, std::optional<SdfPath> primPath)
+{
+    // Resolve the identifier into a UsdPrim (opening the source with LoadNone) and forward to the existing
+    // UsdPrim-based overload, which handles relative-path computation, internal/external decision, self-reference
+    // protection, scope creation, and specifier/type propagation.
+    UsdStageRefPtr openedStage;
+    std::string reason;
+    UsdPrim sourcePrim = ::resolveSourcePrim(stage, sourceIdentifier, primPath, openedStage, reason);
+    if (!sourcePrim)
+    {
+        TF_RUNTIME_ERROR("%s", reason.c_str());
+        return UsdPrim();
+    }
+    return usdex::core::definePayload(stage, path, sourcePrim);
+}
+
+UsdPrim usdex::core::definePayload(UsdPrim parent, const std::string& name, const std::string& sourceIdentifier, std::optional<SdfPath> primPath)
+{
+    std::string reason;
+    if (!usdex::core::isEditablePrimLocation(parent, name, &reason))
+    {
+        TF_RUNTIME_ERROR("Unable to define payload due to an invalid location: %s", reason.c_str());
+        return UsdPrim();
+    }
+    const SdfPath path = parent.GetPath().AppendChild(TfToken(name));
+    return usdex::core::definePayload(parent.GetStage(), path, sourceIdentifier, primPath);
 }

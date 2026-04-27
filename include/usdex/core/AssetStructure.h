@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -258,6 +258,47 @@ USDEX_API pxr::UsdPrim defineReference(pxr::UsdStagePtr stage, const pxr::SdfPat
 //! @returns The newly created reference prim. Returns an invalid prim on error.
 USDEX_API pxr::UsdPrim defineReference(pxr::UsdPrim parent, const pxr::UsdPrim& source, std::optional<std::string_view> name = std::nullopt);
 
+//! Define a reference to a prim from a USD file
+//!
+//! This creates a reference prim that targets the prims in the external USD file.
+//!
+//! Resolution behavior for `sourceIdentifier`:
+//! - Absolute filesystem paths are resolved directly by the configured asset resolver.
+//! - Relative filesystem paths (including `./`, `../`, or filenames without a leading root) are anchored to the
+//!   resolved identifier of the stage's current edit target layer, so the external file is located relative to that layer's path.
+//! - Identifiers containing a URI-like scheme (for example, containing `://`) are resolved without anchoring to the
+//!   stage's current edit target layer.
+//!
+//! @param stage The stage on which to define the reference
+//! @param path The absolute prim path at which to define the reference
+//! @param sourceIdentifier The identifier of the external USD file to reference
+//! @param primPath Absolute prim path in the external USD file for the root prim of this reference. If not provided, uses the default prim's path
+//!
+//! @returns The newly created reference prim. Returns an invalid prim on error.
+USDEX_API pxr::UsdPrim defineReference(
+    pxr::UsdStagePtr stage,
+    const pxr::SdfPath& path,
+    const std::string& sourceIdentifier,
+    std::optional<pxr::SdfPath> primPath = std::nullopt
+);
+
+//! Define a reference prim as a child of `parent` that references an external USD file
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param parent The parent prim to add the reference to
+//! @param name The name of the reference
+//! @param sourceIdentifier The identifier of the external USD file to reference
+//! @param primPath Absolute prim path in the external USD file for the root prim of this reference. If not provided, uses the default prim's path
+//!
+//! @returns The newly created reference prim. Returns an invalid prim on error.
+USDEX_API pxr::UsdPrim defineReference(
+    pxr::UsdPrim parent,
+    const std::string& name,
+    const std::string& sourceIdentifier,
+    std::optional<pxr::SdfPath> primPath = std::nullopt
+);
+
 //! Define a payload to a prim
 //!
 //! This creates a payload prim that targets a prim in another layer (external payload) or the same layer (internal payload)
@@ -285,6 +326,47 @@ USDEX_API pxr::UsdPrim definePayload(pxr::UsdStagePtr stage, const pxr::SdfPath&
 //!
 //! @returns The newly created payload prim. Returns an invalid prim on error.
 USDEX_API pxr::UsdPrim definePayload(pxr::UsdPrim parent, const pxr::UsdPrim& source, std::optional<std::string_view> name = std::nullopt);
+
+//! Define a payload to a prim from a USD file
+//!
+//! This creates a payload prim that targets the prims in the external USD file.
+//!
+//! Resolution behavior for `sourceIdentifier`:
+//! - Absolute filesystem paths are resolved directly by the configured asset resolver.
+//! - Relative filesystem paths (including `./`, `../`, or filenames without a leading root) are anchored to the
+//!   resolved identifier of the stage's current edit target layer, so the external file is located relative to that layer's path.
+//! - Identifiers containing a URI-like scheme (for example, containing `://`) are resolved without anchoring to the
+//!   stage's current edit target layer.
+//!
+//! @param stage The stage on which to define the payload
+//! @param path The absolute prim path at which to define the payload
+//! @param sourceIdentifier The identifier of the external USD file to payload
+//! @param primPath Absolute prim path in the external USD file for the root prim of this reference. If not provided, uses the default prim's path
+//!
+//! @returns The newly created payload prim. Returns an invalid prim on error.
+USDEX_API pxr::UsdPrim definePayload(
+    pxr::UsdStagePtr stage,
+    const pxr::SdfPath& path,
+    const std::string& sourceIdentifier,
+    std::optional<pxr::SdfPath> primPath = std::nullopt
+);
+
+//! Define a payload prim as a child of `parent` that references an external USD file
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param parent The parent prim to add the payload to
+//! @param name The name of the payload
+//! @param sourceIdentifier The identifier of the external USD file to payload
+//! @param primPath Absolute prim path in the external USD file for the root prim of this reference. If not provided, uses the default prim's path
+//!
+//! @returns The newly created payload prim. Returns an invalid prim on error.
+USDEX_API pxr::UsdPrim definePayload(
+    pxr::UsdPrim parent,
+    const std::string& name,
+    const std::string& sourceIdentifier,
+    std::optional<pxr::SdfPath> primPath = std::nullopt
+);
 
 //! Create a relative layer within a `getPayloadToken()` subdirectory to hold the content of an asset
 //!
