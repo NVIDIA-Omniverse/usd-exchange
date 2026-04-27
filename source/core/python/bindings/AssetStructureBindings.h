@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -300,6 +300,62 @@ void bindAssetStructure(module& m)
     );
 
     m.def(
+        "defineReference",
+        overload_cast<UsdStagePtr, const SdfPath&, const std::string&, std::optional<SdfPath>>(&defineReference),
+        arg("stage"),
+        arg("path"),
+        arg("sourceIdentifier"),
+        arg("primPath") = nullptr,
+        R"(
+            Define a reference to a prim from a USD file.
+
+            This creates a reference prim that targets the prims in the external USD file.
+
+            Resolution behavior for ``sourceIdentifier``:
+                - Absolute filesystem paths are resolved directly by the configured asset resolver.
+                - Relative filesystem paths (including ``./``, ``../``, or filenames without a leading root) are
+                  anchored to the resolved identifier of the stage's current edit target layer,
+                  so the external file is located relative to that layer's path.
+                - Identifiers containing a URI-like scheme (for example, containing ``://``) are
+                  resolved without anchoring to the stage's current edit target layer.
+
+            Parameters:
+                - **stage** - The stage on which to define the reference
+                - **path** - The absolute prim path at which to define the reference
+                - **sourceIdentifier** - The identifier of the external USD file to reference
+                - **primPath** - Absolute prim path in the external USD file for the root prim of this reference.
+                  If not provided, uses the default prim's path
+
+            Returns:
+                The newly created reference prim. Returns an invalid prim on error.
+        )"
+    );
+
+    m.def(
+        "defineReference",
+        overload_cast<UsdPrim, const std::string&, const std::string&, std::optional<SdfPath>>(&defineReference),
+        arg("parent"),
+        arg("name"),
+        arg("sourceIdentifier"),
+        arg("primPath") = nullptr,
+        R"(
+            Define a reference prim as a child of ``parent`` that references an external USD file.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Parameters:
+                - **parent** - The parent prim to add the reference to
+                - **name** - The name of the reference
+                - **sourceIdentifier** - The identifier of the external USD file to reference
+                - **primPath** - Absolute prim path in the external USD file for the root prim of this reference.
+                  If not provided, uses the default prim's path
+
+            Returns:
+                The newly created reference prim. Returns an invalid prim on error.
+        )"
+    );
+
+    m.def(
         "definePayload",
         overload_cast<UsdStagePtr, const SdfPath&, const UsdPrim&>(&definePayload),
         arg("stage"),
@@ -347,6 +403,62 @@ void bindAssetStructure(module& m)
             Returns:
                 The newly created payload prim. Returns an invalid prim on error.
 
+        )"
+    );
+
+    m.def(
+        "definePayload",
+        overload_cast<UsdStagePtr, const SdfPath&, const std::string&, std::optional<SdfPath>>(&definePayload),
+        arg("stage"),
+        arg("path"),
+        arg("sourceIdentifier"),
+        arg("primPath") = nullptr,
+        R"(
+            Define a payload to a prim from a USD file.
+
+            This creates a payload prim that targets the prims in the external USD file.
+
+            Resolution behavior for ``sourceIdentifier``:
+                - Absolute filesystem paths are resolved directly by the configured asset resolver.
+                - Relative filesystem paths (including ``./``, ``../``, or filenames without a leading root) are
+                  anchored to the resolved identifier of the stage's current edit target layer,
+                  so the external file is located relative to that layer's path.
+                - Identifiers containing a URI-like scheme (for example, containing ``://``) are
+                  resolved without anchoring to the stage's current edit target layer.
+
+            Parameters:
+                - **stage** - The stage on which to define the payload
+                - **path** - The absolute prim path at which to define the payload
+                - **sourceIdentifier** - The identifier of the external USD file to payload
+                - **primPath** - Absolute prim path in the external USD file for the root prim of this payload.
+                  If not provided, uses the default prim's path
+
+            Returns:
+                The newly created payload prim. Returns an invalid prim on error.
+        )"
+    );
+
+    m.def(
+        "definePayload",
+        overload_cast<UsdPrim, const std::string&, const std::string&, std::optional<SdfPath>>(&definePayload),
+        arg("parent"),
+        arg("name"),
+        arg("sourceIdentifier"),
+        arg("primPath") = nullptr,
+        R"(
+            Define a payload prim as a child of ``parent`` that references an external USD file.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Parameters:
+                - **parent** - The parent prim to add the payload to
+                - **name** - The name of the payload
+                - **sourceIdentifier** - The identifier of the external USD file to payload
+                - **primPath** - Absolute prim path in the external USD file for the root prim of this payload.
+                  If not provided, uses the default prim's path
+
+            Returns:
+                The newly created payload prim. Returns an invalid prim on error.
         )"
     );
 }

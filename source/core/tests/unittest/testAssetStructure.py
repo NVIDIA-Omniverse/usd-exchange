@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -815,6 +815,18 @@ class DefineReferencePayloadBase(AssetStructureTestBase):
         else:
             self.assertEqual(refList[listIndex].primPath, sourcePrim.GetPath())
 
+    def assertReferencePayloadExternal(self, prim: Usd.Prim, primPath: Sdf.Path, name: str, _refList: list[dict]):
+        self.assertTrue(prim)
+        self.assertEqual(prim.GetName(), name)
+        self.assertEqual(prim.GetPath(), primPath)
+
+        refList = self.getReferencePayloadList(prim)
+        self.assertTrue(refList)
+        self.assertEqual(len(refList), len(_refList))
+        for ref, _ref in zip(refList, _refList):
+            self.assertEqual(ref.assetPath, _ref["assetPath"])
+            self.assertEqual(ref.primPath, _ref["primPath"])
+
     def testSameDirectory(self):
         self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
         self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
@@ -1148,6 +1160,479 @@ class DefineReferencePayloadBase(AssetStructureTestBase):
                 sourceXform.GetPrim(),
                 self.sourcePrimName,
             )
+
+    def testDefineReferencePayloadExternal(self):
+        # Create a sphere stage
+        sphereStageFile = self.tmpFile("sphere", "usda")
+        sphereStage = usdex.core.createStage(
+            sphereStageFile,
+            "asset_root",
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        sphereDefaultPrim = sphereStage.GetDefaultPrim()
+        xformPrim = usdex.core.defineXform(sphereDefaultPrim, "assets")
+        usdex.core.defineSphere(xformPrim.GetPrim(), "sphere", 1.0)
+        sphereStage.Save()
+
+        # Create a test stage
+        testStageFile = self.tmpFile("test", "usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+
+        # Specify the prim path, and define the Reference/Payload.
+        # Provided with only the AssetPath.
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+        refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), sphereStageFile)
+
+        refList = [
+            {
+                # If it's not an anonymous stage, relative paths will be used.
+                "assetPath": f"./{os.path.basename(sphereStageFile)}",
+                "primPath": Sdf.Path(),
+            },
+        ]
+        self.assertReferencePayloadExternal(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            xformName,
+            refList,
+        )
+
+        # Provided with the AssetPath and the prim path.
+        xformName = "AssetPath_PrimPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+        refPrimPath = sphereDefaultPrim.GetPath().AppendChild("assets")
+        refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), sphereStageFile, refPrimPath)
+
+        refList = [
+            {
+                # If it's not an anonymous stage, relative paths will be used.
+                "assetPath": f"./{os.path.basename(sphereStageFile)}",
+                "primPath": refPrimPath,
+            },
+        ]
+        self.assertReferencePayloadExternal(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            xformName,
+            refList,
+        )
+
+        # Specify the parent's prim and name, and define the Reference/Payload.
+        # Provided with only the AssetPath.
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath_with_parent"
+        refPrim = self.defineReferencePayloadFunc(defaultPrim, xformName, sphereStageFile)
+
+        refList = [
+            {
+                # If it's not an anonymous stage, relative paths will be used.
+                "assetPath": f"./{os.path.basename(sphereStageFile)}",
+                "primPath": Sdf.Path(),
+            },
+        ]
+        self.assertReferencePayloadExternal(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            xformName,
+            refList,
+        )
+
+        # Provided with the AssetPath and the prim path.
+        xformName = "AssetPath_PrimPath_with_parent"
+        refPrimPath = sphereDefaultPrim.GetPath().AppendChild("assets")
+        refPrim = self.defineReferencePayloadFunc(defaultPrim, xformName, sphereStageFile, refPrimPath)
+
+        refList = [
+            {
+                # If it's not an anonymous stage, relative paths will be used.
+                "assetPath": f"./{os.path.basename(sphereStageFile)}",
+                "primPath": refPrimPath,
+            },
+        ]
+        self.assertReferencePayloadExternal(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            xformName,
+            refList,
+        )
+
+        # Change the type of PrimPath.
+        # The Scope of "/Root/typeTest" will be replaced with the type (Xform) of "/asset_root/assets" in sphereStageFile.
+        xformName = "typeTest"
+        targetPrim = usdex.core.defineScope(defaultPrim, xformName)
+        self.assertEqual(targetPrim.GetPrim().GetTypeName(), UsdGeom.Tokens.Scope)
+        refPrimPath = sphereDefaultPrim.GetPath().AppendChild("assets")
+        refPrim = self.defineReferencePayloadFunc(testStage, targetPrim.GetPrim().GetPath(), sphereStageFile, refPrimPath)
+
+        refList = [
+            {
+                # If it's not an anonymous stage, relative paths will be used.
+                "assetPath": f"./{os.path.basename(sphereStageFile)}",
+                "primPath": refPrimPath,
+            },
+        ]
+        self.assertReferencePayloadExternal(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            xformName,
+            refList,
+        )
+
+        # The type will be changed from "Scope" to "Xform".
+        self.assertEqual(targetPrim.GetPrim().GetTypeName(), UsdGeom.Tokens.Xform)
+
+        self.assertIsValidUsd(testStage)
+        self.assertIsValidUsd(sphereStage)
+
+    def testDefineReferencePayloadExternalInvalidStage(self):
+        # Invalid stage
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to define.*due to an invalid stage")]):
+            refPrim = self.defineReferencePayloadFunc(None, "/World/AssetPath", "foo/non_existent.usda")
+        self.assertFalse(refPrim)
+
+    def testDefineReferencePayloadExternalAnonymousStage(self):
+        # Anonymous referencing stages cannot author relative asset paths, so they are rejected (consistent
+        # with the UsdPrim-based overload, see testAnonymousStages).
+
+        # Create a sphere stage
+        sphereStageFile = self.tmpFile("sphere", "usda")
+        sphereStage = usdex.core.createStage(
+            sphereStageFile,
+            "asset_root",
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        sphereDefaultPrim = sphereStage.GetDefaultPrim()
+        xformPrim = usdex.core.defineXform(sphereDefaultPrim, "assets")
+        usdex.core.defineSphere(xformPrim.GetPrim(), "sphere", 1.0)
+        sphereStage.Save()
+
+        # Create an anonymous stage
+        stage = Usd.Stage.CreateInMemory()
+        xform = usdex.core.defineXform(stage, "/World")
+        stage.SetDefaultPrim(xform.GetPrim())
+        UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
+        UsdGeom.SetStageMetersPerUnit(stage, UsdGeom.LinearUnits.centimeters)
+
+        stageLayer = stage.GetEditTarget().GetLayer()
+        self.assertTrue(stageLayer.anonymous)
+
+        defaultPrim = stage.GetDefaultPrim()
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*anonymous referencing stage")]):
+            refPrim = self.defineReferencePayloadFunc(stage, xformPrim.GetPrim().GetPath(), sphereStageFile)
+        self.assertFalse(refPrim)
+        self.assertIsValidUsd(sphereStage)
+
+        # Provided with a relative source identifier.
+        sourceIdentifier = "./assets/sphere.usda"
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to define.* because the stage's current edit target layer is anonymous.*")]
+        ):
+            refPrim = self.defineReferencePayloadFunc(stage, xformPrim.GetPrim().GetPath(), sourceIdentifier)
+        self.assertFalse(refPrim)
+
+    def testDefineReferencePayloadExternalEditTargetLayer(self):
+        # When the root layer and the edit target layer are different.
+
+        # Create a sphere stage
+        tmpDir = self.tmpDir()
+        sphereStageFile = os.path.join(tmpDir, "assets/sphere.usda")
+        sphereStage = usdex.core.createStage(
+            sphereStageFile,
+            "asset_root",
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        sphereDefaultPrim = sphereStage.GetDefaultPrim()
+        sphereAssetsPrim = usdex.core.defineXform(sphereDefaultPrim, "assets").GetPrim()
+        usdex.core.defineSphere(sphereAssetsPrim, "sphere", 1.0)
+        sphereStage.Save()
+
+        # Create layer.
+        layerIdentifier = os.path.join(tmpDir, "layer.usda")
+        layer = Sdf.Layer.CreateNew(layerIdentifier)
+
+        # Create an anonymous stage
+        stage = Usd.Stage.CreateInMemory()
+        defaultPrim = usdex.core.defineXform(stage, "/World").GetPrim()
+        stage.SetDefaultPrim(defaultPrim)
+        UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
+        UsdGeom.SetStageMetersPerUnit(stage, UsdGeom.LinearUnits.centimeters)
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+
+        # Set the edit target in the stage to `layer`.
+        rootLayer = stage.GetRootLayer()
+        rootLayer.subLayerPaths.append(layerIdentifier)
+        stage.SetEditTarget(Usd.EditTarget(layer))
+
+        # The root layer is anonymous, but the edit target layer exists, so the next process will succeed.
+        refPrim = self.defineReferencePayloadFunc(stage, xformPrim.GetPrim().GetPath(), "./assets/sphere.usda", "/asset_root/assets")
+        self.assertReferencePayload(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            sphereAssetsPrim,
+            xformName,
+        )
+        self.assertIsValidUsd(stage)
+
+    def testDefineReferencePayloadExternalNonExistent(self):
+        # Specify a non-existent reference.
+        nonExistentStageFile = "invalid/non_existent.usda"
+
+        # Create a test stage
+        testStageFile = self.tmpFile("test", "usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+
+        # Specify the prim path, and define the Reference/Payload.
+        # Provided with only the AssetPath.
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+
+        # Here, a non-existent file 'nonExistentStageFile' is specified.
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to define.*due to an invalid sourceIdentifier:.*")]
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), nonExistentStageFile)
+            self.assertFalse(refPrim.IsValid())
+
+    def testDefineReferencePayloadExternalInvalidUSDFile(self):
+        # Create an invalid reference file
+        testRefFile = self.tmpFile("invalid", "usda")
+        with open(testRefFile, "w") as f:
+            f.write("This is a dummy file for testing.")
+
+        # Create a test stage
+        testStageFile = self.tmpFile("test", "usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+
+        # Specify the prim path, and define the Reference/Payload.
+        # Provided with only the AssetPath.
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+
+        # If the file exists but is not a usd file.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [
+                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*is not a valid usda layer.*"),
+                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Failed to open layer.*"),
+                (Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to open the source identifier:.*"),
+            ],
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), testRefFile)
+
+    def testDefineReferencePayloadExternalRelativeUSDFile(self):
+        # Create a sphere stage
+        tmpDir = self.tmpDir()
+        sphereStageFile = os.path.join(tmpDir, "assets/sphere.usda")
+        sphereStage = usdex.core.createStage(
+            sphereStageFile, "asset_root", self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata
+        )
+        sphereDefaultPrim = sphereStage.GetDefaultPrim()
+        xformPrim = usdex.core.defineXform(sphereDefaultPrim, "assets")
+        usdex.core.defineSphere(xformPrim.GetPrim(), "sphere", 1.0)
+        sphereStage.Save()
+
+        # Create a test stage
+        testStageFile = os.path.join(tmpDir, "test.usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+
+        # Provided with a relative USD file.
+        refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), "./assets/sphere.usda")
+        self.assertReferencePayload(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            sphereDefaultPrim,
+            xformName,
+        )
+
+        self.assertIsValidUsd(sphereStage)
+
+    def testDefineReferencePayloadExternalInvalidRelativeUSDFile(self):
+        # Create a sphere stage
+        tmpDir = self.tmpDir()
+        sphereStageFile = os.path.join(tmpDir, "assets/sphere.usda")
+        sphereStage = usdex.core.createStage(
+            sphereStageFile, "asset_root", self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata
+        )
+        sphereDefaultPrim = sphereStage.GetDefaultPrim()
+        xformPrim = usdex.core.defineXform(sphereDefaultPrim, "assets")
+        usdex.core.defineSphere(xformPrim.GetPrim(), "sphere", 1.0)
+        sphereStage.Save()
+
+        # Create a test stage
+        testStageFile = os.path.join(tmpDir, "test.usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+
+        # Provided with an empty source identifier.
+        sourceIdentifier = ""
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to define.*due to an invalid sourceIdentifier:.*")]
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), sourceIdentifier)
+        self.assertFalse(refPrim.IsValid())
+
+        # Provided with a URI-like source identifier.
+        sourceIdentifier = "https://example.com/foo.usda"
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to define.*due to an invalid sourceIdentifier:.*")]
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), sourceIdentifier)
+        self.assertFalse(refPrim.IsValid())
+
+    def testDefineReferencePayloadExternalInvalidPrimPath(self):
+        # Create a sphere stage
+        sphereStageFile = self.tmpFile("sphere", "usda")
+        sphereStage = usdex.core.createStage(
+            sphereStageFile,
+            "asset_root",
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        sphereDefaultPrim = sphereStage.GetDefaultPrim()
+        xformPrim = usdex.core.defineXform(sphereDefaultPrim, "assets")
+        usdex.core.defineSphere(xformPrim.GetPrim(), "sphere", 1.0)
+        sphereStage.Save()
+
+        # Create a test stage
+        testStageFile = self.tmpFile("test", "usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+
+        # Specify the prim path, and define the Reference/Payload.
+        # Provided with the AssetPath and the invalid prim path.
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath_PrimPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to get the .* prim from the source identifier:.*")]
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), sphereStageFile, "/InvalidPrimPath")
+            self.assertFalse(refPrim.IsValid())
+
+        # Clear the default prim from sphereStage.
+        sphereStage.ClearDefaultPrim()
+        sphereStage.Save()
+
+        # Specify the prim path, and define the Reference/Payload.
+        # Provided with the AssetPath and the invalid default prim.
+        defaultPrim = testStage.GetDefaultPrim()
+        xformName = "AssetPath_DefaultPrim"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Unable to get the default prim from the source identifier:.*")]
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), sphereStageFile)
+
+    def testDefineReferencePayloadExternalSameStage(self):
+        # When sourceIdentifier resolves to the current stage's edit target, internal-vs-external detection in
+        # the UsdPrim-based defineReference/definePayload overload kicks in and an internal reference is authored.
+        testStageFile = self.tmpFile("test", "usda")
+        testStage = usdex.core.createStage(
+            testStageFile,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        defaultPrim = testStage.GetDefaultPrim()
+        assetsPrim = usdex.core.defineXform(defaultPrim, "assets")
+        usdex.core.defineSphere(assetsPrim.GetPrim(), "sphere", 1.0)
+
+        # With explicit primPath: authors a valid internal reference to the specified prim.
+        xformName = "AssetPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+        internalPrimPath = assetsPrim.GetPrim().GetPath()
+        refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), testStageFile, internalPrimPath)
+        self.assertReferencePayload(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            assetsPrim.GetPrim(),
+            xformName,
+        )
+
+        # Without primPath: defaults to the source's default prim. If the reference target is itself under the
+        # default prim, this creates a composition cycle which USD detects and warns about. The reference is still
+        # authored. The same outcome occurs if you pass `stage.GetDefaultPrim()` to the UsdPrim overload directly.
+        #
+        # The cycle warning fires once per stage that follows the cyclic arc during recomposition. References are
+        # always composed, so both `testStage` and the LoadNone stage opened by resolveSourcePrim warn (2 warnings).
+        # Payloads are deferred, so the LoadNone stage doesn't follow the arc and only `testStage` warns (1 warning).
+        xformName = "AssetPathNoPrimPath"
+        xformPrim = usdex.core.defineXform(defaultPrim, xformName)
+        expectedCycleWarnings = 2 if self.defineReferencePayloadFunc == usdex.core.defineReference else 1
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cycle detected.*")] * expectedCycleWarnings,
+        ):
+            refPrim = self.defineReferencePayloadFunc(testStage, xformPrim.GetPrim().GetPath(), testStageFile)
+
+        refList = [
+            {
+                "assetPath": "",
+                "primPath": defaultPrim.GetPath(),
+            },
+        ]
+        self.assertReferencePayloadExternal(
+            refPrim,
+            defaultPrim.GetPath().AppendChild(xformName),
+            xformName,
+            refList,
+        )
 
 
 class DefineReferenceTestCase(DefineReferencePayloadBase, usdex.test.DefineFunctionTestCase):
