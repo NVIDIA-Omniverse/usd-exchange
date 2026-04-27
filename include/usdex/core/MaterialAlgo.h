@@ -11,6 +11,8 @@
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/shader.h>
 
+#include <vector>
+
 //! @file usdex/core/MaterialAlgo.h
 //! @brief Material and Shader Utilities applicable to all render contexts
 
@@ -93,6 +95,16 @@ USDEX_API pxr::UsdShadeMaterial createMaterial(pxr::UsdPrim parent, const std::s
 //! @param material The material to bind to the prim
 //! @returns Whether the material was successfully bound to the target prim.
 USDEX_API bool bindMaterial(pxr::UsdPrim prim, const pxr::UsdShadeMaterial& material);
+
+
+//! Binds materials to the geometry subsets of the given geometry prim.
+//!
+//! @note The subsets and materials must be in the same order and the number of subsets must equal the number of materials.
+//!
+//! @param subsets The geometry subsets to bind the materials to
+//! @param materials The materials to bind to the subsets
+//! @returns Whether the materials were successfully bound to the subsets.
+USDEX_API bool bindMaterialSubsets(const std::vector<pxr::UsdGeomSubset>& subsets, const std::vector<pxr::UsdShadeMaterial>& materials);
 
 //! Get the effective surface Shader of a Material for the universal render context.
 //!

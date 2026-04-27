@@ -17,6 +17,9 @@
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/subset.h>
+#include <pxr/usd/usdGeom/tokens.h>
+#include <pxr/usd/usdShade/tokens.h>
 
 #include <optional>
 
@@ -186,6 +189,89 @@ USDEX_API Vec3fPrimvarData computeMeshNormals(
     const pxr::GfVec3f& fallback = pxr::GfVec3f(0.0f, 0.0f, 1.0f)
 );
 
-//! @}
+//! Fully partitions a geometry prim into multiple disjoint subsets.
+//!
+//! Every element of the geometry must appear in exactly one subset in this family,
+//! with no element appearing in more than one subset, and no element left unassigned.
+//!
+//! The prim must be a geometry that supports subsets (e.g. `UsdGeomMesh` from `usdex::core::definePolyMesh`).
+//! Use `usdex::core::bindMaterial` to bind materials to each subset.
+//!
+//! elementType defaults to `UsdGeomTokens->face`.
+//! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#a74ba2657851f6c0884e72b4a762d1607) for details.
+//!
+//! familyName defaults to `UsdShadeTokens->materialBind`.
+//! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#af278c1bd6603a66ffcb1a033f395a876) for details.
+//!
+//! @param mesh Mesh prim to add the subsets to
+//! @param names The names of the subsets (size must equal indices.size())
+//! @param indices Per-subset element indices; indices.size() is the number of subsets, indices[i] is the index list for subset i
+//! @param elementType The element type of the subsets. Valid values are `UsdGeomTokens->face`, `UsdGeomTokens->edge`, and `UsdGeomTokens->point`.
+//! @param familyName The family name of the subsets
+//! @returns The subsets created
+USDEX_API std::vector<pxr::UsdGeomSubset> definePartitionedSubsets(
+    pxr::UsdGeomMesh mesh,
+    const std::vector<pxr::TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const pxr::TfToken& elementType = pxr::UsdGeomTokens->face,
+    const pxr::TfToken& familyName = pxr::UsdShadeTokens->materialBind
+);
+
+//! Partially partitions a geometry prim into multiple disjoint subsets.
+//!
+//! An element may appear in at most one subset in this family, and at most once within that subset.
+//! The union of all subsets need not cover the whole geometry (some elements may be unassigned).
+//! Use when subsets must not overlap but need not cover the entire geometry.
+//!
+//! The prim must be a geometry that supports subsets (e.g. `UsdGeomMesh` from `usdex::core::definePolyMesh`).
+//! Use `usdex::core::bindMaterial` to bind materials to each subset.
+//!
+//! elementType defaults to `UsdGeomTokens->face`.
+//! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#a74ba2657851f6c0884e72b4a762d1607) for details.
+//!
+//! familyName defaults to `UsdShadeTokens->materialBind`.
+//! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#af278c1bd6603a66ffcb1a033f395a876) for details.
+//!
+//! @param mesh Mesh prim to add the subsets to
+//! @param names The names of the subsets (size must equal indices.size())
+//! @param indices Per-subset element indices; indices.size() is the number of subsets, indices[i] is the index list for subset i
+//! @param elementType The element type of the subsets. Valid values are `UsdGeomTokens->face`, `UsdGeomTokens->edge`, and `UsdGeomTokens->point`.
+//! @param familyName The family name of the subsets
+//! @returns The subsets created
+USDEX_API std::vector<pxr::UsdGeomSubset> defineNonOverlappingSubsets(
+    pxr::UsdGeomMesh mesh,
+    const std::vector<pxr::TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const pxr::TfToken& elementType = pxr::UsdGeomTokens->face,
+    const pxr::TfToken& familyName = pxr::UsdShadeTokens->materialBind
+);
+
+//! Partially partitions a geometry prim into multiple, possibly overlapping, subsets.
+//!
+//! No restrictions: elements may appear in multiple subsets, and the union of all subsets
+//! need not represent the whole geometry. Use when overlapping or partial subsets are needed.
+//!
+//! The prim must be a geometry that supports subsets (e.g. `UsdGeomMesh` from `usdex::core::definePolyMesh`).
+//! Use `usdex::core::bindMaterial` to bind materials to each subset.
+//!
+//! elementType defaults to `UsdGeomTokens->face`.
+//! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#a74ba2657851f6c0884e72b4a762d1607) for details.
+//!
+//! familyName defaults to `UsdShadeTokens->materialBind`.
+//! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#af278c1bd6603a66ffcb1a033f395a876) for details.
+//!
+//! @param mesh Mesh prim to add the subsets to
+//! @param names The names of the subsets (size must equal indices.size())
+//! @param indices Per-subset element indices; indices.size() is the number of subsets, indices[i] is the index list for subset i
+//! @param elementType The element type of the subsets. Valid values are `UsdGeomTokens->face`, `UsdGeomTokens->edge`, and `UsdGeomTokens->point`.
+//! @param familyName The family name of the subsets
+//! @returns The subsets created
+USDEX_API std::vector<pxr::UsdGeomSubset> defineUnrestrictedSubsets(
+    pxr::UsdGeomMesh mesh,
+    const std::vector<pxr::TfToken>& names,
+    const std::vector<pxr::VtIntArray>& indices,
+    const pxr::TfToken& elementType = pxr::UsdGeomTokens->face,
+    const pxr::TfToken& familyName = pxr::UsdShadeTokens->materialBind
+);
 
 } // namespace usdex::core

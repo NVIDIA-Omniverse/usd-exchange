@@ -62,6 +62,26 @@ void bindMaterialAlgo(module& m)
     );
 
     m.def(
+        "bindMaterialSubsets",
+        &bindMaterialSubsets,
+        arg("subsets"),
+        arg("materials"),
+        R"(
+            Binds materials to the given geometry subsets.
+
+            Note:
+                ``subsets`` and ``materials`` must have the same length; each material is bound to the subset at the same index.
+
+            Args:
+                subsets: List of ``UsdGeom.Subset`` objects to receive bindings
+                materials: List of ``UsdShade.Material`` objects, one per subset
+
+            Returns:
+                Whether all materials were successfully bound to their subsets.
+        )"
+    );
+
+    m.def(
         "computeEffectivePreviewSurfaceShader",
         &computeEffectivePreviewSurfaceShader,
         arg("material"),

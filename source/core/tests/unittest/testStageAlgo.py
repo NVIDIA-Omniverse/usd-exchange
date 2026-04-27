@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -796,6 +796,11 @@ class LocationEditableTestCase(usdex.test.TestCase):
         result, reason = usdex.core.isEditablePrimLocation(instanceProxyChild)
         self.assertFalse(result)
         self.assertRegex(reason, ".*is an instance proxy, authoring is not allowed")
+
+        # an invalid prim fails
+        result, reason = usdex.core.isEditablePrimLocation(Usd.Prim())
+        self.assertFalse(result)
+        self.assertRegex(reason, ".*Invalid UsdPrim")
 
     def testVisibleInstanceRoot(self):
         # In a situation where you have cars A & B. A is the “prototype”, but visible, B is referencing A.

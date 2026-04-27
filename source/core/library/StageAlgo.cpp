@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -414,6 +414,16 @@ bool usdex::core::isEditablePrimLocation(const UsdPrim& prim, const std::string&
 
 bool usdex::core::isEditablePrimLocation(const UsdPrim& prim, std::string* reason)
 {
+    // The prim must be valid
+    if (!prim)
+    {
+        if (reason != nullptr)
+        {
+            *reason = "Invalid UsdPrim";
+        }
+        return false;
+    }
+
     // Call the stage/path version
     UsdStageWeakPtr stage = prim.GetStage();
     const SdfPath& path = prim.GetPath();

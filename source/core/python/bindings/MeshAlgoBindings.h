@@ -216,6 +216,97 @@ void bindMeshAlgo(module& m)
                 Vec3fPrimvarData containing the computed normals, or an invalid one if computation fails.
         )"
     );
+
+    m.def(
+        "definePartitionedSubsets",
+        &definePartitionedSubsets,
+        arg("prim"),
+        arg("names"),
+        arg("indices"),
+        arg("elementType") = UsdGeomTokens->face,
+        arg("familyName") = UsdShadeTokens->materialBind,
+        R"(
+            Fully partitions a geometry prim into multiple disjoint subsets.
+
+            Every element of the geometry must appear in exactly one subset in this family,
+            with no element appearing in more than one subset, and no element left unassigned.
+
+            The prim must be a geometry that supports subsets (e.g. ``UsdGeom.Mesh`` from ``usdex.core.definePolyMesh``).
+            Use ``usdex.core.bindMaterial`` to bind materials to each subset.
+
+            Args:
+                mesh: The mesh prim to add the subsets to
+                names: The names of the subsets (length must equal len(indices))
+                indices: Per-subset element indices; list of index arrays. len(indices) is the number of subsets,
+                    indices[i] is the index list for subset i.
+                elementType: The element type of the subsets. Valid values are ``UsdGeom.Tokens.Face``, ``UsdGeom.Tokens.Edge``, and ``UsdGeom.Tokens.Point`` (default: ``UsdGeom.Tokens.Face``)
+                familyName: The family name of the subsets (default: ``UsdShade.Tokens.MaterialBind``)
+
+            Returns:
+                The list of subsets created. Empty list on failure.
+        )"
+    );
+
+    m.def(
+        "defineNonOverlappingSubsets",
+        &defineNonOverlappingSubsets,
+        arg("prim"),
+        arg("names"),
+        arg("indices"),
+        arg("elementType") = UsdGeomTokens->face,
+        arg("familyName") = UsdShadeTokens->materialBind,
+        R"(
+            Partially partitions a geometry prim into multiple disjoint subsets.
+
+            An element may appear in at most one subset in this family, and at most once within that subset.
+            The union of all subsets need not cover the whole geometry (some elements may be unassigned).
+            Use when subsets must not overlap but need not cover the entire geometry.
+
+            The prim must be a geometry that supports subsets (e.g. ``UsdGeom.Mesh`` from ``usdex.core.definePolyMesh``).
+            Use ``usdex.core.bindMaterial`` to bind materials to each subset.
+
+            Args:
+                mesh: The mesh prim to add the subsets to
+                names: The names of the subsets (length must equal len(indices))
+                indices: Per-subset element indices; list of index arrays. len(indices) is the number of subsets,
+                    indices[i] is the index list for subset i.
+                elementType: The element type of the subsets. Valid values are ``UsdGeom.Tokens.Face``, ``UsdGeom.Tokens.Edge``, and ``UsdGeom.Tokens.Point`` (default: ``UsdGeom.Tokens.Face``)
+                familyName: The family name of the subsets (default: ``UsdShade.Tokens.MaterialBind``)
+
+            Returns:
+                The list of subsets created. Empty list on failure.
+        )"
+    );
+
+    m.def(
+        "defineUnrestrictedSubsets",
+        &defineUnrestrictedSubsets,
+        arg("prim"),
+        arg("names"),
+        arg("indices"),
+        arg("elementType") = UsdGeomTokens->face,
+        arg("familyName") = UsdShadeTokens->materialBind,
+        R"(
+            Partially partitions a geometry prim into multiple, possibly overlapping, subsets.
+
+            No restrictions: elements may appear in multiple subsets, and the union of all subsets
+            need not represent the whole geometry. Use when overlapping or partial subsets are needed.
+
+            The prim must be a geometry that supports subsets (e.g. ``UsdGeom.Mesh`` from ``usdex.core.definePolyMesh``).
+            Use ``usdex.core.bindMaterial`` to bind materials to each subset.
+
+            Args:
+                mesh: The mesh prim to add the subsets to
+                names: The names of the subsets (length must equal len(indices))
+                indices: Per-subset element indices; list of index arrays. len(indices) is the number of subsets,
+                    indices[i] is the index list for subset i.
+                elementType: The element type of the subsets. Valid values are ``UsdGeom.Tokens.Face``, ``UsdGeom.Tokens.Edge``, and ``UsdGeom.Tokens.Point`` (default: ``UsdGeom.Tokens.Face``)
+                familyName: The family name of the subsets (default: ``UsdShade.Tokens.MaterialBind``)
+
+            Returns:
+                The list of subsets created. Empty list on failure.
+        )"
+    );
 }
 
 } // namespace usdex::core::bindings
