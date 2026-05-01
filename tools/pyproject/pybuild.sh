@@ -4,7 +4,7 @@ set -e
 
 # Setup the build environment
 VENV=./_build/host-deps/py_package_venv
-if [ -f "$VENV/bin/activate" ]; then
+if [[ -f "$VENV/bin/activate" ]]; then
   source "$VENV/bin/activate"
 else
   echo "Building: $VENV"
