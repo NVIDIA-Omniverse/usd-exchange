@@ -1,3 +1,54 @@
+# 2.3.0-rc1
+
+## Core
+
+### Features
+
+- Added GeomSubset authoring utilities for assigning materials to subsets of a `UsdGeomMesh`
+  - Use `definePartitionedSubsets`, `defineNonOverlappingSubsets`, or `defineUnrestrictedSubsets` to author subsets, then use `bindMaterialSubsets` to assign each a material
+- Added Preview Material utilities for emissive materials
+- Added overloads for `defineReference` and `definePayload` which accept a source layer identifier rather than an in-memory `UsdPrim`
+  - Both signatures ensure relative asset paths to valid locations are used whenever possible
+- Added an overload for `computeMeshNormals` which accepts an existing `UsdGeomMesh` rather than the individual topology `VtArrays`
+
+### Fixes
+
+- Fixed precision issue with `computeMeshNormals` & improved context of the failure diagnostic messages
+
+## RTX
+
+### Features
+
+- Added RTX/MDL helpers for emissive PBR materials
+
+### Fixes
+
+- Added missing default IOR value on `defineGlassMaterial` C++ signature
+  - The python signature already had this default
+
+## Documentation
+
+- Added `AGENTS.md` and `.agents/skills` to provide coding assistants / agents with comprehensive authoring guidance when using OpenUSD Exchange SDK
+
+## Dependencies
+
+### Runtime Deps
+
+- OpenUSD 25.11, 25.08, 25.05 (default) 25.02, 24.11, 24.08, 24.05
+- Omni Asset Validator 1.15.1
+- Python 3.12.12, 3.11.14, 3.10.19 (default)
+- pybind 2.11.1
+
+### Dev Tools
+
+- packman 7.35
+- repo_tools (all matching OpenUSD Exchange SDK v2.2.2)
+- doctest 2.4.5
+- cxxopts 2.2.0
+- Premake 5.0.0-beta4
+- GCC 11.4.0
+- MSVC 2019-16.11
+
 # 2.2.2
 
 ## Test
