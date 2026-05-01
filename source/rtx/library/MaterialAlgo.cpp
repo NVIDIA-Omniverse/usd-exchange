@@ -848,7 +848,7 @@ bool usdex::rtx::addOrmTextureToPbrMaterial(UsdShadeMaterial& material, const Sd
     return true;
 }
 
-bool usdex::rtx::addEmissiveTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
+bool usdex::rtx::addEmissiveTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath, const float intensity)
 {
     if (!verifyValidOmniPbrMaterial(material, texturePath))
     {
@@ -885,6 +885,20 @@ bool usdex::rtx::addEmissiveTextureToPbrMaterial(UsdShadeMaterial& material, con
     UsdShadeShader previewSurface = usdex::core::computeEffectivePreviewSurfaceShader(material);
     UsdShadeConnectionSourceInfo info = previewSurface.GetInput(_tokens->usdPreviewSurfaceEmissiveColor).GetConnectedSources()[0];
     info.source.GetInput(_tokens->usdPreviewSurfaceFile).ConnectToSource(matTextureInput);
+
+    // Create or reuse the material interface input that drives OmniPBR's emission_intensity, then set the supplied intensity.
+    // This overwrites any value previously authored by addEmissiveColorToPbrMaterial().
+    UsdShadeShader mdlShader = usdex::rtx::computeEffectiveMdlSurfaceShader(material);
+
+    UsdShadeInput materialEmissiveEnableInput = material.CreateInput(_tokens->materialEmissiveEnable, SdfValueTypeNames->Bool);
+    UsdShadeInput materialEmissiveIntensityInput = material.CreateInput(_tokens->materialEmissiveIntensity, SdfValueTypeNames->Float);
+
+    // Set the supplied values on the material interface
+    materialEmissiveEnableInput.Set(true);
+    materialEmissiveIntensityInput.Set(intensity);
+
+    mdlShader.CreateInput(_tokens->omniPbrEmissiveEnableEmission, SdfValueTypeNames->Bool).ConnectToSource(materialEmissiveEnableInput);
+    mdlShader.CreateInput(_tokens->omniPbrEmissiveIntensity, SdfValueTypeNames->Float).ConnectToSource(materialEmissiveIntensityInput);
 
     return true;
 }

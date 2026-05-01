@@ -48,7 +48,7 @@ namespace usdex::rtx
 //! the RTX Renderer for the highest fidelity results, as well as in any other USD capable renderer for a lower fidelity preview.
 //!
 //! @warning If your data is targetted at the RTX Renderer, or other USD native applications or USD Ecosystem leading applications, then using
-//! Material Interfaces is recommended. If you favor broad applicability throughout the _entire_ USD Ecosystem, it may be be preferable to avoid
+//! Material Interfaces is recommended. If you favor broad applicability throughout the _entire_ USD Ecosystem, it may be preferable to avoid
 //! Material Interfaces for the time being. In this case, you can call `usdex::core::removeMaterialInterface` after `usdex::rtx::definePbrMaterial`
 //!
 //! @{
@@ -177,7 +177,7 @@ USDEX_RTX_API pxr::UsdShadeMaterial definePbrMaterial(
 //! @param color The emissive color
 //! @param intensity The intensity of the emissive color
 //! @returns Whether or not the color was added to the material
-USDEX_RTX_API bool addEmissiveColorToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::GfVec3f& color, const float intensity);
+USDEX_RTX_API bool addEmissiveColorToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::GfVec3f& color, const float intensity = 1000.0f);
 
 //! Adds a diffuse texture to the PBR material
 //!
@@ -262,14 +262,19 @@ USDEX_RTX_API bool addOpacityTextureToPbrMaterial(pxr::UsdShadeMaterial& materia
 //!
 //! @param material The UsdShadeMaterial prim to add the texture
 //! @param texturePath The SdfAssetPath to the texture file
+//! @param intensity The intensity of the emissive color
 //! @returns Whether or not the texture was added to the material
-USDEX_RTX_API bool addEmissiveTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+USDEX_RTX_API bool addEmissiveTextureToPbrMaterial(
+    pxr::UsdShadeMaterial& material,
+    const pxr::SdfAssetPath& texturePath,
+    const float intensity = 1000.0f
+);
 
 //! Defines a Glass `UsdShadeMaterial` interface that drives both an RTX render context and the universal render context.
 //!
 //! The resulting Material prim will have "Interface" `UsdShadeInputs` which drive both render contexts. See @ref rtx_materials for details.
 //!
-//! Note: The use of MDL shaders inside this Material interface is considered an implementation detail of the RTX Renderer.
+//! @note The use of MDL shaders inside this Material interface is considered an implementation detail of the RTX Renderer.
 //! Once the RTX Renderer supports OpenPBR or MaterialX shaders we may change the implementation to author those shaders instead of MDL.
 //!
 //! @param stage The stage on which to define the Material
@@ -288,7 +293,7 @@ USDEX_RTX_API pxr::UsdShadeMaterial defineGlassMaterial(
 //!
 //! The resulting Material prim will have "Interface" `UsdShadeInputs` which drive both render contexts. See @ref rtx_materials for details.
 //!
-//! Note: The use of MDL shaders inside this Material interface is considered an implementation detail of the RTX Renderer.
+//! @note The use of MDL shaders inside this Material interface is considered an implementation detail of the RTX Renderer.
 //! Once the RTX Renderer supports OpenPBR or MaterialX shaders we may change the implementation to author those shaders instead of MDL.
 //!
 //! @param parent Prim below which to define the Material
@@ -307,14 +312,14 @@ USDEX_RTX_API pxr::UsdShadeMaterial defineGlassMaterial(
 //!
 //! The resulting Material prim will have "Interface" `UsdShadeInputs` which drive both render contexts. See @ref rtx_materials for details.
 //!
-//! Note: The use of MDL shaders inside this Material interface is considered an implementation detail of the RTX Renderer.
+//! @note The use of MDL shaders inside this Material interface is considered an implementation detail of the RTX Renderer.
 //! Once the RTX Renderer supports OpenPBR or MaterialX shaders we may change the implementation to author those shaders instead of MDL.
 //!
 //! @param prim Prim to define the Material on
 //! @param color The color of the Material
 //! @param indexOfRefraction The Index of Refraction to set, 1.0-4.0 range
 //! @returns The newly defined UsdShadeMaterial. Returns an Invalid prim on error
-USDEX_RTX_API pxr::UsdShadeMaterial defineGlassMaterial(pxr::UsdPrim prim, const pxr::GfVec3f& color, const float indexOfRefraction);
+USDEX_RTX_API pxr::UsdShadeMaterial defineGlassMaterial(pxr::UsdPrim prim, const pxr::GfVec3f& color, const float indexOfRefraction = 1.491f);
 
 //! @}
 
