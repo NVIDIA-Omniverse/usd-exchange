@@ -201,7 +201,7 @@ void bindMaterialAlgo(module& m)
         &addEmissiveColorToPbrMaterial,
         arg("material"),
         arg("color"),
-        arg("intensity"),
+        arg("intensity") = 1000.0f,
         R"(
             Add an emissive color to a PBR material
 
@@ -354,6 +354,7 @@ void bindMaterialAlgo(module& m)
         &addEmissiveTextureToPbrMaterial,
         arg("material"),
         arg("texturePath"),
+        arg("intensity") = 1000.0f,
         R"(
             Add an emissive texture to a PBR material
 
@@ -366,6 +367,7 @@ void bindMaterialAlgo(module& m)
             Args:
                 material: The UsdShade.Material prim to add the texture
                 texturePath: The Sdf.AssetPath for the texture
+                intensity: The intensity of the emissive color
 
             Returns:
                 Whether or not the texture was added to the material

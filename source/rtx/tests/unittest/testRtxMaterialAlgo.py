@@ -842,6 +842,13 @@ class MaterialAlgoTest(usdex.test.TestCase):
         # Add and check emissive color
         def checkEmissiveColor(matPrim):
             emissive_color = Gf.Vec3f(1.0, 1.0, 0.0)
+
+            default_emissive_intensity = 1000.0
+            self.assertTrue(usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color))
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveEnable")), True)
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveColor")), emissive_color)
+            self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveIntensity")), default_emissive_intensity)
+
             emissive_intensity = 3000.0
             self.assertTrue(usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color, emissive_intensity))
             self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("emissiveEnable")), True)
@@ -868,8 +875,13 @@ class MaterialAlgoTest(usdex.test.TestCase):
             self.assertFalse(result)
 
         # Add and check emissive texture
-        def checkEmissiveTexture(matPrim, tex, e, fallback=None, diffLayer=False):
-            self.assertTrue(usdex.rtx.addEmissiveTextureToPbrMaterial(matPrim, tex))
+        def checkEmissiveTexture(matPrim, tex, e, intensity=1000.0, fallback=None, diffLayer=False):
+            default_intensity = 1000.0
+            if intensity != default_intensity:
+                self.assertTrue(usdex.rtx.addEmissiveTextureToPbrMaterial(matPrim, tex, intensity))
+            else:
+                self.assertTrue(usdex.rtx.addEmissiveTextureToPbrMaterial(matPrim, tex))
+
             if diffLayer:
                 self.assertTrue(matPrim.GetInput("emissiveColor"))
             else:
@@ -882,6 +894,8 @@ class MaterialAlgoTest(usdex.test.TestCase):
             self.assertEqual(computeEffectiveShaderInputValue(matPrim.GetInput("EmissiveTexture")).path, tex)
             self.assertEqual(matPrim.GetInput("EmissiveTexture").GetAttr().GetColorSpace(), "auto")
             self.assertEqual(computeEffectiveShaderInputValue(mdlShader.GetInput("emissive_color")), e)
+            self.assertEqual(computeEffectiveShaderInputValue(mdlShader.GetInput("enable_emission")), True)
+            self.assertEqual(computeEffectiveShaderInputValue(mdlShader.GetInput("emissive_intensity")), intensity)
             self.assertEqual(computeEffectiveShaderInputValue(mdlShader.GetInput("emissive_color_texture")).path, tex)
             self.assertTrue(mdlShader.GetInput("emissive_color_texture").HasConnectedSource())
             fallback = e if fallback is None else fallback
@@ -914,7 +928,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         checkEmissiveColor(material)
         checkEmissiveTexture(material, emissiveTexture2, emissive_color)
         # The second time there'll be no fallback color to read from the material input
-        checkEmissiveTexture(material, emissiveTexture, emissive_color, fallback=Gf.Vec3f(0.0))
+        checkEmissiveTexture(material, emissiveTexture, emissive_color, intensity=3000.0, fallback=Gf.Vec3f(0.0))
         # Invalid emissive color
         checkInvalidEmissiveColor(material)
         # Invalid emissive texture
