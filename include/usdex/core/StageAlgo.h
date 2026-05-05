@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -39,8 +39,8 @@ namespace usdex::core
 //! @param identifier The identifier to be used for the root layer of this stage.
 //! @param defaultPrimName Name of the default root prim.
 //! @param upAxis The up axis for all the geometry contained in the stage.
-//! @param linearUnits The meters per unit for all linear measurements in the stage.
-//! @param massUnits The kilograms per unit for all mass measurements in the stage.
+//! @param linearUnits The meters per unit for all linear measurements in the stage, eg. `UsdGeomLinearUnits::meters`
+//! @param massUnits The kilograms per unit for all mass measurements in the stage, eg. `UsdPhysicsMassUnits::kilograms`
 //! @param authoringMetadata The provenance information from the host application. See @ref layers for details.
 //!    If the "creator" key already exists, it will not be overwritten & this data will be ignored.
 //! @param fileFormatArgs Additional file format-specific arguments to be supplied during Stage creation.
@@ -62,7 +62,7 @@ USDEX_API pxr::UsdStageRefPtr createStage(
 //! @param identifier The identifier to be used for the root layer of this stage.
 //! @param defaultPrimName Name of the default root prim.
 //! @param upAxis The up axis for all the geometry contained in the stage.
-//! @param linearUnits The meters per unit for all linear measurements in the stage.
+//! @param linearUnits The meters per unit for all linear measurements in the stage, eg. `UsdGeomLinearUnits::meters`
 //! @param authoringMetadata The provenance information from the host application. See @ref layers for details.
 //!    If the "creator" key already exists, it will not be overwritten & this data will be ignored.
 //! @param fileFormatArgs Additional file format-specific arguments to be supplied during Stage creation.
@@ -93,8 +93,8 @@ USDEX_API pxr::UsdStageRefPtr createStage(
 //! @param stage The stage to be configured.
 //! @param defaultPrimName Name of the default root prim.
 //! @param upAxis The up axis for all the geometry contained in the stage.
-//! @param linearUnits The meters per unit for all linear measurements in the stage.
-//! @param massUnits The kilograms per unit for all mass measurements in the stage.
+//! @param linearUnits The meters per unit for all linear measurements in the stage, eg. `UsdGeomLinearUnits::meters`
+//! @param massUnits The kilograms per unit for all mass measurements in the stage, eg. `UsdPhysicsMassUnits::kilograms`
 //! @param authoringMetadata The provenance information from the host application. See @ref layers for details.
 //! @returns A bool indicating if the metadata was successfully authored.
 USDEX_API bool configureStage(
@@ -113,7 +113,7 @@ USDEX_API bool configureStage(
 //! @param stage The stage to be configured.
 //! @param defaultPrimName Name of the default root prim.
 //! @param upAxis The up axis for all the geometry contained in the stage.
-//! @param linearUnits The meters per unit for all linear measurements in the stage.
+//! @param linearUnits The meters per unit for all linear measurements in the stage, eg. `UsdGeomLinearUnits::meters`
 //! @param authoringMetadata The provenance information from the host application. See @ref layers for details.
 //! @returns A bool indicating if the metadata was successfully authored.
 USDEX_API bool configureStage(
