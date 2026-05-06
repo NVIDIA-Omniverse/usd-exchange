@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -502,6 +502,8 @@ void bindPhysicsJointAlgo(module& m)
                 frame: Specifies the position and rotation of the joint in the specified coordinate system.
                 axis: The axis of the joint.
 
+            Returns:
+                ``None``
         )"
     );
 
@@ -537,6 +539,8 @@ void bindPhysicsJointAlgo(module& m)
                 frame: Specifies the position and rotation of the joint in the specified coordinate system.
                 axis: The axis of the joint.
 
+            Returns:
+                ``None``
         )"
     );
 }

@@ -107,6 +107,9 @@ void bindStageAlgo(module& m)
                 authoringMetadata: The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
                     If the "creator" key already exists on a given layer, it will not be overwritten & this data will be ignored.
                 comment: The comment will be authored in all dirty layers as the ``Sdf.Layer`` comment.
+
+            Returns:
+                ``None``
         )"
     );
 

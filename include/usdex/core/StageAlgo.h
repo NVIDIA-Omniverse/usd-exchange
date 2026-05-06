@@ -138,6 +138,7 @@ USDEX_API bool configureStage(
 //! @param authoringMetadata The provenance information from the host application. See @ref layers for details.
 //!    If the "creator" key already exists on a given layer, it will not be overwritten & this data will be ignored.
 //! @param comment The comment will be authored in all dirty layers as the `Sdf.Layer` comment.
+//! @returns `void`
 USDEX_API void saveStage(
     pxr::UsdStagePtr stage,
     std::optional<std::string_view> authoringMetadata = std::nullopt,

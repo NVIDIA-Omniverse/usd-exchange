@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -63,6 +63,9 @@ void bindDiagnostics(module& m)
                 Use of this ``Delegate`` is entirely optional and it is not activated by default when loading this module. To active it, client code
                 must explicitly call ``activateDiagnosticsDelegate()``. This is to allow clients to opt-in and to prevent double printing for clients
                 that already have their own ``TfDiagnosticMgr::Delegate`` implementation.
+
+            Returns:
+                ``None``
         )"
     );
 
@@ -73,6 +76,9 @@ void bindDiagnostics(module& m)
             Deactivates the ``Delegate`` to restore default ``TfDiagnostics`` handling.
 
             When deactivated, the default ``TfDiagnosticMgr`` printing is restored, unless some other ``Delegate`` is still active.
+
+            Returns:
+                ``None``
         )"
     );
 
@@ -87,6 +93,9 @@ void bindDiagnostics(module& m)
 
             Args:
                 value: The highest severity ``DiagnosticsLevel`` that should be emitted.
+
+            Returns:
+                ``None``
         )"
     );
 
@@ -129,6 +138,9 @@ void bindDiagnostics(module& m)
 
             Args:
                 value: The stream to which all diagnostics should be emitted.
+
+            Returns:
+                ``None``
         )"
     );
 

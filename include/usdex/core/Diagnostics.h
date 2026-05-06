@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -66,12 +66,14 @@ USDEX_API bool isDiagnosticsDelegateActive();
 //! See @ref diagnostics for more details.
 //!
 //! @note The delegate is not active when this module loads. Clients must explicitly call this function to activate it.
+//! @returns `void`
 USDEX_API void activateDiagnosticsDelegate();
 
 //! Deactivates the `Delegate` to restore default `TfDiagnostics` handling.
 //!
 //! When deactivated, the default `TfDiagnosticMgr` printing is restored, unless some other `Delegate` is still active.
 //! See @ref diagnostics for more details.
+//! @returns `void`
 USDEX_API void deactivateDiagnosticsDelegate();
 
 //! Set the `DiagnosticsLevel` for the `Delegate` to filter `TfDiagnostics` by severity.
@@ -80,6 +82,7 @@ USDEX_API void deactivateDiagnosticsDelegate();
 //! See @ref diagnostics for more details.
 //!
 //! @param value The highest severity `DiagnosticsLevel` that should be emitted.
+//! @returns `void`
 USDEX_API void setDiagnosticsLevel(DiagnosticsLevel value);
 
 //! Get the current `DiagnosticsLevel` for the `Delegate`.
@@ -102,6 +105,7 @@ USDEX_API DiagnosticsLevel getDiagnosticLevel(pxr::TfDiagnosticType code);
 //! See @ref diagnostics for more details.
 //!
 //! @param value The stream to which all diagnostics should be emitted.
+//! @returns `void`
 USDEX_API void setDiagnosticsOutputStream(DiagnosticsOutputStream value);
 
 //! Get the current `DiagnosticsOutputStream` for the `Delegate`.
