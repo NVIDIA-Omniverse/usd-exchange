@@ -128,7 +128,7 @@ We provide a templated [`PrimvarData` class](../api/group__primvars.rebreather_r
 
 All of our USD authoring "define" functions for `UsdGeomPointBased` prims accept optional `PrimvarData` to define e.g normals, display colors, etc.
 
-The `PrimvarData` class also supports reading from (and authoring to) any existing `UsdGeomPrimvar`, which may have been created via OpenUSD's [UsdGeomPrimvarsAPI](https://openusd.org/release/api/class_usd_geom_primvars_a_p_i.html).
+The `PrimvarData` class also supports reading from (and authoring to) any existing `UsdGeomPrimvar`, which may have been created via OpenUSD's [UsdGeomPrimvarsAPI](https://openusd.org/release/api/class_usd_geom_primvars_a_p_i.html), as well as self-validation and automated values indexing.
 
 ## Working with 3D Transformation
 
