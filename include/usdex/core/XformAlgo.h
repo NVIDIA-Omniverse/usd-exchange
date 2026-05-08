@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -215,6 +215,7 @@ USDEX_API pxr::GfMatrix4d getLocalTransformMatrix(const pxr::UsdGeomXformable& x
 //! @param rotationOrder Rotation order the rotation result.
 //! @param scale Scale result.
 //! @param time Time at which to query the value.
+//! @returns `void`
 USDEX_API void getLocalTransformComponents(
     const pxr::UsdPrim& prim,
     pxr::GfVec3d& translation,
@@ -234,6 +235,7 @@ USDEX_API void getLocalTransformComponents(
 //! @param rotationOrder Rotation order the rotation result.
 //! @param scale Scale result.
 //! @param time Time at which to query the value.
+//! @returns `void`
 USDEX_API void getLocalTransformComponents(
     const pxr::UsdGeomXformable& xformable,
     pxr::GfVec3d& translation,
@@ -252,6 +254,7 @@ USDEX_API void getLocalTransformComponents(
 //! @param orientation Orientation result as a quaternion.
 //! @param scale Scale result.
 //! @param time Time at which to query the value.
+//! @returns `void`
 USDEX_API void getLocalTransformComponentsQuat(
     const pxr::UsdPrim& prim,
     pxr::GfVec3d& translation,
@@ -269,6 +272,7 @@ USDEX_API void getLocalTransformComponentsQuat(
 //! @param orientation Orientation result as a quaternion.
 //! @param scale Scale result.
 //! @param time Time at which to query the value.
+//! @returns `void`
 USDEX_API void getLocalTransformComponentsQuat(
     const pxr::UsdGeomXformable& xformable,
     pxr::GfVec3d& translation,

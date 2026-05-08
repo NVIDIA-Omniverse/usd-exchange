@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -386,6 +386,7 @@ USDEX_API pxr::UsdPhysicsSphericalJoint definePhysicsSphericalJoint(
 //! @param joint The joint to align
 //! @param frame The position and rotation of the joint in the specified coordinate system.
 //! @param axis The axis of the joint.
+//! @returns `void`
 USDEX_API void alignPhysicsJoint(pxr::UsdPhysicsJoint joint, const JointFrame& frame, const pxr::GfVec3f& axis = pxr::GfVec3f(1.0f, 0.0f, 0.0f));
 
 //! Connects an existing joint to the specified body prims and realigns the joint frame accordingly.
@@ -410,6 +411,7 @@ USDEX_API void alignPhysicsJoint(pxr::UsdPhysicsJoint joint, const JointFrame& f
 //! @param body1 The second body of the joint
 //! @param frame The position and rotation of the joint in the specified coordinate system.
 //! @param axis The axis of the joint.
+//! @returns `void`
 USDEX_API void connectPhysicsJoint(
     pxr::UsdPhysicsJoint joint,
     const pxr::UsdPrim& body0,

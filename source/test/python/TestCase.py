@@ -84,6 +84,9 @@ class TestCase(unittest.TestCase):
             issuePredicates: Optional ``List`` of additional callables - ``func(issue)`` that are used to check if the issue can be bypassed.
                 The default list of IssuePredicates will always be enabled.
             msg: Optional message to report while validation failed.
+
+        Returns:
+            ``None``
         """
 
         ips = []
@@ -104,6 +107,9 @@ class TestCase(unittest.TestCase):
         Args:
             asset: The Asset to validate. Either a ``Usd.Stage`` object or a path to a USD Layer.
             issuePredicates (List): List of ``omni.asset_validator.IssuePredicates``.
+
+        Returns:
+            ``None``
         """
         issues = self.__validateUsd(asset=asset, engine=self.validationEngine)
 
@@ -137,6 +143,9 @@ class TestCase(unittest.TestCase):
         Args:
             layer: The ``Sdf.Layer`` to check
             encoding: The expected encoding type (e.g. 'usda', 'usdc')
+
+        Returns:
+            ``None``
         """
         self.assertEqual(usdex.core.getUsdLayerEncoding(layer), encoding)
 
@@ -146,6 +155,9 @@ class TestCase(unittest.TestCase):
         Args:
             layer: The ``Sdf.Layer`` to check
             identifier: The expected identifier string
+
+        Returns:
+            ``None``
         """
         # Resolve paths to normalize casing and then make them into posix paths, this removes platform specific variations
         expected = pathlib.Path(identifier).resolve().as_posix()
@@ -158,6 +170,9 @@ class TestCase(unittest.TestCase):
         Args:
             attr: The ``Usd.Attribute`` to check
             time: The ``Usd.TimeCode`` at which to check for an authored value (default: ``Usd.TimeCode.Default()``)
+
+        Returns:
+            ``None``
         """
         if time == Usd.TimeCode.Default():
             self.assertIsNotNone(attr.Get(time))
@@ -172,6 +187,9 @@ class TestCase(unittest.TestCase):
             first: The first matrix to compare
             second: The second matrix to compare
             places: The number of decimal places to compare to (default: 12)
+
+        Returns:
+            ``None``
         """
         self.assertTrue(Gf.IsClose(first, second, 10 ** (-places)))
 
@@ -186,6 +204,9 @@ class TestCase(unittest.TestCase):
             rot1: The first rotation to compare
             rot2: The second rotation to compare
             tolerance: A non-negative threshold for comparing values (default: 1e-6)
+
+        Returns:
+            ``None``
         """
         # Enforce identical concrete type without direct type comparison triggering E721.
         if not (isinstance(rot1, type(rot2)) and isinstance(rot2, type(rot1))):
@@ -218,6 +239,9 @@ class TestCase(unittest.TestCase):
             first: The first Vec to compare
             second: The second Vec to compare
             places: The number of decimal places to compare to (default: 12)
+
+        Returns:
+            ``None``
         """
         self.assertTrue(Gf.IsClose(first, second, 10 ** (-places)))
 

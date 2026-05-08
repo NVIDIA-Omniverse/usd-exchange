@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -280,76 +280,91 @@ public:
     //! Update the reserved child names for a prim to include existing children.
     //!
     //! @param parent The parent prim.
+    //! @returns `void`
     void updatePrimNames(const pxr::UsdPrim& parent);
 
     //! Update the reserved child names for a prim to include existing children.
     //!
     //! @param parent The parent prim spec.
+    //! @returns `void`
     void updatePrimNames(const pxr::SdfPrimSpecHandle parent);
 
     //! Update the reserved property names for a prim to include existing properties.
     //!
     //! @param parent The parent prim.
+    //! @returns `void`
     void updatePropertyNames(const pxr::UsdPrim& parent);
 
     //! Update the reserved property names for a prim to include existing properties.
     //!
     //! @param parent The parent prim spec.
+    //! @returns `void`
     void updatePropertyNames(const pxr::SdfPrimSpecHandle parent);
 
     //! Update the reserved child and property names for a prim to include existing children and properties.
     //!
     //! @param parent The parent prim.
+    //! @returns `void`
     void update(const pxr::UsdPrim& parent);
 
     //! Update the reserved child and property names for a prim to include existing children and properties.
     //!
     //! @param parent The parent prim spec.
+    //! @returns `void`
     void update(const pxr::SdfPrimSpecHandle parent);
 
     //! Clear the reserved child names for a prim.
     //!
     //! @param parent The parent prim path
+    //! @returns `void`
     void clearPrimNames(const pxr::SdfPath& parent);
 
     //! Clear the reserved child names for a prim.
     //!
     //! @param parent The parent prim
+    //! @returns `void`
     void clearPrimNames(const pxr::UsdPrim& parent);
 
     //! Clear the reserved child names for a prim.
     //!
     //! @param parent The parent prim spec
+    //! @returns `void`
     void clearPrimNames(const pxr::SdfPrimSpecHandle parent);
 
     //! Clear the reserved property names for a prim.
     //!
     //! @param parent The parent prim path
+    //! @returns `void`
     void clearPropertyNames(const pxr::SdfPath& parent);
 
     //! Clear the reserved property names for a prim.
     //!
     //! @param parent The parent prim
+    //! @returns `void`
     void clearPropertyNames(const pxr::UsdPrim& parent);
 
     //! Clear the reserved property names for a prim.
     //!
     //! @param parent The parent prim spec
+    //! @returns `void`
     void clearPropertyNames(const pxr::SdfPrimSpecHandle parent);
 
     //! Clear the reserved prim and property names for a prim.
     //!
     //! @param parent The parent prim path
+    //! @returns `void`
     void clear(const pxr::SdfPath& parent);
 
     //! Clear the reserved prim and property names for a prim.
     //!
     //! @param parent The parent prim
+    //! @returns `void`
     void clear(const pxr::UsdPrim& parent);
 
     //! Clear the reserved prim and property names for a prim.
     //!
     //! @param parent The parent prim spec
+    //! @returns `void`
     void clear(const pxr::SdfPrimSpecHandle parent);
 
 private:
@@ -395,11 +410,13 @@ public:
     //! This does not clear the cache, so any names that have been previously returned will still be reserved.
     //!
     //! @param prim The prim that child names should be updated for.
+    //! @returns `void`
     void update(const pxr::UsdPrim& prim);
 
     //! Clear the name cache for a Prim.
     //!
     //! @param prim The prim that child names should be cleared for.
+    //! @returns `void`
     void clear(const pxr::UsdPrim& prim);
 
 private:

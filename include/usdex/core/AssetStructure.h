@@ -61,9 +61,14 @@ namespace usdex::core
 //! - [Scopes](https://openusd.org/release/api/class_usd_geom_scope.html)
 //! - [References](https://openusd.org/release/glossary.html#usdglossary-references)
 //! - [Payloads](https://openusd.org/release/glossary.html#usdglossary-payload)
+//! - [Xforms](https://openusd.org/release/api/class_usd_geom_xform.html)
 //!
 //! While Scopes are easily defined using UsdGeom, it is easy to forget to check if the target location is editable.
 //! `usdex::core::defineScope` prevents this simple mistake.
+//!
+//! It is important that assets intended to be placeable within larger assemblies have an Xform or
+//! [Xformable](https://openusd.org/release/api/class_usd_geom_xformable.html#details) type.
+//! `usdex::core::defineXform` should be used on the default prim of placeable assets.
 //!
 //! References and Payloads can be more complex. The `usdex::core::defineReference` and `usdex::core::definePayload` functions
 //! provide a simple interface to create them, ensuring to author a relative `AssetPath` whenever possible (for portability).
@@ -204,6 +209,8 @@ USDEX_API const pxr::TfToken& getTexturesToken();
 //! Defines a scope on the stage.
 //!
 //! A scope is a simple grouping primitive that is useful for organizing prims in a scene.
+//! Scopes are not Xformable, so they are appropriate for organizing prims beneath a placeable
+//! root, not for the default prim of a placeable asset (use `defineXform` for that).
 //!
 //! @param stage The stage on which to define the scope
 //! @param path The absolute prim path at which to define the scope

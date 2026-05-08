@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -384,6 +384,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -397,6 +399,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -410,6 +414,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -423,6 +429,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -436,6 +444,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -449,6 +459,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -462,6 +474,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim path
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -475,6 +489,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim path
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -488,6 +504,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim path
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -501,6 +519,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim path
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -514,6 +534,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -527,6 +549,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim spec
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -540,6 +564,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim path
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -553,6 +579,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim
 
+                Returns:
+                    ``None``
             )"
         )
 
@@ -566,6 +594,8 @@ void bindNameAlgo(module& m)
                 Parameters:
                     - **parent** - The parent prim spec
 
+                Returns:
+                    ``None``
             )"
         );
 
@@ -639,6 +669,9 @@ void bindNameAlgo(module& m)
 
             Args:
                 prim: The prim that child names should be updated for.
+
+            Returns:
+                ``None``
         )"
         )
 
@@ -651,6 +684,9 @@ void bindNameAlgo(module& m)
 
             Args:
                 prim: The prim that child names should be cleared for.
+
+            Returns:
+                ``None``
         )"
         );
 

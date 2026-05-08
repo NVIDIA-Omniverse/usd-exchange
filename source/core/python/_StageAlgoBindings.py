@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 __all__ = ["createStage"]
@@ -32,10 +32,10 @@ def createStage(
         identifier: The identifier to be used for the root layer of this stage.
         defaultPrimName: Name of the root prim root prim.
         upAxis: The up axis for all the geometry contained in the stage.
-        linearUnits: The meters per unit for all linear measurements in the stage.
+        linearUnits: The meters per unit for all linear measurements in the stage, eg. `UsdGeom.LinearUnits.meters`
         authoringMetadata: The provenance information from the host application. See `setLayerAuthoringMetadata` for details.
         fileFormatArgs: Additional file format-specific arguments to be supplied during Stage creation.
-        massUnits: The kilograms per unit for all mass measurements in the stage. If not provided, the default value will be used.
+        massUnits: The kilograms per unit for all mass measurements in the stage, defaults to `UsdPhysics.MassUnits.kilograms`.
 
     Returns:
         The newly created stage or None

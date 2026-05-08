@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -65,6 +65,7 @@ USDEX_API bool hasLayerAuthoringMetadata(const pxr::SdfLayerHandle layer);
 //!
 //! @param layer The layer to modify
 //! @param value The provenance information for this layer
+//! @returns `void`
 USDEX_API void setLayerAuthoringMetadata(pxr::SdfLayerHandle layer, const std::string& value);
 
 //! Get metadata from the `SdfLayer` indicating the provenance of the data.

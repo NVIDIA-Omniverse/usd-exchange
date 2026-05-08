@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -48,8 +48,8 @@ void bindStageAlgo(module& m)
                 - **stage** - The stage to be configured.
                 - **defaultPrimName** - Name of the default root prim.
                 - **upAxis** - The up axis for all the geometry contained in the stage.
-                - **linearUnits** - The meters per unit for all linear measurements in the stage.
-                - **massUnits** - The kilograms per unit for all mass measurements in the stage.
+                - **linearUnits** - The meters per unit for all linear measurements in the stage, eg. ``UsdGeom.LinearUnits.meters``
+                - **massUnits** - The kilograms per unit for all mass measurements in the stage, eg. ``UsdPhysics.MassUnits.kilograms``
                 - **authoringMetadata** - The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
 
             Returns:
@@ -76,7 +76,7 @@ void bindStageAlgo(module& m)
                 - **stage** - The stage to be configured.
                 - **defaultPrimName** - Name of the default root prim.
                 - **upAxis** - The up axis for all the geometry contained in the stage.
-                - **linearUnits** - The meters per unit for all linear measurements in the stage.
+                - **linearUnits** - The meters per unit for all linear measurements in the stage, eg. ``UsdGeom.LinearUnits.meters``
                 - **authoringMetadata** - The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
 
             Returns:
@@ -107,6 +107,9 @@ void bindStageAlgo(module& m)
                 authoringMetadata: The provenance information from the host application. See ``setLayerAuthoringMetadata`` for details.
                     If the "creator" key already exists on a given layer, it will not be overwritten & this data will be ignored.
                 comment: The comment will be authored in all dirty layers as the ``Sdf.Layer`` comment.
+
+            Returns:
+                ``None``
         )"
     );
 

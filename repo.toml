@@ -235,17 +235,21 @@ autodoc_member_order = 'bysource'
 extensions += ["autodocsumm"] # enables :autosummary: flag in automodule directives
 """
 sphinx_exclude_patterns = [
+    "AGENTS.md",
     "CHANGELOG.md",
     "CITATION.md",
+    "CLAUDE.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "LICENSE.md",
     "SECURITY.md",
     "_build",
     "_install",
-    ".gitlab",
-    ".github",
+    ".agents",
     ".cache",
+    ".github",
+    ".gitlab",
+    "tools/docs/skills-prompt.md",
     "usd-exchange-ci",  # exists in CI
 ]
 use_fast_doxygen_conversion = true

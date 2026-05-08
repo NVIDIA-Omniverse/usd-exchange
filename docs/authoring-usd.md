@@ -103,7 +103,7 @@ The role of a "define" function is to:
 - Ensure all opinions that contribute to the Prim's definition will be explicitly authored in a single Layer.
 
 To learn about each of the "define" functions in more detail, see the specific documentation:
-- [Xforms](../api/group__xform.rebreather_rst) (specific placement prims)
+- [Xforms](../api/group__xform.rebreather_rst) (placement prims; the typical default prim of a placeable asset)
 - [Polygon Meshes](../api/group__mesh.rebreather_rst)
 - [Point Clouds / Particles](../api/group__points.rebreather_rst)
 - [Lines and Curves](../api/group__curves.rebreather_rst)
@@ -128,7 +128,7 @@ We provide a templated [`PrimvarData` class](../api/group__primvars.rebreather_r
 
 All of our USD authoring "define" functions for `UsdGeomPointBased` prims accept optional `PrimvarData` to define e.g normals, display colors, etc.
 
-The `PrimvarData` class also supports reading from (and authoring to) any existing `UsdGeomPrimvar`, which may have been created via OpenUSD's [UsdGeomPrimvarsAPI](https://openusd.org/release/api/class_usd_geom_primvars_a_p_i.html).
+The `PrimvarData` class also supports reading from (and authoring to) any existing `UsdGeomPrimvar`, which may have been created via OpenUSD's [UsdGeomPrimvarsAPI](https://openusd.org/release/api/class_usd_geom_primvars_a_p_i.html), as well as self-validation and automated values indexing.
 
 ## Working with 3D Transformation
 
@@ -172,6 +172,10 @@ In particular, we provide functions for:
 - Creating the Atomic Component structure proposed in the article
   - Creating and organizing Content Layers and Library Layers in a consistent manner
   - Configuring an Asset Interface Layer, which payload's the content for deferred loading, while still exposing key metadata to the consumer
+
+When you convert a source asset (an OBJ, STL, FBX, URDF, CAD file, etc.) into USD, the result is meant to be *placed* into larger scenes -- referenced into assemblies, instanced into synthetic-data layouts, posed by simulators, transformed by users. The asset's default prim therefore needs to be **placeable**: an [Xformable](https://openusd.org/release/api/class_usd_geom_xformable.html#details) prim that can accept a transform when it is referenced or payloaded into a parent stage. The simplest placeable default prim is an `Xform`, defined via `usdex::core::defineXform`, with geometry, materials, lights, and physics authored beneath it.
+
+For reusable assets, also classify the default prim with [Kind](https://openusd.org/release/glossary.html#usdglossary-kind) -- typically [Component](https://openusd.org/release/glossary.html#usdglossary-component) for atomic models or [Assembly](https://openusd.org/release/glossary.html#usdglossary-assembly) for compositions of components. This is what lets DCCs, simulators, and asset browsers treat the conversion output as a first-class model rather than an opaque grouping. The `usdex_core` library provides `configureComponentHierarchy` and `configureAssemblyHierarchy` to set this up correctly across the prim and its descendants.
 
 ## Diagnostic Logs
 
