@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Geometry
 
 `SKILL.md` (rules) is in context. Covers meshes, curves, point clouds, basic gprims, primvars, and transforms. Headers: `MeshAlgo.h`, `CurvesAlgo.h`, `PointsAlgo.h`, `GprimAlgo.h`, `PrimvarData.h`, `XformAlgo.h`.

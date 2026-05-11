@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Diagnostics and Testing
 
 `SKILL.md` (rules) is in context. Covers the SDK's diagnostic delegate, `TF_DEBUG`, the `usdex.test` Python module, `usdex/test/*.h` C++ utilities, and the [Omniverse Asset Validator](../../docs/devtools.md#asset-validator).

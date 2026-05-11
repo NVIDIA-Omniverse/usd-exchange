@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Asset Structure
 
 `SKILL.md` (rules) is in context. Header: `usdex/core/AssetStructure.h`. Implements [NVIDIA's Principles of Scalable Asset Structure](https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html); treat as a sample implementation if a target pipeline diverges.

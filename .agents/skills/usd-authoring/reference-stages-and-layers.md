@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Stages and Layers
 
 `SKILL.md` (rules) is in context. Headers: `usdex/core/StageAlgo.h`, `usdex/core/LayerAlgo.h`.

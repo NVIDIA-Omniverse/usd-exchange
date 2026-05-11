@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Lights
 
 `SKILL.md` (rules) is in context. Header: `usdex/core/LightAlgo.h`. The SDK helpers cover dome and rect lights specifically; for distant / sphere / cylinder / disk / geometry lights, author raw `UsdLux*` schema and place under a `defineXform` parent.

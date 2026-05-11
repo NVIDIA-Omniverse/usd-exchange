@@ -2,6 +2,8 @@
 name: getting-started
 description: Bootstrap a new project that uses the OpenUSD Exchange SDK. Read this before installing, before creating a project, and before running anything for the first time.
 ---
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # Getting Started — OpenUSD Exchange SDK
 

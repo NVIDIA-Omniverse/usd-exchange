@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Names
 
 `SKILL.md` (rules) is in context. Header: `usdex/core/NameAlgo.h`. The non-negotiable is firm: route every prim and property name through this module — never pass a string literal as a `name=` or `defaultPrimName=` argument.
