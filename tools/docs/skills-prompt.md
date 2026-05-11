@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Skills Generation Prompt
 
 Generate or update skill files for users of this SDK/repository based on the current branch. The skills target Physical AI developers writing data converters that emit OpenUSD via the OpenUSD Exchange SDK.
@@ -35,6 +38,22 @@ The literal filename `SKILL.md` is the Cursor / Anthropic Claude Skills auto-dis
 
 If it is absolutely necessary for Claude agents, add a root `CLAUDE.md` containing only `@AGENTS.md`. Otherwise omit it.
 
+## License headers
+
+Every file you create or update — `AGENTS.md`, `CLAUDE.md`, every `SKILL.md`, every `reference-*.md` — must carry an Apache-2.0 SPDX header that matches the rest of the repository. Markdown files use HTML comments so the header does not render. The two lines are exactly:
+
+```
+<!-- SPDX-FileCopyrightText: Copyright (c) <year> NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+```
+
+Placement:
+
+- Files without YAML frontmatter (`AGENTS.md`, `CLAUDE.md`, every `reference-*.md`): the two SPDX lines are the first two lines of the file, followed by a blank line, followed by the first heading.
+- Files with YAML frontmatter (`getting-started/SKILL.md`, `usd-authoring/SKILL.md`): the file **must** begin with `---` so the frontmatter parses. Place the two SPDX lines immediately after the closing `---` of the frontmatter, followed by a blank line, followed by the first heading.
+
+Year handling: use the current year for newly-created files. When updating an existing file whose header has an older year, extend it to a range (e.g. `2025-2026`). Do not invent multi-year ranges for files you are creating from scratch.
+
 ## Reference Decoupling Inside `usd-authoring`
 
 Each domain becomes its own `reference-<domain>.md` inside `.agents/skills/usd-authoring/`. Use the C++ `@defgroup` sections in the headers as a loose guide for which domains to split. **Physics, lights, and cameras must each have their own reference file** -- never group them together (e.g. no "scene elements" reference).
@@ -67,6 +86,8 @@ After all files are written, search the generated files for the strings below. *
 - Calls to `definePolyMesh` / `defineLinearBasisCurves` / `defineCubicBasisCurves` / `definePointCloud` whose `normals=` / `uvs=` / `widths=` / `displayColor=` / `displayOpacity=` / `ids=` arguments are not wrapped in `*PrimvarData`.
 
 If any hit remains in code, fix or delete that snippet before reporting completion.
+
+Also confirm every generated file begins with the two-line SPDX header described under **License headers** (after the YAML frontmatter for the two `SKILL.md` files, at line 1 for every other file). A missing or malformed header is a generation failure.
 
 ## Brevity
 

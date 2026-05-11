@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Physics
 
 `SKILL.md` (rules) is in context. Headers: `usdex/core/PhysicsJointAlgo.h`, `usdex/core/PhysicsMaterialAlgo.h`. Geometry and visual materials are in their own files.

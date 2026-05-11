@@ -2,6 +2,8 @@
 name: usd-authoring
 description: Author USD content with the OpenUSD Exchange SDK. Use whenever you import usdex.core, usdex.rtx, or usdex.test (Python) or include any usdex/* C++ headers, or when you read/write Usd.Stage / Sdf.Layer / UsdPrim / UsdGeom* / UsdLux* / UsdShade* / UsdPhysics* data via the SDK.
 ---
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # USD Authoring with the OpenUSD Exchange SDK
 

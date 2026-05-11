@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Reference: Materials
 
 `SKILL.md` (rules) is in context. Covers `usdex.core` Preview Materials, `usdex.rtx` MDL Materials, color space utilities, and bindings. Physics materials are in `reference-physics.md`.
