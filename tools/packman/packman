@@ -27,7 +27,7 @@ else
 	PM_CURL_SILENT="-s -S"
 	PM_WGET_QUIET="--quiet"
 fi
-export PM_PACKMAN_VERSION=7.34
+export PM_PACKMAN_VERSION=7.35
 
 
 cleanup() {
@@ -150,6 +150,8 @@ main() {
             PYTHON_PACKAGE=$PYTHON_VERSION-linux-x86_64
         elif [ $PLATFORM == 'Linux' ] && [ $PROCESSOR == 'aarch64' ]; then
             PYTHON_PACKAGE=$PYTHON_VERSION-linux-aarch64
+        elif [[ $PLATFORM =~ ^MINGW.* ]] && [ $PROCESSOR == 'x86_64' ]; then
+            PYTHON_PACKAGE=$PYTHON_VERSION-windows-x86_64
         else
             echo "Operating system not supported"
             return 1

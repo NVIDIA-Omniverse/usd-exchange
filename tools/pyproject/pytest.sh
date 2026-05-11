@@ -5,7 +5,7 @@ set -e
 # Setup the build environment
 VENV=./_build/tests/venv
 echo "Building: $VENV"
-if [ -d $VENV ]; then
+if [[ -d $VENV ]]; then
     rm -rf $VENV
 fi
 ./_build/target-deps/python/python3 -m venv "$VENV"

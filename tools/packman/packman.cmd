@@ -75,8 +75,7 @@ if %errorlevel% equ 0 (
 :: trim leading space (this is safe even when PM_OLD_CODE_PAGE has not been set)
 set PM_OLD_CODE_PAGE=%PM_OLD_CODE_PAGE:~1%
 if "%PM_OLD_CODE_PAGE%" equ "65001" (
-	chcp 437 > nul
-	set PM_RESTORE_CODE_PAGE=1
+	chcp 437 > nul 2>&1 && set PM_RESTORE_CODE_PAGE=1
 )
 call "%~dp0\bootstrap\configure.bat"
 set PM_CONFIG_ERRORLEVEL=%errorlevel%

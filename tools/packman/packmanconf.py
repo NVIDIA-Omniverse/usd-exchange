@@ -89,7 +89,7 @@ def get_packages_root(conf_dir: str) -> str:
             )
         elif platform_name == "Linux":
             try:
-                cache_root = os.environ["XDG_HOME_CACHE"]
+                cache_root = os.environ["XDG_CACHE_HOME"]
             except KeyError:
                 cache_root = os.path.join(os.path.expanduser("~"), ".cache")
             return os.path.join(cache_root, "packman")
