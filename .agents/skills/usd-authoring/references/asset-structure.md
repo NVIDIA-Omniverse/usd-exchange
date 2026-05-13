@@ -3,7 +3,7 @@
 
 # Reference: Asset Structure
 
-`SKILL.md` (rules) is in context. Header: `usdex/core/AssetStructure.h`. Implements [NVIDIA's Principles of Scalable Asset Structure](https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html); treat as a sample implementation if a target pipeline diverges.
+`SKILL.md` (rules) is in context. Header: `usdex/core/AssetStructure.h`. Implements [NVIDIA's Principles of Scalable Asset Structure](https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html.md); treat as a sample implementation if a target pipeline diverges.
 
 ## Placeable default prim
 

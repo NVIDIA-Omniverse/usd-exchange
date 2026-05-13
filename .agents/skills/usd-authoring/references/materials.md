@@ -3,7 +3,7 @@
 
 # Reference: Materials
 
-`SKILL.md` (rules) is in context. Covers `usdex.core` Preview Materials, `usdex.rtx` MDL Materials, color space utilities, and bindings. Physics materials are in `reference-physics.md`.
+`SKILL.md` (rules) is in context. Covers `usdex.core` Preview Materials, `usdex.rtx` MDL Materials, color space utilities, and bindings. Physics materials are in `references/physics.md`.
 
 Author materials under a dedicated scope — typically `UsdUtils.GetMaterialsScopeName()` (defaults to `Looks`) — allocated through the `NameCache` and defined with `usdex.core.defineScope`. Material prim names use the same cache flow.
 

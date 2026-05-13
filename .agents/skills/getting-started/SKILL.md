@@ -1,6 +1,11 @@
 ---
 name: getting-started
-description: Bootstrap a new project that uses the OpenUSD Exchange SDK. Read this before installing, before creating a project, and before running anything for the first time.
+description: Bootstrap a project using the OpenUSD Exchange SDK (install via wheel or install_usdex; project layout; smoke test). Do NOT use for authoring.
+version: "2.3.0"
+license: Apache-2.0
+metadata:
+  author: "NVIDIA Corporation"
+  tags: [openusd, usdex, getting-started, install]
 ---
 <!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
@@ -37,7 +42,7 @@ Create a fresh directory anywhere *outside* the `usd-exchange` clone. Recommende
 - `output/` — generated USD assets and textures.
 - `pyproject.toml` or `requirements.txt` — dependencies.
 
-For a native C++ project, follow the layout in [`docs/native-application.md`](../../docs/native-application.md): a project root with the SDK installed under `usdex/` (alongside `target-deps/usd`, `target-deps/python`, and `<platform>/<config>/lib`).
+For a native C++ project, follow the layout in [`docs/native-application.md`](../../../docs/native-application.md): a project root with the SDK installed under `usdex/` (alongside `target-deps/usd`, `target-deps/python`, and `<platform>/<config>/lib`).
 
 ## Python install (wheel)
 
@@ -91,7 +96,7 @@ cache = usdex.core.NameCache()
 stage = usdex.core.createStage("smoke.usda", usdex.core.getValidPrimName(asset_name),
     UsdGeom.GetFallbackUpAxis(), UsdGeom.LinearUnits.centimeters, AUTHORING_METADATA)
 assert stage
-root = stage.GetDefaultPrim()
+root = usdex.core.defineXform(stage.GetDefaultPrim()).GetPrim()
 usdex.core.defineXform(root, cache.getPrimName(root, probe_name),
     Gf.Transform(Gf.Matrix4d().SetTranslate(Gf.Vec3d(0, 100, 0))))
 usdex.core.saveStage(stage, AUTHORING_METADATA)

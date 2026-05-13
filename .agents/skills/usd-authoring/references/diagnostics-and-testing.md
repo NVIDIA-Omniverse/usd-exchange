@@ -3,7 +3,7 @@
 
 # Reference: Diagnostics and Testing
 
-`SKILL.md` (rules) is in context. Covers the SDK's diagnostic delegate, `TF_DEBUG`, the `usdex.test` Python module, `usdex/test/*.h` C++ utilities, and the [Omniverse Asset Validator](../../docs/devtools.md#asset-validator).
+`SKILL.md` (rules) is in context. Covers the SDK's diagnostic delegate, `TF_DEBUG`, the `usdex.test` Python module, `usdex/test/*.h` C++ utilities, and the [Omniverse Asset Validator](../../../../docs/devtools.md#asset-validator).
 
 ## Diagnostics delegate (`usdex/core/Diagnostics.h`)
 

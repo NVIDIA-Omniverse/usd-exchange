@@ -22,7 +22,7 @@ Each `define*` function below has `(stage, path, ...)`, `(parent, name, ...)`, a
 
 | Function | Notes |
 | --- | --- |
-| `definePolyMesh(..., faceVertexCounts, faceVertexIndices, points, [normals], [uvs], [displayColor], [displayOpacity])` | Authors counts, indices, points, computed `extent`; right-handed orientation (reverse winding upstream if left-handed); forces `subdivisionScheme = none`. For subdiv surfaces, define then author the subdiv attributes manually. Optional primvar args take the typed `PrimvarData` aliases. Normals are authored as `primvars:normals`. |
+| `definePolyMesh(..., faceVertexCounts, faceVertexIndices, points, [normals], [uvs], [displayColor], [displayOpacity])` | Authors counts, indices, points, computed `extent`; right-handed orientation (reverse winding upstream if left-handed); forces `subdivisionScheme = none`. For subdiv surfaces, define then author the subdiv attributes manually. Primvar args take the typed `*PrimvarData` aliases. Normals are authored as `primvars:normals`. |
 | `computeMeshNormals(faceVertexCounts, faceVertexIndices, points, [interpolation], [fallback])` | Default `interpolation` is `uniform` (face); `vertex` is area-weighted; `faceVarying` assigns each face's normal to all of its corners. Returns `Vec3fPrimvarData`; the `(mesh, ...)` overload updates in place. Fall back only when source has no normals. |
 | `definePartitionedSubsets` / `defineNonOverlappingSubsets` / `defineUnrestrictedSubsets(mesh, names, indices)` | Every-element / disjoint / overlapping. Default `elementType=face`, `familyName=materialBind`. Bind via `bindMaterialSubsets(subsets, materials)` (parallel vectors). |
 | `defineLinearBasisCurves(..., curveVertexCounts, points, [wrap], [widths], [normals], [displayColor], [displayOpacity])` | `wrap`: `nonperiodic` (default) / `periodic`. |
@@ -35,7 +35,7 @@ Each `define*` function below has `(stage, path, ...)`, `(parent, name, ...)`, a
 
 ## Primvar data (`PrimvarData.h`)
 
-Wrap every primvar payload in a `PrimvarData` (or typed alias). Construct `(interpolation, values)` non-indexed or `(interpolation, values, indices)` indexed. Validation deferred to `isValid()`.
+Wrap every primvar payload in the matching typed alias (`Vec3fPrimvarData`, `Vec2fPrimvarData`, `FloatPrimvarData`, `Int64PrimvarData`, `IntPrimvarData`, `TokenPrimvarData`, `StringPrimvarData`). The bare `PrimvarData` is the C++ template `usdex::core::PrimvarData<T>` and is not a Python public symbol — Python code references the aliases only. Construct `(interpolation, values)` non-indexed or `(interpolation, values, indices)` indexed; validation deferred to `isValid()`; automated indexing with `index()`.
 
 | Alias | Element | Common use |
 | --- | --- | --- |
