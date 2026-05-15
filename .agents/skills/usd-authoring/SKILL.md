@@ -1,6 +1,11 @@
 ---
 name: usd-authoring
-description: Author USD content with the OpenUSD Exchange SDK. Use whenever you import usdex.core, usdex.rtx, or usdex.test (Python) or include any usdex/* C++ headers, or when you read/write Usd.Stage / Sdf.Layer / UsdPrim / UsdGeom* / UsdLux* / UsdShade* / UsdPhysics* data via the SDK.
+description: Author USD content via OpenUSD Exchange helpers (usdex.core, usdex.rtx, usdex.test). Use when writing or converting USD; do NOT use for install tasks.
+version: "2.3.0"
+license: Apache-2.0
+metadata:
+  author: "NVIDIA Corporation"
+  tags: [openusd, usdex, physical-ai, converter]
 ---
 <!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
@@ -49,27 +54,28 @@ Every call to `createStage` / `configureStage` / `saveStage` / `saveLayer` / `ex
 
 ### Validation
 
-If `usdex.test` is available, regression tests should subclass `usdex.test.TestCase` and call `self.assertIsValidUsd(stage)` on every produced stage. Diagnostic-checking tests use `usdex.test.ScopedDiagnosticChecker`. Outside of tests, run the [Omniverse Asset Validator](../../docs/devtools.md#asset-validator) on output. See `reference-diagnostics-and-testing.md`.
+If `usdex.test` is available, regression tests should subclass `usdex.test.TestCase` and call `self.assertIsValidUsd(stage)` on every produced stage. Diagnostic-checking tests use `usdex.test.ScopedDiagnosticChecker`. Outside of tests, run the [Omniverse Asset Validator](../../../docs/devtools.md#asset-validator) on output. See `references/diagnostics-and-testing.md`.
 
 ## Canonical authoring flow (prose, not code)
 
 The flow below applies whether you are writing one stage or an asset library. The reference files expand each step.
 
-1. Activate the diagnostics delegate so SDK status messages stop printing to stdout. See `reference-diagnostics-and-testing.md`.
-2. Allocate a single `NameCache` for the whole conversion. Use it for every prim and property name you author. See `reference-names.md`.
+1. Activate the diagnostics delegate so SDK status messages stop printing to stdout. See `references/diagnostics-and-testing.md`.
+2. Allocate a single `NameCache` for the whole conversion. Use it for every prim and property name you author. See `references/names.md`.
 3. Define a module-level `AUTHORING_METADATA` string from the host application's identity and version. Pass it to every stage / layer call.
-4. Create the stage with `usdex.core.createStage`, supplying `defaultPrimName=getValidPrimName(asset.name)`, `upAxis`, `linearUnits` (and `massUnits` if physics is involved), and `authoringMetadata=AUTHORING_METADATA`. See `reference-stages-and-layers.md`.
-5. For placeable assets (the typical converter output), define the default prim as `Xform` via `usdex.core.defineXform` — never leave it as the `Scope` fallback that `createStage` creates. Classify reusable assets with `configureComponentHierarchy` / `configureAssemblyHierarchy` (or rely on `addAssetInterface` for the multi-layer flow). See `reference-asset-structure.md`.
+4. Create the stage with `usdex.core.createStage`, supplying `defaultPrimName=getValidPrimName(asset.name)`, `upAxis`, `linearUnits` (and `massUnits` if physics is involved), and `authoringMetadata=AUTHORING_METADATA`. See `references/stages-and-layers.md`.
+5. For placeable assets (the typical converter output), define the default prim as `Xform` via `usdex.core.defineXform` — never leave it as the `Scope` fallback that `createStage` creates. Classify reusable assets with `configureComponentHierarchy` / `configureAssemblyHierarchy` (or rely on `addAssetInterface` for the multi-layer flow). See `references/asset-structure.md`.
 6. Author content under the default prim using `usdex.core.define*` / `usdex.rtx.define*` helpers. For each prim:
     - Allocate the name through the cache.
     - Call the matching `define*` helper, passing typed data and any `PrimvarData`.
     - Apply API schemas (e.g. `UsdPhysicsRigidBodyAPI.Apply`) only after the prim is defined.
     - Set the local transform via `usdex.core.setLocalTransform` or by passing a transform to the `define*` helper.
-7. For multi-layer asset structure (Atomic Component, Library + Content + Interface layers), use `createAssetPayload` / `addAssetLibrary` / `addAssetContent` / `addAssetInterface`. See `reference-asset-structure.md`.
-8. For materials, prefer `definePreviewMaterial` for portability and `usdex.rtx.definePbrMaterial` / `defineGlassMaterial` for RTX. Bind with `bindMaterial` / `bindMaterialSubsets`. See `reference-materials.md`.
-9. For physics, define visual / collision geometry first, then apply `UsdPhysicsRigidBodyAPI` / `UsdPhysicsCollisionAPI`, define `UsdPhysics.Scene` (raw schema), and use `definePhysicsFixedJoint` / `definePhysicsRevoluteJoint` / `definePhysicsPrismaticJoint` / `definePhysicsSphericalJoint` for joints. See `reference-physics.md`.
-10. Save with `usdex.core.saveStage(stage, AUTHORING_METADATA)`. For single-layer flows, use `saveLayer` / `exportLayer` instead. See `reference-stages-and-layers.md`.
-11. Validate the result with `omni.asset_validator.ValidationEngine` or `usdex.test.TestCase.assertIsValidUsd`. See `reference-diagnostics-and-testing.md`.
+    - For mesh normals use the source-provided `Vec3fPrimvarData` when available, or compute it when the source data lacks normals. Asset Validator's `NormalsExistChecker` rejects non-subdiv meshes that have no `primvars:normals` authored. When computing, use `usdex.core.computeMeshNormals` unless a higher fidelity mesh operation library is being used as well.
+7. For multi-layer asset structure (Atomic Component, Library + Content + Interface layers), use `createAssetPayload` / `addAssetLibrary` / `addAssetContent` / `addAssetInterface`. See `references/asset-structure.md`.
+8. For materials, prefer `definePreviewMaterial` for portability and `usdex.rtx.definePbrMaterial` / `defineGlassMaterial` for RTX. Bind with `bindMaterial` / `bindMaterialSubsets`. See `references/materials.md`.
+9. For physics, define visual / collision geometry first, then apply `UsdPhysicsRigidBodyAPI` / `UsdPhysicsCollisionAPI`, define `UsdPhysics.Scene` (raw schema), and use `definePhysicsFixedJoint` / `definePhysicsRevoluteJoint` / `definePhysicsPrismaticJoint` / `definePhysicsSphericalJoint` for joints. See `references/physics.md`.
+10. Save with `usdex.core.saveStage(stage, AUTHORING_METADATA)`. For single-layer flows, use `saveLayer` / `exportLayer` instead. See `references/stages-and-layers.md`.
+11. Validate the result with `omni.asset_validator.ValidationEngine` or `usdex.test.TestCase.assertIsValidUsd`. See `references/diagnostics-and-testing.md`.
 
 ## Reference index
 
@@ -77,18 +83,18 @@ Load only the files needed for the current task; this `SKILL.md` already contain
 
 | File | Read when the task involves |
 | --- | --- |
-| `reference-stages-and-layers.md` | Creating, configuring, saving, or exporting stages / layers; choosing USDA vs USDC; layer authoring metadata; `Usd` → `Sdf` API moves in USD 25.11. |
-| `reference-names.md` | Any prim or property name; `NameCache`; `displayName` metadata; transcoding; the `USDEX_ENABLE_TRANSCODING` env setting. |
-| `reference-geometry.md` | Meshes, curves, points, basic gprims (sphere/cube/cone/cylinder/capsule/plane), subsets, primvars, normals computation. |
-| `reference-materials.md` | UsdPreviewSurface materials, RTX MDL materials, textures, material interfaces, bindings, color space, primvar shaders. |
-| `reference-asset-structure.md` | Atomic Component assets, Library / Content / Interface layers, `defineReference` / `definePayload`, scopes, kinds. |
-| `reference-physics.md` | UsdPhysics scenes, rigid bodies, colliders, joints, physics materials, friction / restitution / density. |
-| `reference-lights.md` | `UsdLuxDomeLight`, `UsdLuxRectLight`, generic `UsdLuxLightAPI` attributes, the `inputs:` rename, dome pole axis. |
-| `reference-cameras.md` | `UsdGeomCamera` via `GfCamera`. |
-| `reference-diagnostics-and-testing.md` | Diagnostics delegate, `TF_DEBUG`, `usdex.test.TestCase`, `ScopedDiagnosticChecker`, Asset Validator. |
+| `references/stages-and-layers.md` | Creating, configuring, saving, or exporting stages / layers; choosing USDA vs USDC; layer authoring metadata; `Usd` → `Sdf` API moves in USD 25.11. |
+| `references/names.md` | Any prim or property name; `NameCache`; `displayName` metadata; transcoding; the `USDEX_ENABLE_TRANSCODING` env setting. |
+| `references/geometry.md` | Meshes, curves, points, basic gprims (sphere/cube/cone/cylinder/capsule/plane), subsets, primvars, normals computation. |
+| `references/materials.md` | UsdPreviewSurface materials, RTX MDL materials, textures, material interfaces, bindings, color space, primvar shaders. |
+| `references/asset-structure.md` | Atomic Component assets, Library / Content / Interface layers, `defineReference` / `definePayload`, scopes, kinds. |
+| `references/physics.md` | UsdPhysics scenes, rigid bodies, colliders, joints, physics materials, friction / restitution / density. |
+| `references/lights.md` | `UsdLuxDomeLight`, `UsdLuxRectLight`, generic `UsdLuxLightAPI` attributes, the `inputs:` rename, dome pole axis. |
+| `references/cameras.md` | `UsdGeomCamera` via `GfCamera`. |
+| `references/diagnostics-and-testing.md` | Diagnostics delegate, `TF_DEBUG`, `usdex.test.TestCase`, `ScopedDiagnosticChecker`, Asset Validator. |
 
 ## External references
 
-- [Authoring USD Data](../../docs/authoring-usd.md) — the SDK's own authoring narrative.
+- [Authoring USD Data](../../../docs/authoring-usd.md) — the SDK's own authoring narrative.
 - [OpenUSD Exchange Samples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples) — full end-to-end converters in matched C++ and Python.
-- [Principles of Scalable Asset Structure](https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html) — background for the Asset Structure module.
+- [Principles of Scalable Asset Structure](https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html.md) — background for the Asset Structure module.

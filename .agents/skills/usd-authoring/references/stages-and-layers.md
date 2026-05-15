@@ -37,5 +37,5 @@ The canonical converter open-or-create entry point: `Sdf.Layer.FindOrOpen(identi
 | `Usd.Stage.CreateInMemory()` for a script that ultimately writes to disk | `usdex.core.createStage(...)` (anonymous identifiers are accepted) |
 | `stage.GetRootLayer().Save()` / `stage.Save()` | `usdex.core.saveStage(stage, AUTHORING_METADATA)` |
 | Hard-coded literal for `defaultPrimName` | `defaultPrimName=usdex.core.getValidPrimName(asset.name)` |
-| Ship a placeable asset whose default prim is the `Scope` fallback (or any non-`Xformable` type) | `defineXform(stage, stage.GetDefaultPrim().GetPath())` right after `createStage`; see `reference-asset-structure.md` |
+| Ship a placeable asset whose default prim is the `Scope` fallback (or any non-`Xformable` type) | `defineXform(stage, stage.GetDefaultPrim().GetPath())` right after `createStage`; see `references/asset-structure.md` |
 | Inspect `layer.identifier.endswith(".usda")` to detect encoding | `usdex.core.getUsdLayerEncoding(layer)` |
