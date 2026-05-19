@@ -3,6 +3,7 @@ name: getting-started
 description: Bootstrap a project using the OpenUSD Exchange SDK (install via wheel or install_usdex; project layout; smoke test). Do NOT use for authoring.
 version: "2.3.0"
 license: Apache-2.0
+tools: [Read, Shell]
 metadata:
   author: "NVIDIA Corporation"
   tags: [openusd, usdex, getting-started, install]
