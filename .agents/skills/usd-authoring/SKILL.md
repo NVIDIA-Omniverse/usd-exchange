@@ -3,6 +3,7 @@ name: usd-authoring
 description: Author USD content via OpenUSD Exchange helpers (usdex.core, usdex.rtx, usdex.test). Use when writing or converting USD; do NOT use for install tasks.
 version: "2.3.0"
 license: Apache-2.0
+tools: [Read]
 metadata:
   author: "NVIDIA Corporation"
   tags: [openusd, usdex, physical-ai, converter]
