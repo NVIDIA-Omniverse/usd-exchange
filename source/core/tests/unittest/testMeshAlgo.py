@@ -1580,3 +1580,198 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         self.assertTrue(prop.IsValid())
 
         self.assertIsValidUsd(stage)
+
+    def testUnusedMeshTopologyWithUnusedVertices(self):
+        stage = self.createTestStage()
+
+        vertices = [
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 50.0),
+            Gf.Vec3f(0.0, 0.0, 50.0),
+            Gf.Vec3f(100.0, 0.0, 0.0),  # Unused vertex.
+        ]
+        normals = [
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+        ]
+        face_vertex_indices = [0, 1, 2, 3]
+        face_vertex_counts = [4]
+
+        points = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, Vt.Vec3fArray(vertices))
+        normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(normals))
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Some points are not referenced by the faces.*")]):
+            usdex.core.definePolyMesh(
+                stage,
+                "/World/PlaneWithUnusedVertices",
+                faceVertexCounts=Vt.IntArray(face_vertex_counts),
+                faceVertexIndices=Vt.IntArray(face_vertex_indices),
+                points=points.values(),
+                normals=normals,
+            )
+
+    def testUnusedMeshTopologyWithUnusedNormals(self):
+        stage = self.createTestStage()
+
+        vertices = [
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 50.0),
+            Gf.Vec3f(0.0, 0.0, 50.0),
+        ]
+        normals = [
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+        ]
+        face_vertex_indices = [0, 1, 2, 3]
+        face_vertex_counts = [4]
+
+        # Has unused normals.
+        normals_indices = [0, 1, 2, 2]
+
+        points = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, Vt.Vec3fArray(vertices))
+        normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(normals), indices=Vt.IntArray(normals_indices))
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*There are values that are not referenced by the indices (normals)*")]
+        ):
+            usdex.core.definePolyMesh(
+                stage,
+                "/World/PlaneWithUnusedNormals",
+                faceVertexCounts=Vt.IntArray(face_vertex_counts),
+                faceVertexIndices=Vt.IntArray(face_vertex_indices),
+                points=points.values(),
+                normals=normals,
+            )
+
+    def testUnusedMeshTopologyWithUnusedUvs(self):
+        stage = self.createTestStage()
+
+        vertices = [
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 50.0),
+            Gf.Vec3f(0.0, 0.0, 50.0),
+        ]
+        normals = [
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+        ]
+        uvs = [
+            Gf.Vec2f(0.0, 0.0),
+            Gf.Vec2f(1.0, 0.0),
+            Gf.Vec2f(1.0, 1.0),
+            Gf.Vec2f(0.0, 1.0),
+        ]
+        face_vertex_indices = [0, 1, 2, 3]
+        face_vertex_counts = [4]
+        normals_indices = [0, 1, 2, 3]
+
+        # Has unused uvs.
+        uvs_indices = [0, 1, 2, 2]
+
+        points = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, Vt.Vec3fArray(vertices))
+        normals = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(normals), indices=Vt.IntArray(normals_indices))
+        uvs = usdex.core.Vec2fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec2fArray(uvs), indices=Vt.IntArray(uvs_indices))
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*There are values that are not referenced by the indices (uvs)*")]
+        ):
+            usdex.core.definePolyMesh(
+                stage,
+                "/World/PlaneWithUnusedUvs",
+                faceVertexCounts=Vt.IntArray(face_vertex_counts),
+                faceVertexIndices=Vt.IntArray(face_vertex_indices),
+                points=points.values(),
+                normals=normals,
+                uvs=uvs,
+            )
+
+    def testUnusedMeshTopologyWithUnusedDisplayColor(self):
+        stage = self.createTestStage()
+
+        vertices = [
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 50.0),
+            Gf.Vec3f(0.0, 0.0, 50.0),
+        ]
+        display_colors = [
+            Gf.Vec3f(0.0, 0.0, 1.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 1.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+        ]
+        face_vertex_indices = [0, 1, 2, 3]
+        face_vertex_counts = [4]
+
+        # Has unused displayColor.
+        display_colors_indices = [0, 1, 2, 2]
+
+        points = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, Vt.Vec3fArray(vertices))
+        display_color = usdex.core.Vec3fPrimvarData(
+            UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(display_colors), indices=Vt.IntArray(display_colors_indices)
+        )
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*There are values that are not referenced by the indices (displayColor)*")]
+        ):
+            usdex.core.definePolyMesh(
+                stage,
+                "/World/PlaneWithUnusedDisplayColor",
+                faceVertexCounts=Vt.IntArray(face_vertex_counts),
+                faceVertexIndices=Vt.IntArray(face_vertex_indices),
+                points=points.values(),
+                displayColor=display_color,
+            )
+
+    def testUnusedMeshTopologyWithUnusedDisplayOpacity(self):
+        stage = self.createTestStage()
+
+        vertices = [
+            Gf.Vec3f(0.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 0.0),
+            Gf.Vec3f(50.0, 0.0, 50.0),
+            Gf.Vec3f(0.0, 0.0, 50.0),
+        ]
+        display_colors = [
+            Gf.Vec3f(0.0, 0.0, 1.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+            Gf.Vec3f(0.0, 1.0, 1.0),
+            Gf.Vec3f(0.0, 1.0, 0.0),
+        ]
+        display_opacitys = [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+        ]
+        face_vertex_indices = [0, 1, 2, 3]
+        face_vertex_counts = [4]
+        display_colors_indices = [0, 1, 2, 3]
+
+        # Has unused displayOpacity.
+        display_opacitys_indices = [0, 1, 2, 2]
+
+        points = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, Vt.Vec3fArray(vertices))
+        display_color = usdex.core.Vec3fPrimvarData(
+            UsdGeom.Tokens.faceVarying, Vt.Vec3fArray(display_colors), indices=Vt.IntArray(display_colors_indices)
+        )
+        display_opacity = usdex.core.FloatPrimvarData(
+            UsdGeom.Tokens.faceVarying, Vt.FloatArray(display_opacitys), indices=Vt.IntArray(display_opacitys_indices)
+        )
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*There are values that are not referenced by the indices (displayOpacity)*")]
+        ):
+            usdex.core.definePolyMesh(
+                stage,
+                "/World/PlaneWithUnusedDisplayOpacuty",
+                faceVertexCounts=Vt.IntArray(face_vertex_counts),
+                faceVertexIndices=Vt.IntArray(face_vertex_indices),
+                points=points.values(),
+                displayColor=display_color,
+                displayOpacity=display_opacity,
+            )

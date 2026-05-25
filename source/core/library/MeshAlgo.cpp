@@ -292,6 +292,69 @@ Vec3fPrimvarData getInvalidPrimvar()
     return Vec3fPrimvarData(UsdGeomTokens->constant, VtVec3fArray());
 }
 
+// Validate the topology of a mesh to ensure that it is not unused.
+bool validateUnusedMeshTopology(
+    const VtIntArray& faceVertexCounts,
+    const VtIntArray& faceVertexIndices,
+    const VtVec3fArray& points,
+    std::optional<const Vec3fPrimvarData> normals,
+    std::optional<const Vec2fPrimvarData> uvs,
+    std::optional<const Vec3fPrimvarData> displayColor,
+    std::optional<const FloatPrimvarData> displayOpacity,
+    std::string* reason
+)
+{
+    std::vector<bool> usedVertices(points.size(), false);
+
+    // Mark used vertices
+    size_t vertexIndex = 0;
+    for (size_t faceIndex = 0; faceIndex < faceVertexCounts.size(); ++faceIndex)
+    {
+        const int vertexCount = faceVertexCounts[faceIndex];
+        for (int i = 0; i < vertexCount; ++i)
+        {
+            usedVertices[faceVertexIndices[vertexIndex + i]] = true;
+        }
+        vertexIndex += vertexCount;
+    }
+
+    // Check if any vertices are not referenced by the faces
+    for (size_t i = 0; i < usedVertices.size(); ++i)
+    {
+        if (!usedVertices[i])
+        {
+            *reason = TfStringPrintf("Some points are not referenced by the faces");
+            return false;
+        }
+    }
+
+    if (normals.has_value() && normals.value().hasUnindexedValues())
+    {
+        *reason = TfStringPrintf("There are values that are not referenced by the indices (normals)");
+        return false;
+    }
+
+    if (uvs.has_value() && uvs.value().hasUnindexedValues())
+    {
+        *reason = TfStringPrintf("There are values that are not referenced by the indices (uvs)");
+        return false;
+    }
+
+    if (displayColor.has_value() && displayColor.value().hasUnindexedValues())
+    {
+        *reason = TfStringPrintf("There are values that are not referenced by the indices (displayColor)");
+        return false;
+    }
+
+    if (displayOpacity.has_value() && displayOpacity.value().hasUnindexedValues())
+    {
+        *reason = TfStringPrintf("There are values that are not referenced by the indices (displayOpacity)");
+        return false;
+    }
+
+    return true;
+}
+
 // Remove the subsets from the stage
 void removeSubsetsFromStage(UsdPrim prim, const TfToken& familyName, const std::vector<UsdGeomSubset>& subsets)
 {
@@ -569,6 +632,13 @@ UsdGeomMesh usdex::core::definePolyMesh(
             TF_RUNTIME_ERROR("Unable to define UsdGeomMesh at \"%s\" due to invalid display opacity: %s", path.GetAsString().c_str(), reason.c_str());
             return UsdGeomMesh();
         }
+    }
+
+    // Validation if there are unused references.
+    if (!::validateUnusedMeshTopology(faceVertexCounts, faceVertexIndices, points, normals, uvs, displayColor, displayOpacity, &reason))
+    {
+        TF_RUNTIME_ERROR("Unable to define UsdGeomMesh at \"%s\" due to invalid topology: %s", path.GetAsString().c_str(), reason.c_str());
+        return UsdGeomMesh();
     }
 
     // Define the Mesh and check that this was successful
