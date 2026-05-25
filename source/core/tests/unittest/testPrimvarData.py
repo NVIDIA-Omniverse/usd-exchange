@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -332,3 +332,38 @@ class PrimvarDataTestCase(usdex.test.TestCase):
         self.assertTrue(data.hasIndices())
         self.assertEqual(data.values(), Vt.FloatArray([0.0, 1.0]))
         self.assertEqual(data.indices(), Vt.IntArray([0, 0, 1, 1, 2, 2]))
+
+    def testHasUnindexedValues(self):
+        # Non-indexed primvar data
+        values = Vt.FloatArray([0.0, 1.0, 2.0])
+        data = usdex.core.FloatPrimvarData(UsdGeom.Tokens.vertex, values)
+        self.assertFalse(data.hasUnindexedValues())
+
+        # Indexed primvar data
+        values = Vt.FloatArray([0.0, 1.0, 2.0])
+        indices = Vt.IntArray([0, 1, 2])
+        data = usdex.core.FloatPrimvarData(UsdGeom.Tokens.vertex, values, indices)
+        self.assertFalse(data.hasUnindexedValues())
+
+        # Indexed primvar data with unused values
+        values = Vt.FloatArray([0.0, 1.0, 2.0])
+        indices = Vt.IntArray([0, 1, 1])
+        data = usdex.core.FloatPrimvarData(UsdGeom.Tokens.vertex, values, indices)
+        self.assertTrue(data.hasUnindexedValues())
+
+        # Non-indexed primvar data (Gf.Vec3f)
+        values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 1.0, 1.0), Gf.Vec3f(2.0, 2.0, 2.0)])
+        data = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, values)
+        self.assertFalse(data.hasUnindexedValues())
+
+        # Indexed primvar data (Gf.Vec3f)
+        values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 1.0, 1.0), Gf.Vec3f(2.0, 2.0, 2.0)])
+        indices = Vt.IntArray([0, 1, 2])
+        data = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, values, indices)
+        self.assertFalse(data.hasUnindexedValues())
+
+        # Indexed primvar data with unused values (Gf.Vec3f)
+        values = Vt.Vec3fArray([Gf.Vec3f(0.0, 0.0, 0.0), Gf.Vec3f(1.0, 1.0, 1.0), Gf.Vec3f(2.0, 2.0, 2.0)])
+        indices = Vt.IntArray([0, 2, 2])
+        data = usdex.core.Vec3fPrimvarData(UsdGeom.Tokens.vertex, values, indices)
+        self.assertTrue(data.hasUnindexedValues())

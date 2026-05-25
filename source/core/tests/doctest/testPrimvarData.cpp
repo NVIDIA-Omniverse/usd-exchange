@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -555,4 +555,39 @@ TEST_CASE("PrimvarData Time Samples")
         CHECK(sample.indices().IsIdentical(authoredIndices));
         CHECK(sample.elementSize() == -1);
     }
+}
+
+TEST_CASE("PrimvarData hasUnindexedValues")
+{
+    ScopedDiagnosticChecker check;
+
+    VtFloatArray values = { 0.0f, 1.0f, 2.0f };
+    VtIntArray indices = { 0, 1, 2 };
+
+    // Non-indexed primvar data
+    FloatPrimvarData nonIndexedData(UsdGeomTokens->vertex, values);
+    CHECK(!nonIndexedData.hasUnindexedValues());
+
+    // Indexed primvar data
+    FloatPrimvarData indexedData(UsdGeomTokens->vertex, values, indices);
+    CHECK(!indexedData.hasUnindexedValues());
+
+    // Indexed primvar data with unused values
+    VtIntArray floatUnusedIndices = { 0, 1, 1 };
+    FloatPrimvarData floatIndexedWithUnused(UsdGeomTokens->vertex, values, floatUnusedIndices);
+    CHECK(floatIndexedWithUnused.hasUnindexedValues());
+
+    // Non-indexed primvar data (GfVec3f)
+    VtVec3fArray vec3Values = { GfVec3f(0.0f, 0.0f, 0.0f), GfVec3f(1.0f, 1.0f, 1.0f), GfVec3f(2.0f, 2.0f, 2.0f) };
+    Vec3fPrimvarData vec3NonIndexed(UsdGeomTokens->vertex, vec3Values);
+    CHECK(!vec3NonIndexed.hasUnindexedValues());
+
+    // Indexed primvar data (GfVec3f)
+    Vec3fPrimvarData vec3Indexed(UsdGeomTokens->vertex, vec3Values, indices);
+    CHECK(!vec3Indexed.hasUnindexedValues());
+
+    // Indexed primvar data with unused values (GfVec3f)
+    VtIntArray vec3UnusedIndices = { 0, 2, 2 };
+    Vec3fPrimvarData vec3IndexedWithUnused(UsdGeomTokens->vertex, vec3Values, vec3UnusedIndices);
+    CHECK(vec3IndexedWithUnused.hasUnindexedValues());
 }

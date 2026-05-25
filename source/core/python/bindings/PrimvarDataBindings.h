@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -270,6 +270,19 @@ void bindPrimvarDataImpl(module& m, const std::string& typeName, const std::stri
 
             Returns:
                 True if the values and/or indices were modified.
+        )"
+    );
+
+    binder.def(
+        "hasUnindexedValues",
+        &PrimvarData<T>::hasUnindexedValues,
+        R"(
+            Check whether any entries in the values array are never referenced by the indices.
+
+            If ``hasIndices()`` is false, returns false.
+
+            Returns:
+                True if at least one value slot is not the target of any index.
         )"
     );
 
