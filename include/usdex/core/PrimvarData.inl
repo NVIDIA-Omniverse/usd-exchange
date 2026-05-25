@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -278,6 +278,30 @@ bool PrimvarData<T>::index()
     m_indices = indices;
 
     return true;
+}
+
+template <typename T>
+bool PrimvarData<T>::hasUnindexedValues() const
+{
+    if (!this->hasIndices())
+    {
+        return false;
+    }
+    const size_t size = this->values().size();
+    std::vector<bool> used(size, false);
+    const size_t indexCount = this->indices().size();
+    for (size_t i = 0; i < indexCount; ++i)
+    {
+        used[this->indices()[i]] = true;
+    }
+    for (size_t i = 0; i < used.size(); ++i)
+    {
+        if (!used[i])
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 template <typename T>

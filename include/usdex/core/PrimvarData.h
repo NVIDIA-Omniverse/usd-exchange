@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -178,6 +178,13 @@ public:
     //!
     //! @returns True if the values and/or indices were modified.
     bool index();
+
+    //! Check whether any entries in the values array are never referenced by the indices.
+    //!
+    //! If `hasIndices()` is false, returns false.
+    //!
+    //! @returns True if at least one value slot is not the target of any index.
+    bool hasUnindexedValues() const;
 
     //! Check for equality between two `PrimvarData` objects.
     //!
