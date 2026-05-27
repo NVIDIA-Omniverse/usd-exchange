@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -199,6 +199,21 @@ class BaseXformTestCase(usdex.test.TestCase):
         rotateXformOp.Set(Gf.Vec3f(360.0, 360.0, 0.0), Usd.TimeCode.Default())
         rotateXformOp.Set(Gf.Vec3f(180.0, 0.0, 0.0), Usd.TimeCode(0.0))
         rotateXformOp.Set(Gf.Vec3f(540.0, 0.0, 0.0), Usd.TimeCode(10.0))
+
+        # Define an xformable (Xform) with default and time sampled transform components using an orient xformOp.
+        xform = usdex.core.defineXform(stage, "/Root/Animated_Orient_Xform_Op")
+        translateXformOp = xform.AddTranslateOp()
+        orientXformOp = xform.AddOrientOp()
+
+        # Set time samples on the translate
+        translateXformOp.Set(Gf.Vec3d(10.0, 20.0, 30.0), Usd.TimeCode.Default())
+        translateXformOp.Set(Gf.Vec3d(40.0, 50.0, 60.0), Usd.TimeCode(0.0))
+        translateXformOp.Set(Gf.Vec3d(70.0, 80.0, 90.0), Usd.TimeCode(10.0))
+
+        # Set time samples on the orient
+        orientXformOp.Set(Gf.Quatf(Gf.Rotation(Gf.Vec3d.ZAxis(), 45.0).GetQuat()), Usd.TimeCode.Default())
+        orientXformOp.Set(Gf.Quatf(Gf.Rotation(Gf.Vec3d.ZAxis(), 128.0).GetQuat()), Usd.TimeCode(0.0))
+        orientXformOp.Set(Gf.Quatf(Gf.Rotation(Gf.Vec3d.ZAxis(), 500.0).GetQuat()), Usd.TimeCode(10.0))
 
         # Create a Prim and then add an instanceable reference to it from within /Root
         # This can be used to create scenarios where a path points to an instance proxy prim.
@@ -1295,6 +1310,43 @@ class GetLocalTransformTest(BaseXformTestCase):
         returned = usdex.core.getLocalTransform(prim, Usd.TimeCode(10.0))
         self.assertEqual(returned.GetRotation(), expectedTime10.GetRotation())
         self.assertEqual(returned, expectedTime10)
+        self.assertIsValidUsd(stage)
+
+    def testAnimatedOrientXformOp(self):
+        # When an animated orient xformOp is authored it should be used to compute the local transform
+        stage = self._createTestStage()
+        prim = stage.GetPrimAtPath("/Root/Animated_Orient_Xform_Op")
+
+        # Declare the expected values at different times
+        expectedDefaultTranslate = Gf.Vec3d(10.0, 20.0, 30.0)
+        expectedTime0Translate = Gf.Vec3d(40.0, 50.0, 60.0)
+        expectedTime10Translate = Gf.Vec3d(70.0, 80.0, 90.0)
+        expectedDefaultQuat = Gf.Quatf(Gf.Rotation(Gf.Vec3d.ZAxis(), 45.0).GetQuat())
+        expectedTime0Quat = Gf.Quatf(Gf.Rotation(Gf.Vec3d.ZAxis(), 128.0).GetQuat())
+        expectedTime10Quat = Gf.Quatf(Gf.Rotation(Gf.Vec3d.ZAxis(), 500.0).GetQuat())
+
+        # Assert the expected values at different times
+        returned = usdex.core.getLocalTransform(prim, Usd.TimeCode.Default())
+        self.assertAlmostEqual(returned.GetTranslation(), expectedDefaultTranslate)
+        self.assertTupleWithQuatAlmostEqual(
+            (Gf.Quatf(returned.GetRotation().GetQuat()),),
+            (expectedDefaultQuat,),
+        )
+
+        returned = usdex.core.getLocalTransform(prim, Usd.TimeCode(0.0))
+        self.assertAlmostEqual(returned.GetTranslation(), expectedTime0Translate)
+        self.assertTupleWithQuatAlmostEqual(
+            (Gf.Quatf(returned.GetRotation().GetQuat()),),
+            (expectedTime0Quat,),
+        )
+
+        returned = usdex.core.getLocalTransform(prim, Usd.TimeCode(10.0))
+        self.assertAlmostEqual(returned.GetTranslation(), expectedTime10Translate)
+        self.assertTupleWithQuatAlmostEqual(
+            (Gf.Quatf(returned.GetRotation().GetQuat()),),
+            (expectedTime10Quat,),
+        )
+
         self.assertIsValidUsd(stage)
 
 
