@@ -7,6 +7,8 @@
 #include "usdex/core/NameAlgo.h"
 #include "usdex/core/StageAlgo.h"
 
+#include <pxr/base/gf/color.h>
+#include <pxr/base/gf/colorSpace.h>
 #include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/sdf/path.h>
@@ -112,33 +114,6 @@ bool isEightBitTextureFormat(const UsdShadeInput& textureAssetPathInput)
     static const std::vector<std::string> s_eightBitFormats = { "bmp", "tga", "jpg", "jpeg", "png", "tif" };
     std::string ext = ArGetResolver().GetExtension(resolvedTexturePath.GetResolvedPath());
     return std::find(s_eightBitFormats.begin(), s_eightBitFormats.end(), ext) != s_eightBitFormats.end();
-}
-
-float toLinear(float value)
-{
-    if (value <= 0.04045f)
-    {
-        return value / 12.92f;
-    }
-    else
-    {
-        float adjusted = (value + 0.055f) / 1.055f;
-        return std::pow(adjusted, 2.4f);
-    }
-}
-
-float fromLinear(float value)
-{
-    float test = value * 12.92f;
-    if (test <= 0.04045f)
-    {
-        return test;
-    }
-    else
-    {
-        float scaled = std::pow(value, 1.0f / 2.4f);
-        return (scaled * 1.055f) - 0.055f;
-    }
 }
 
 bool isSupportedPrimvarType(const UsdShadeInput& shaderInput)
@@ -1224,10 +1199,20 @@ const pxr::TfToken& usdex::core::getColorSpaceToken(ColorSpace value)
 
 GfVec3f usdex::core::sRgbToLinear(const GfVec3f& color)
 {
-    return GfVec3f(toLinear(color[0]), toLinear(color[1]), toLinear(color[2]));
+#if PXR_VERSION >= 2411
+    const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGBRec709);
+#else
+    const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGB);
+#endif
+    return GfColorSpace(GfColorSpaceNames->LinearRec709).Convert(srgbColorSpace, color).GetRGB();
 }
 
 GfVec3f usdex::core::linearToSrgb(const GfVec3f& color)
 {
-    return GfVec3f(fromLinear(color[0]), fromLinear(color[1]), fromLinear(color[2]));
+#if PXR_VERSION >= 2411
+    const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGBRec709);
+#else
+    const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGB);
+#endif
+    return srgbColorSpace.Convert(GfColorSpace(GfColorSpaceNames->LinearRec709), color).GetRGB();
 }

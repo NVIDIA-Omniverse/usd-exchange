@@ -273,11 +273,11 @@ class MaterialAlgoTest(usdex.test.TestCase):
         purpleSrgb = Gf.Vec3f(0.45, 0.2, 0.6)
         blackSrgb = Gf.Vec3f(0.03, 0.03, 0.03)
 
-        greyLinear = Gf.Vec3f(0.21404114, 0.21404114, 0.21404114)
-        darkRedLinear = Gf.Vec3f(0.0889815256, 0.01002282, 0.01002282)
-        lightGreenLinear = Gf.Vec3f(0.406448301, 0.93310684, 0.406448301)
-        purpleLinear = Gf.Vec3f(0.17064493, 0.033104767, 0.3185467781)
-        blackLinear = Gf.Vec3f(0.0023219814, 0.0023219814, 0.0023219814)
+        greyLinear = Gf.Vec3f(0.21404113, 0.21404114, 0.21404111)
+        darkRedLinear = Gf.Vec3f(0.08898155, 0.010022826, 0.010022825)
+        lightGreenLinear = Gf.Vec3f(0.40644825, 0.9331069, 0.40644827)
+        purpleLinear = Gf.Vec3f(0.17064494, 0.033104762, 0.3185468)
+        blackLinear = Gf.Vec3f(0.0023214042, 0.0023214044, 0.0023214042)
 
         convertedGreyLinear = usdex.core.sRgbToLinear(greySrgb)
         convertedDarkRedLinear = usdex.core.sRgbToLinear(darkRedSrgb)
