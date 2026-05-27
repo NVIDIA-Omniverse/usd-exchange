@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -120,6 +120,21 @@ bool hasPivotPosition(const GfTransform& transform)
     return transform.GetPivotPosition() != g_identityTranslation;
 }
 
+// Returns true if the xformable uses an orient xformOp for rotation
+bool hasOrientXformOp(const UsdGeomXformable& xformable)
+{
+    bool resetsXformStack;
+    const std::vector<UsdGeomXformOp> xformOps = xformable.GetOrderedXformOps(&resetsXformStack);
+    for (const UsdGeomXformOp& op : xformOps)
+    {
+        if (!op.IsInverseOp() && op.GetOpType() == UsdGeomXformOp::TypeOrient)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Compute the XYZ rotation values from a Rotation object via decomposition.
 GfVec3d computeXyzRotationsFromRotation(const GfRotation& rotate)
 {
@@ -164,6 +179,17 @@ GfTransform computeTransformFromComponents(
     transform.SetTranslation(translation);
     transform.SetPivotPosition(pivot);
     transform.SetRotation(rotate);
+    transform.SetScale(GfVec3d(scale));
+
+    return transform;
+}
+
+GfTransform computeTransformFromComponents(const GfVec3d& translation, const GfVec3d& pivot, const GfQuatf& orientation, const GfVec3f& scale)
+{
+    GfTransform transform = GfTransform();
+    transform.SetTranslation(translation);
+    transform.SetPivotPosition(pivot);
+    transform.SetRotation(GfRotation(GfQuatd(orientation)));
     transform.SetScale(GfVec3d(scale));
 
     return transform;
@@ -627,16 +653,26 @@ GfTransform usdex::core::getLocalTransform(const UsdPrim& prim, UsdTimeCode time
         return transform;
     }
 
+    GfVec3d translation;
+    GfVec3d pivot;
+    GfVec3f scale;
+    if (hasOrientXformOp(xformable))
+    {
+        // Extract transform components using the authored orient xformOp
+        GfQuatf orientation;
+        getLocalTransformComponentsQuat(prim, translation, pivot, orientation, scale, time);
+
+        // Construct and return a transform from the components
+        return computeTransformFromComponents(translation, pivot, orientation, scale);
+    }
+
     // Attempt to extract existing xformOp values
     UsdGeomXformCommonAPI xformCommonAPI = UsdGeomXformCommonAPI(prim);
     if (xformCommonAPI)
     {
-        // Extract transform components
-        GfVec3d translation;
-        GfVec3d pivot;
+        // Extract transform components using authored euler rotation and rotation order
         GfVec3f rotation;
         usdex::core::RotationOrder rotOrder;
-        GfVec3f scale;
         getXformVectorsByAccumulation(xformCommonAPI, &translation, &pivot, &rotation, &rotOrder, &scale, time);
 
         // Construct and return a transform from the components
