@@ -17,6 +17,7 @@ __all__ = [
     "defineOmniPbrMaterial",
     "defineOmniGlassMaterial",
     "addEmissiveColorToPbrMaterial",
+    "addColorTextureToPbrMaterial",
     "addDiffuseTextureToPbrMaterial",
     "addNormalTextureToPbrMaterial",
     "addOrmTextureToPbrMaterial",
@@ -43,3 +44,10 @@ if hasattr(os, "add_dll_directory"):
         from ._usdex_rtx import *  # noqa
 else:
     from ._usdex_rtx import *  # noqa
+
+from usdex.core import deprecated  # noqa: E402
+
+
+@deprecated("3.0", "Use `addColorTextureToPbrMaterial` instead")
+def addDiffuseTextureToPbrMaterial(material, texturePath):
+    return _usdex_rtx.addColorTextureToPbrMaterial(material, texturePath)

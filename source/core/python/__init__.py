@@ -112,8 +112,11 @@ __all__ = [
     "bindMaterial",
     "bindMaterialSubsets",
     "computeEffectivePreviewSurfaceShader",
+    "computeEffectiveMtlxSurfaceShader",
     "definePreviewMaterial",
+    "defineGlassPreviewMaterial",
     "addEmissiveColorToPreviewMaterial",
+    "addColorTextureToPreviewMaterial",
     "addDiffuseTextureToPreviewMaterial",
     "addNormalTextureToPreviewMaterial",
     "addOrmTextureToPreviewMaterial",
@@ -121,6 +124,17 @@ __all__ = [
     "addMetallicTextureToPreviewMaterial",
     "addOpacityTextureToPreviewMaterial",
     "addEmissiveTextureToPreviewMaterial",
+    "definePbrMaterial",
+    "defineGlassPbrMaterial",
+    "addEmissiveColorToPbrMaterial",
+    "addColorTextureToPbrMaterial",
+    "addNormalTextureToPbrMaterial",
+    "addOrmTextureToPbrMaterial",
+    "addRoughnessTextureToPbrMaterial",
+    "addMetallicTextureToPbrMaterial",
+    "addOpacityTextureToPbrMaterial",
+    "addEmissiveTextureToPbrMaterial",
+    "addPrimvarShaderToPbrMaterial",
     "addPrimvarShaderToPreviewMaterial",
     "connectPrimvarShader",
     "addPreviewMaterialInterface",
@@ -195,7 +209,7 @@ def deprecated(version: str, message: str):
         if func_name == "__init__":
             func_name, _, _ = func.__qualname__.partition(".")
 
-        warning = f"`{func_name}` was deprecated in v{version} and will be removed in the future. {message}"
+        warning = f"``{func_name}`` was deprecated in v{version} and will be removed in the future. {message}"
 
         def deprecation(*args, **kwargs):
             from pxr import Tf
@@ -215,3 +229,8 @@ class ValidChildNameCache(_usdex_core.ValidChildNameCache):
     @deprecated("1.1", "Use the NameCache class instead")
     def __init__(self) -> None:
         super().__init__()
+
+
+@deprecated("3.0", "Use `addColorTextureToPreviewMaterial` instead")
+def addDiffuseTextureToPreviewMaterial(material, texturePath):
+    return _usdex_core.addColorTextureToPreviewMaterial(material, texturePath)
