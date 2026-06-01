@@ -14,16 +14,23 @@
 #include <vector>
 
 //! @file usdex/core/MaterialAlgo.h
-//! @brief Material and Shader Utilities applicable to all render contexts
+//! @brief Material and Shader Utilities
 
 namespace usdex::core
 {
 
-//! @defgroup materials Material and Shader Prims applicable to all render contexts
+//! @defgroup materials Material and Shader Prims
 //!
-//! Utility functions for creating, editing, and querying `UsdShadeMaterial` and `UsdShadeShader` objects, as well as conveniences around authoring
-//! [UsdPreviewSurface specification](https://openusd.org/release/spec_usdpreviewsurface.html) compliant shader networks for use with the
-//! universal render context.
+//! Utility functions for creating, editing, and querying `UsdShadeMaterial` and `UsdShadeShader` objects. This module provides:
+//!
+//! - **Context-agnostic utilities** for creating and binding materials, querying effective shaders, color space conversion, and primvar
+//!   reader connections.
+//! - **Preview Materials** for the universal render context, using
+//!   [UsdPreviewSurface](https://openusd.org/release/spec_usdpreviewsurface.html) shader networks.
+//! - **PBR Materials** for dual-context authoring, using
+//!   [OpenPBR Surface](https://academysoftwarefoundation.github.io/OpenPBR/) shader networks for the
+//!   [MaterialX](https://kwokcb.github.io/MaterialX_Learn/documents/definitions/definitions_by_group.html) render context
+//!   together with a UsdPreviewSurface fallback for the universal render context.
 //!
 //! # Creating and Binding Materials #
 //!
@@ -33,7 +40,7 @@ namespace usdex::core
 //! While some of these implementations are fairly straightforward, they serve to catch & prevent several common mistakes made when authoring
 //! materials using the `UsdShade` module directly.
 //!
-//! # Defining Preview Materials #
+//! # Preview Materials (Universal Render Context) #
 //!
 //! `UsdPreviewSurface` materials should be supported by all renderers, and are generally used as "fallback" shaders when renderer-specific
 //! shaders have not been supplied. While typically serving as fallback/previews, they are still relatively advanced PBR materials and may be
@@ -45,6 +52,22 @@ namespace usdex::core
 //! In the Preview Material functions, we make several assumptions about the source data, which is broadly applicable to many use cases. If more
 //! specific behavior is required, `computeEffectivePreviewSurfaceShader()` can be used to locate the underlying surface shader for further direct
 //! authoring (or re-wiring) of `UsdShadeInputs`.
+//!
+//! # PBR Materials (MaterialX + Universal Render Contexts) #
+//!
+//! For higher-fidelity rendering, `definePbrMaterial()` creates a dual-context material with both an
+//! [OpenPBR Surface](https://academysoftwarefoundation.github.io/OpenPBR/) shader network for the MaterialX render context and a
+//! UsdPreviewSurface shader network for the universal render context. The MaterialX shader nodes used are from the
+//! [MaterialX Node Library](https://kwokcb.github.io/MaterialX_Learn/documents/definitions/definitions_by_group.html).
+//! This gives renderers that support MaterialX (such as USDView/Storm and
+//! [Omniverse RTX](https://docs.omniverse.nvidia.com/materials-and-rendering/latest/templates/OpenPBR.html)) a physically accurate
+//! shading result, while still providing a UsdPreviewSurface fallback for renderers that do not.
+//!
+//! The two shader networks are connected through a shared Material Interface, so editing a material-level input (e.g. color or roughness)
+//! drives both networks simultaneously. Each `add*TextureToPbrMaterial()` function authors texture shaders for both render contexts in a
+//! single call and maintains this shared interface.
+//!
+//! @note PBR Materials always create a Material Interface. There is no need to call `addPreviewMaterialInterface()` on a PBR Material.
 //!
 //! # Material Interfaces #
 //!
@@ -64,15 +87,11 @@ namespace usdex::core
 //! - Some even require Material Interfaces; these will ignore edits to Shader prims and only react to edits to Material prims.
 //! - But a few others fail to import Material Interfaces into their native scene format.
 //!
-//! If you would like to use Material Interfaces with Preview Materials, try `addPreviewMaterialInterface()` to auto-generate an interface. Note that
-//! this function does not work for multi-context shader networks.
+//! For Preview Materials, use `addPreviewMaterialInterface()` to auto-generate an interface. Note that this function does not work for
+//! multi-context shader networks. PBR Materials created by `definePbrMaterial()` always include a Material Interface by default.
 //!
 //! If instead you need to target applications that cannot load Material Interfaces, use `removeMaterialInterface()` to clean the content before
 //! loading into your target applications.
-//!
-//! @warning If your data is targetted at USD native applications or other USD Ecosystem leading applications, then using Material Interfaces
-//! is recommended. If you favor broad applicability throughout the _entire_ USD Ecosystem, it maybe be preferable to avoid Material Interfaces
-//! for the time being.
 //!
 //! @{
 
@@ -111,6 +130,12 @@ USDEX_API bool bindMaterialSubsets(const std::vector<pxr::UsdGeomSubset>& subset
 //! @param material The Material to consider
 //! @returns The connected Shader. Returns an invalid shader object on error.
 USDEX_API pxr::UsdShadeShader computeEffectivePreviewSurfaceShader(const pxr::UsdShadeMaterial& material);
+
+//! Get the effective surface Shader of a Material for the MaterialX render context.
+//!
+//! @param material The Material to consider
+//! @returns The connected Shader. Returns an invalid shader object on error.
+USDEX_API pxr::UsdShadeShader computeEffectiveMtlxSurfaceShader(const pxr::UsdShadeMaterial& material);
 
 //! Defines a PBR `UsdShadeMaterial` driven by a `UsdPreviewSurface` shader network for the universal render context.
 //!
@@ -174,6 +199,67 @@ USDEX_API pxr::UsdShadeMaterial definePreviewMaterial(
     const float metallic = 0.0f
 );
 
+//! Defines a Glass PBR `UsdShadeMaterial` driven by a `UsdPreviewSurface` shader network for the universal render context.
+//!
+//! The input parameters reflect a subset of the [UsdPreviewSurface specification](https://openusd.org/release/spec_usdpreviewsurface.html) commonly
+//! used when authoring glass materials.
+//!
+//! @note To make the color take effect, opacity must be used to make the material sufficiently opaque.
+//!
+//! @param stage The stage on which to define the Material
+//! @param path The absolute prim path at which to define the Material
+//! @param color The color of the Material
+//! @param indexOfRefraction The Index of Refraction to set, minimum 1.0; suggested maximum 4.0
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param opacity The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid object on error.
+USDEX_API pxr::UsdShadeMaterial defineGlassPreviewMaterial(
+    pxr::UsdStagePtr stage,
+    const pxr::SdfPath& path,
+    const pxr::GfVec3f& color,
+    const float indexOfRefraction = 1.5f,
+    const float roughness = 0.02f,
+    const float opacity = 0.2f
+);
+
+//! Defines a Glass PBR `UsdShadeMaterial` driven by a `UsdPreviewSurface` shader network for the universal render context.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param parent Prim below which to define the Material
+//! @param name Name of the Material
+//! @param color The color of the Material
+//! @param indexOfRefraction The Index of Refraction to set, minimum 1.0; suggested maximum 4.0
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param opacity The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid object on error.
+USDEX_API pxr::UsdShadeMaterial defineGlassPreviewMaterial(
+    pxr::UsdPrim parent,
+    const std::string& name,
+    const pxr::GfVec3f& color,
+    const float indexOfRefraction = 1.5f,
+    const float roughness = 0.02f,
+    const float opacity = 0.2f
+);
+
+//! Defines a Glass PBR `UsdShadeMaterial` driven by a `UsdPreviewSurface` shader network for the universal render context.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim Prim to define the material on. The prim's type will be set to `UsdShadeMaterial`.
+//! @param color The color of the Material
+//! @param indexOfRefraction The Index of Refraction to set, minimum 1.0; suggested maximum 4.0
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param opacity The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid object on error.
+USDEX_API pxr::UsdShadeMaterial defineGlassPreviewMaterial(
+    pxr::UsdPrim prim,
+    const pxr::GfVec3f& color,
+    const float indexOfRefraction = 1.5f,
+    const float roughness = 0.02f,
+    const float opacity = 0.2f
+);
+
 //! Adds an emissive color to a preview material
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
@@ -183,7 +269,7 @@ USDEX_API pxr::UsdShadeMaterial definePreviewMaterial(
 //! @returns Whether or not the emissive color was added to the material
 USDEX_API bool addEmissiveColorToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::GfVec3f& color);
 
-//! Adds a diffuse texture to a preview material
+//! Adds a color texture to a preview material
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
@@ -196,6 +282,12 @@ USDEX_API bool addEmissiveColorToPreviewMaterial(pxr::UsdShadeMaterial& material
 //! @param material The material prim
 //! @param texturePath The `SdfAssetPath` to the texture file
 //! @returns Whether or not the texture was added to the material
+USDEX_API bool addColorTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds a diffuse texture to a preview material
+//!
+//! \deprecated Use `addColorTextureToPreviewMaterial` instead
+USDEX_DEPRECATED("3.0", "Use `addColorTextureToPreviewMaterial` instead")
 USDEX_API bool addDiffuseTextureToPreviewMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
 
 //! Adds a normals texture to a preview material
@@ -225,7 +317,7 @@ USDEX_API bool addNormalTextureToPreviewMaterial(pxr::UsdShadeMaterial& material
 //! Adds an ORM (occlusion, roughness, metallic) texture to a preview material
 //!
 //! An ORM texture is a normal 3-channel image asset, where the R channel represents occlusion, the G channel represents roughness,
-//! and the B channel represents metallic/metallness.
+//! and the B channel represents metallic/metalness.
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
@@ -308,6 +400,9 @@ USDEX_API bool addEmissiveTextureToPreviewMaterial(pxr::UsdShadeMaterial& materi
 //!
 //! It is expected that the material was created by `definePreviewMaterial()`
 //!
+//! @note This function will only work on the surface shader, `UsdPreviewSurface`, not shaders within the shader
+//! network. For connecting inputs within a shader network, use `connectPrimvarShader()`.
+//!
 //! @param material The material prim
 //! @param surfaceInputName The name of the input on the surface shader (not including the `inputs:` prefix, eg. `diffuseColor`)
 //! @param primvarName The name of the primvar to read (not including the `primvars:` prefix, eg. `paintColor`)
@@ -320,14 +415,16 @@ USDEX_API bool addPrimvarShaderToPreviewMaterial(
     const pxr::VtValue& fallbackValue = pxr::VtValue()
 );
 
-//! Connects a surface input to a primvar reader shader.
+//! Connects a shader input to a primvar reader shader.
 //!
 //! A primvar reader shader will be created if it does not already exist.
 //!
-//! @param shaderInput The surface input to connect the primvar reader to
+//! @note The shader input must be within a Preview Surface or MaterialX shader network.
+//!
+//! @param shaderInput The shader input to connect the primvar reader to
 //! @param primvarName The name of the primvar to read (not including the `primvars:` prefix, eg. `paintColor`)
 //! @param fallbackValue An optional fallback value to use if the primvar is not found
-//! @returns Whether or not the primvar shader was connected to the surface input
+//! @returns Whether or not the primvar shader was connected to the shader input
 USDEX_API bool connectPrimvarShader(
     pxr::UsdShadeInput& shaderInput,
     const std::string& primvarName,
@@ -346,7 +443,7 @@ USDEX_API bool connectPrimvarShader(
 //!
 //! @warning This function will fail if there is any other render context driving the material surface. It is only suitable for use on Preview
 //! Shader networks, such as the network generated by `definePreviewMaterial()` and its associated `add*Texture` functions. If you require multiple
-//! contexts, you should instead construct a Material Interface directly, or with targetted end-user interaction.
+//! contexts, you should instead construct a Material Interface directly, or with targeted end-user interaction.
 //!
 //! @param material The material prim
 //! @returns Whether or not the Material inputs were added successfully
@@ -366,6 +463,280 @@ USDEX_API bool addPreviewMaterialInterface(pxr::UsdShadeMaterial& material);
 //! @param bakeValues Whether or not the current Material inputs values are set on the underlying Shader inputs
 //! @returns Whether or not the Material inputs were removed successfully
 USDEX_API bool removeMaterialInterface(pxr::UsdShadeMaterial& material, bool bakeValues = true);
+
+//! Defines an OpenPBR `UsdShadeMaterial` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+//!
+//! The input parameters reflect a subset of the
+//! [open_pbr_surface shader](https://kwokcb.github.io/MaterialX_Learn/documents/definitions/open_pbr_surface.html) definition.
+//! Many other inputs are available and can be authored after calling this function.
+//!
+//! @note The `OpenPBR` definition and texture functions always create a Material Interface
+//!
+//! @param stage The stage on which to define the Material
+//! @param path The absolute prim path at which to define the Material
+//! @param color The base color of the Material
+//! @param opacity The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param metallic The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid object on error.
+USDEX_API pxr::UsdShadeMaterial definePbrMaterial(
+    pxr::UsdStagePtr stage,
+    const pxr::SdfPath& path,
+    const pxr::GfVec3f& color,
+    const float opacity = 1.0f,
+    const float roughness = 0.3f,
+    const float metallic = 0.0f
+);
+
+//! Defines an OpenPBR `UsdShadeMaterial` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param parent Prim below which to define the Material
+//! @param name Name of the Material
+//! @param color The base color of the Material
+//! @param opacity The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param metallic The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid object on error.
+USDEX_API pxr::UsdShadeMaterial definePbrMaterial(
+    pxr::UsdPrim parent,
+    const std::string& name,
+    const pxr::GfVec3f& color,
+    const float opacity = 1.0f,
+    const float roughness = 0.3f,
+    const float metallic = 0.0f
+);
+
+//! Defines an OpenPBR `UsdShadeMaterial` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim Prim to define the material on. The prim's type will be set to `UsdShadeMaterial`.
+//! @param color The base color of the Material
+//! @param opacity The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param metallic The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid object on error.
+USDEX_API pxr::UsdShadeMaterial definePbrMaterial(
+    pxr::UsdPrim prim,
+    const pxr::GfVec3f& color,
+    const float opacity = 1.0f,
+    const float roughness = 0.3f,
+    const float metallic = 0.0f
+);
+
+//! Adds an emissive color and luminance to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! This drives the OpenPBR `emission_color` and `emission_luminance` inputs in the MaterialX render context, and the UsdPreviewSurface
+//! `emissiveColor` input in the universal render context. Two material interface inputs are created to share these values across both
+//! render contexts: `emissiveColor` (Color3) and `emissiveLuminance` (Float).
+//!
+//! @note `emissiveLuminance` is in `cd/m^2` (Candelas per square meter, also known as Nits), per the
+//! [OpenPBR Surface specification](https://academysoftwarefoundation.github.io/OpenPBR/). UsdPreviewSurface does not have a separate luminance
+//! input, so the universal render context only receives the emissive color (without luminance scaling).
+//!
+//! @param material The material prim
+//! @param color The emissive color
+//! @param luminance The emissive luminance in `cd/m^2` (Nits). Must be at least 0.0 (no upper bound). Defaults to 1000.0, which is roughly the
+//!     brightness of an indoor LED light panel and produces a clearly visible emission in most scenes.
+//! @returns Whether or not the emissive color was added to the material
+USDEX_API bool addEmissiveColorToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::GfVec3f& color, const float luminance = 1000.0f);
+
+//! Adds a color texture to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addColorTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds a normals texture to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addNormalTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds an ORM (occlusion, roughness, metallic) texture to an OpenPBR material
+//!
+//! An ORM texture is a normal 3-channel image asset, where the R channel represents occlusion, the G channel represents roughness,
+//! and the B channel represents metallic/metalness. The occlusion channel is not used by the OpenPBR definition.
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addOrmTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds a single channel roughness texture to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addRoughnessTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds a single channel metallic texture to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addMetallicTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds a single channel opacity texture to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addOpacityTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath);
+
+//! Adds an emissive color texture to an OpenPBR material
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! The texture will be sampled using texture coordinates from the default UV set (generally named `primvars:st`).
+//!
+//! This authors a tiledimage shader for the MaterialX render context driving the OpenPBR `emission_color` input, and authors a `UsdUVTexture`
+//! shader driving the UsdPreviewSurface `emissiveColor` input. The `file` inputs of both texture shaders are connected to a shared material
+//! interface input (`EmissiveTexture`).
+//!
+//! In addition to the texture, this also creates (or reuses) the `emissiveLuminance` material interface input that drives the OpenPBR
+//! `emission_luminance` shader input, so the texture is properly scaled by an emission strength. The supplied `luminance` value will overwrite
+//! any value previously authored by `addEmissiveColorToPbrMaterial()`.
+//!
+//! @note `emissiveLuminance` is in `cd/m^2` (Candelas per square meter, also known as Nits), per the
+//! [OpenPBR Surface specification](https://academysoftwarefoundation.github.io/OpenPBR/). UsdPreviewSurface does not have a separate luminance
+//! input, so the universal render context only receives the emissive texture (without luminance scaling).
+//!
+//! @param material The material prim
+//! @param texturePath The `SdfAssetPath` to the texture file
+//! @param luminance The emissive luminance in `cd/m^2` (Nits). Must be at least 0.0 (no upper bound). Defaults to 1000.0, which is roughly the
+//!     brightness of an indoor LED light panel and produces a clearly visible emission in most scenes.
+//! @returns Whether or not the texture was added to the material
+USDEX_API bool addEmissiveTextureToPbrMaterial(pxr::UsdShadeMaterial& material, const pxr::SdfAssetPath& texturePath, const float luminance = 1000.0f);
+
+//! Defines a Glass `UsdShadeMaterial` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+//!
+//! The resulting Material prim will have "Interface" `UsdShadeInputs` which drive both render contexts. See @ref materials for details.
+//!
+//! @note This function generates an [OpenPBR Surface](https://academysoftwarefoundation.github.io/OpenPBR/) MaterialX shader for the MaterialX
+//! render context and a `UsdPreviewSurface` shader for the universal render context. The created Material inputs reflect a subset of the available
+//! parameters commonly used when authoring glass materials:
+//! - `color` - The glass color (drives `transmission_color` on OpenPBR and `diffuseColor` on UsdPreviewSurface)
+//! - `ior` - Index of Refraction (drives `specular_ior` on OpenPBR and `ior` on UsdPreviewSurface)
+//! - `roughness` - Specular roughness for the glass surface (drives `specular_roughness` on OpenPBR and `roughness` on UsdPreviewSurface)
+//! - `opacity` - Controls UsdPreviewSurface `opacity` only; OpenPBR glass transparency is handled via `transmission_weight`
+//!
+//! @param stage The stage on which to define the Material
+//! @param path The absolute prim path at which to define the Material
+//! @param color The color of the Material
+//! @param indexOfRefraction The Index of Refraction to set, minimum 1.0; soft maximum 3.0
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param previewOpacity The Opacity Amount to set on UsdPreviewSurface, 0.0-1.0 range where 1.0 = opaque and 0.0 = transparent
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid prim on error
+USDEX_API pxr::UsdShadeMaterial defineGlassPbrMaterial(
+    pxr::UsdStagePtr stage,
+    const pxr::SdfPath& path,
+    const pxr::GfVec3f& color,
+    const float indexOfRefraction = 1.5f,
+    const float roughness = 0.02f,
+    const float previewOpacity = 0.2f
+);
+
+//! Defines a Glass `UsdShadeMaterial` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @note This function generates an [OpenPBR Surface](https://academysoftwarefoundation.github.io/OpenPBR/) MaterialX shader for the MaterialX
+//! render context and a `UsdPreviewSurface` shader for the universal render context. Material inputs are created to control the look:
+//! - `color` - The glass color (drives `transmission_color` on OpenPBR and `diffuseColor` on UsdPreviewSurface)
+//! - `ior` - Index of Refraction (drives `specular_ior` on OpenPBR and `ior` on UsdPreviewSurface)
+//! - `roughness` - Specular roughness for the glass surface (drives `specular_roughness` on OpenPBR and `roughness` on UsdPreviewSurface)
+//! - `opacity` - Controls UsdPreviewSurface `opacity` only; OpenPBR glass transparency is handled via `transmission_weight`
+//!
+//! @param parent Prim below which to define the Material
+//! @param name Name of the Material
+//! @param color The color of the Material
+//! @param indexOfRefraction The Index of Refraction to set, minimum 1.0; soft maximum 3.0
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param previewOpacity The Opacity Amount to set on UsdPreviewSurface, 0.0-1.0 range where 1.0 = opaque and 0.0 = transparent
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid prim on error
+USDEX_API pxr::UsdShadeMaterial defineGlassPbrMaterial(
+    pxr::UsdPrim parent,
+    const std::string& name,
+    const pxr::GfVec3f& color,
+    const float indexOfRefraction = 1.5f,
+    const float roughness = 0.02f,
+    const float previewOpacity = 0.2f
+);
+
+//! Defines a Glass `UsdShadeMaterial` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @note This function generates an [OpenPBR Surface](https://academysoftwarefoundation.github.io/OpenPBR/) MaterialX shader for the MaterialX
+//! render context and a `UsdPreviewSurface` shader for the universal render context. Material inputs are created to control the look:
+//! - `color` - The glass color (drives `transmission_color` on OpenPBR and `diffuseColor` on UsdPreviewSurface)
+//! - `ior` - Index of Refraction (drives `specular_ior` on OpenPBR and `ior` on UsdPreviewSurface)
+//! - `roughness` - Specular roughness for the glass surface (drives `specular_roughness` on OpenPBR and `roughness` on UsdPreviewSurface)
+//! - `opacity` - Controls UsdPreviewSurface `opacity` only; OpenPBR glass transparency is handled via `transmission_weight`
+//!
+//! @param prim Prim to define the material on. The prim's type will be set to `UsdShadeMaterial`.
+//! @param color The color of the Material
+//! @param indexOfRefraction The Index of Refraction to set, minimum 1.0; soft maximum 3.0
+//! @param roughness The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+//! @param previewOpacity The Opacity Amount to set on UsdPreviewSurface, 0.0-1.0 range where 1.0 = opaque and 0.0 = transparent
+//! @returns The newly defined `UsdShadeMaterial`. Returns an Invalid prim on error
+USDEX_API pxr::UsdShadeMaterial defineGlassPbrMaterial(
+    pxr::UsdPrim prim,
+    const pxr::GfVec3f& color,
+    const float indexOfRefraction = 1.5f,
+    const float roughness = 0.02f,
+    const float previewOpacity = 0.2f
+);
+
+//! Adds a primvar reader shader to the material prim and connects it to a surface input.
+//!
+//! It is expected that the material was created by `definePbrMaterial()`
+//!
+//! @note This function will only work on the surface shader `ND_open_pbr_surface_surfaceshader`, not shaders within the shader
+//! network. For connecting inputs within a shader network, use `connectPrimvarShader()`.
+//!
+//! @param material The material prim
+//! @param surfaceInputName The name of the input on the surface shader (not including the `inputs:` prefix, eg. `base_color`)
+//! @param primvarName The name of the primvar to read (not including the `primvars:` prefix, eg. `paintColor`)
+//! @param fallbackValue An optional fallback value to use if the primvar is not found
+//! @returns Whether or not the primvar shader was added to the material
+USDEX_API bool addPrimvarShaderToPbrMaterial(
+    pxr::UsdShadeMaterial& material,
+    const std::string& surfaceInputName,
+    const std::string& primvarName,
+    const pxr::VtValue& fallbackValue = pxr::VtValue()
+);
 
 //! Texture color space (encoding) types
 // clang-format off

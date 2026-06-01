@@ -341,7 +341,7 @@ def __install(
 
     if installTestModules and python_ver != "0":
         # omni.asset_validator uses some OpenUSD modules that we don't otherwise require in our runtime
-        extraPlugins.extend(["usdSkel"])
+        extraPlugins.extend(["usdSkel", "usdMtlx"])
 
     # allow for extra user supplied plugins
     for extra in extraPlugins:
@@ -388,6 +388,21 @@ def __install(
                 # tbb ships with usd, but is named differently in release/debug
                 [usd_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
                 [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "${lib_ext}*", libInstallDir],  # windows
+            ]
+        )
+
+    # usdMtlx requires MaterialX libraries
+    if installTestModules and python_ver != "0":
+        mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
+        prebuild_dict["copy"].extend(
+            [
+                [usd_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
+                [usd_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
+                [usd_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
+                [usd_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
+                [f"{usd_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
+                [f"{usd_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
+                [f"{usd_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
             ]
         )
 
@@ -561,7 +576,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         type=str,
         default=[],
         help="""
-        List additional OpenUSD plugins by name (e.g. 'usdMtlx' or 'usdVol') to install the necessary plugInfo.json and associated schema,
+        List additional OpenUSD plugins by name (e.g. 'usdVol') to install the necessary plugInfo.json and associated schema,
         libraries, and python modules.
         If unspecified, only the strictly required OpenUSD plugins will be installed.
         Python modules will be skipped if --python-version=0

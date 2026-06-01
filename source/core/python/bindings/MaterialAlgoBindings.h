@@ -97,6 +97,21 @@ void bindMaterialAlgo(module& m)
     );
 
     m.def(
+        "computeEffectiveMtlxSurfaceShader",
+        &computeEffectiveMtlxSurfaceShader,
+        arg("material"),
+        R"(
+            Get the effective surface Shader of a Material for the MaterialX render context.
+
+            Args:
+                material: The Material to consider
+
+            Returns:
+                The connected Shader. Returns an invalid shader object on error.
+        )"
+    );
+
+    m.def(
         "definePreviewMaterial",
         overload_cast<UsdStagePtr, const SdfPath&, const GfVec3f&, const float, const float, const float>(&definePreviewMaterial),
         arg("stage"),
@@ -179,6 +194,86 @@ void bindMaterialAlgo(module& m)
     );
 
     m.def(
+        "defineGlassPreviewMaterial",
+        overload_cast<UsdStagePtr, const SdfPath&, const GfVec3f&, const float, const float, const float>(&defineGlassPreviewMaterial),
+        arg("stage"),
+        arg("path"),
+        arg("color"),
+        arg("indexOfRefraction") = 1.5f,
+        arg("roughness") = 0.02f,
+        arg("opacity") = 0.2f,
+        R"(
+            Defines a Glass PBR ``UsdShade.Material`` driven by a ``UsdPreviewSurface`` shader network for the universal render context.
+
+            The input parameters reflect a subset of the `UsdPreviewSurface specification <https://openusd.org/release/spec_usdpreviewsurface.html>`_ commonly.
+            To make the color take effect, opacity must be used to make the material sufficiently opaque.
+
+            Parameters:
+                - **stage** - The stage on which to define the Material
+                - **path** - The absolute prim path at which to define the Material
+                - **color** - The color of the Material
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; suggested maximum 4.0
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )"
+    );
+
+    m.def(
+        "defineGlassPreviewMaterial",
+        overload_cast<UsdPrim, const std::string&, const GfVec3f&, const float, const float, const float>(&defineGlassPreviewMaterial),
+        arg("parent"),
+        arg("name"),
+        arg("color"),
+        arg("indexOfRefraction") = 1.5f,
+        arg("roughness") = 0.02f,
+        arg("opacity") = 0.2f,
+        R"(
+            Defines a Glass PBR ``UsdShade.Material`` driven by a ``UsdPreviewSurface`` shader network for the universal render context.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Parameters:
+                - **parent** - Prim below which to define the Material
+                - **name** - Name of the Material
+                - **color** - The color of the Material
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; suggested maximum 4.0
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )"
+    );
+
+    m.def(
+        "defineGlassPreviewMaterial",
+        overload_cast<UsdPrim, const GfVec3f&, const float, const float, const float>(&defineGlassPreviewMaterial),
+        arg("prim"),
+        arg("color"),
+        arg("indexOfRefraction") = 1.5f,
+        arg("roughness") = 0.02f,
+        arg("opacity") = 0.2f,
+        R"(
+            Defines a Glass PBR ``UsdShade.Material`` driven by a ``UsdPreviewSurface`` shader network for the universal render context.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Parameters:
+                - **prim** - Prim to define the material on. The prim's type will be set to ``UsdShade.Material``.
+                - **color** - The color of the Material
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; suggested maximum 4.0
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )"
+    );
+
+    m.def(
         "addEmissiveColorToPreviewMaterial",
         &addEmissiveColorToPreviewMaterial,
         arg("material"),
@@ -198,12 +293,411 @@ void bindMaterialAlgo(module& m)
     );
 
     m.def(
-        "addDiffuseTextureToPreviewMaterial",
-        &addDiffuseTextureToPreviewMaterial,
+        "definePbrMaterial",
+        overload_cast<UsdStagePtr, const SdfPath&, const GfVec3f&, const float, const float, const float>(&definePbrMaterial),
+        arg("stage"),
+        arg("path"),
+        arg("color"),
+        arg("opacity") = 1.0f,
+        arg("roughness") = 0.3f,
+        arg("metallic") = 0.0f,
+        R"(
+            Defines an OpenPBR ``UsdShade.Material`` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+
+            Parameters:
+                - **stage** - The stage on which to define the Material
+                - **path** - The absolute prim path at which to define the Material
+                - **color** - The base color of the Material
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **metallic** - The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )"
+    );
+
+    m.def(
+        "definePbrMaterial",
+        overload_cast<UsdPrim, const std::string&, const GfVec3f&, const float, const float, const float>(&definePbrMaterial),
+        arg("parent"),
+        arg("name"),
+        arg("color"),
+        arg("opacity") = 1.0f,
+        arg("roughness") = 0.3f,
+        arg("metallic") = 0.0f,
+        R"(
+            Defines an OpenPBR ``UsdShade.Material`` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Parameters:
+                - **parent** - Prim below which to define the Material
+                - **name** - Name of the Material
+                - **color** - The base color of the Material
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **metallic** - The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )"
+    );
+
+    m.def(
+        "definePbrMaterial",
+        overload_cast<UsdPrim, const GfVec3f&, const float, const float, const float>(&definePbrMaterial),
+        arg("prim"),
+        arg("color"),
+        arg("opacity") = 1.0f,
+        arg("roughness") = 0.3f,
+        arg("metallic") = 0.0f,
+        R"(
+            Defines an OpenPBR ``UsdShade.Material`` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Parameters:
+                - **prim** - Prim to define the material on. The prim's type will be set to ``UsdShade.Material``.
+                - **color** - The base color of the Material
+                - **opacity** - The Opacity Amount to set, 0.0-1.0 range where 1.0 = opaque and 0.0 = invisible
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **metallic** - The Metallic Amount to set, 0.0-1.0 range where 1.0 = max metallic and 0.0 = no metallic
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )",
+        call_guard<gil_scoped_release>()
+    );
+
+    m.def(
+        "defineGlassPbrMaterial",
+        overload_cast<UsdStagePtr, const SdfPath&, const GfVec3f&, const float, const float, const float>(&defineGlassPbrMaterial),
+        arg("stage"),
+        arg("path"),
+        arg("color"),
+        arg("indexOfRefraction") = 1.5f,
+        arg("roughness") = 0.02f,
+        arg("previewOpacity") = 0.2f,
+        R"(
+            Defines a Glass ``UsdShade.Material`` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+
+            Note:
+                This function generates an `OpenPBR Surface <https://academysoftwarefoundation.github.io/OpenPBR/>`_ MaterialX shader for the
+                MaterialX render context and a ``UsdPreviewSurface`` shader for the universal render context.
+                Material inputs are created to control the look:
+
+                - **color** - The glass color
+                - **ior** - Index of Refraction
+                - **roughness** - Specular roughness for the glass surface
+                - **opacity** - Controls ``UsdPreviewSurface`` opacity only; OpenPBR glass transparency is handled via ``transmission_weight``
+
+            Parameters:
+                - **stage** - The stage on which to define the Material
+                - **path** - The absolute prim path at which to define the Material
+                - **color** - The color of the Material
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; soft maximum 3.0
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **previewOpacity** - The Opacity Amount to set on ``UsdPreviewSurface``, 0.0-1.0 range where 1.0 = opaque and 0.0 = transparent
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid prim on error
+        )"
+    );
+
+    m.def(
+        "defineGlassPbrMaterial",
+        overload_cast<UsdPrim, const std::string&, const GfVec3f&, const float, const float, const float>(&defineGlassPbrMaterial),
+        arg("parent"),
+        arg("name"),
+        arg("color"),
+        arg("indexOfRefraction") = 1.5f,
+        arg("roughness") = 0.02f,
+        arg("previewOpacity") = 0.2f,
+        R"(
+            Defines a Glass ``UsdShade.Material`` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Note:
+                This function generates an `OpenPBR Surface <https://academysoftwarefoundation.github.io/OpenPBR/>`_ MaterialX shader for the
+                MaterialX render context and a ``UsdPreviewSurface`` shader for the universal render context.
+                Material inputs are created to control the look:
+
+                - **color** - The glass color
+                - **ior** - Index of Refraction
+                - **roughness** - Specular roughness for the glass surface
+                - **opacity** - Controls ``UsdPreviewSurface`` opacity only; OpenPBR glass transparency is handled via ``transmission_weight``
+
+            Parameters:
+                - **parent** - Prim below which to define the Material
+                - **name** - Name of the Material
+                - **color** - The color of the Material
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; soft maximum 3.0
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **previewOpacity** - The Opacity Amount to set on ``UsdPreviewSurface``, 0.0-1.0 range where 1.0 = opaque and 0.0 = transparent
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid prim on error
+        )"
+    );
+
+    m.def(
+        "defineGlassPbrMaterial",
+        overload_cast<UsdPrim, const GfVec3f&, const float, const float, const float>(&defineGlassPbrMaterial),
+        arg("prim"),
+        arg("color"),
+        arg("indexOfRefraction") = 1.5f,
+        arg("roughness") = 0.02f,
+        arg("previewOpacity") = 0.2f,
+        R"(
+            Defines a Glass ``UsdShade.Material`` interface that drives both an OpenPBR MaterialX render context and the universal render context.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Note:
+                This function generates an `OpenPBR Surface <https://academysoftwarefoundation.github.io/OpenPBR/>`_ MaterialX shader for the
+                MaterialX render context and a ``UsdPreviewSurface`` shader for the universal render context.
+                Material inputs are created to control the look:
+
+                - **color** - The glass color
+                - **ior** - Index of Refraction
+                - **roughness** - Specular roughness for the glass surface
+                - **opacity** - Controls ``UsdPreviewSurface`` opacity only; OpenPBR glass transparency is handled via ``transmission_weight``
+
+            Parameters:
+                - **prim** - Prim to define the material on. The prim's type will be set to ``UsdShade.Material``.
+                - **color** - The color of the Material
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; soft maximum 3.0
+                - **roughness** - The Roughness Amount to set, 0.0-1.0 range where 1.0 = flat and 0.0 = glossy
+                - **previewOpacity** - The Opacity Amount to set on ``UsdPreviewSurface``, 0.0-1.0 range where 1.0 = opaque and 0.0 = transparent
+
+            Returns:
+                The newly defined ``UsdShade.Material``. Returns an Invalid object on error.
+        )",
+        call_guard<gil_scoped_release>()
+    );
+
+    m.def(
+        "addEmissiveColorToPbrMaterial",
+        &addEmissiveColorToPbrMaterial,
+        arg("material"),
+        arg("color"),
+        arg("luminance") = 1000.0f,
+        R"(
+            Adds an emissive color and luminance to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            This drives the OpenPBR ``emission_color`` and ``emission_luminance`` inputs in the MaterialX render context, and the
+            UsdPreviewSurface ``emissiveColor`` input in the universal render context. Two material interface inputs are created (or reused)
+            to share these values across both render contexts: ``emissiveColor`` (Color3) and ``emissiveLuminance`` (Float).
+
+            Note:
+
+                ``emissiveLuminance`` is in ``cd/m^2`` (Candelas per square meter, also known as Nits), per the
+                `OpenPBR Surface specification <https://academysoftwarefoundation.github.io/OpenPBR/>`_. UsdPreviewSurface does not have a
+                separate luminance input, so the universal render context only receives the emissive color (without luminance scaling).
+
+            Args:
+                material: The material prim
+                color: The emissive color
+                luminance: The emissive luminance in ``cd/m^2`` (Nits). Must be at least 0.0 (no upper bound). Defaults to 1000.0, which is
+                    roughly the brightness of an indoor LED light panel and produces a clearly visible emission in most scenes.
+
+            Returns:
+                Whether or not the emissive color was added to the material
+        )"
+    );
+
+    m.def(
+        "addColorTextureToPbrMaterial",
+        &addColorTextureToPbrMaterial,
         arg("material"),
         arg("texturePath"),
         R"(
-            Adds a diffuse texture to a preview material
+            Adds a color texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addNormalTextureToPbrMaterial",
+        &addNormalTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds a normals texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addOrmTextureToPbrMaterial",
+        &addOrmTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds an ORM (occlusion, roughness, metallic) texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addRoughnessTextureToPbrMaterial",
+        &addRoughnessTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds a single channel roughness texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addMetallicTextureToPbrMaterial",
+        &addMetallicTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds a single channel metallic texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addOpacityTextureToPbrMaterial",
+        &addOpacityTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds a single channel opacity texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addEmissiveTextureToPbrMaterial",
+        &addEmissiveTextureToPbrMaterial,
+        arg("material"),
+        arg("texturePath"),
+        arg("luminance") = 1000.0f,
+        R"(
+            Adds an emissive color texture to an OpenPBR material
+
+            It is expected that the material was created by ``definePbrMaterial()``
+
+            In addition to the texture, this also creates (or reuses) the ``emissiveLuminance`` material interface input that drives the OpenPBR
+            ``emission_luminance`` shader input, so the texture is properly scaled by an emission strength. The supplied ``luminance`` value will
+            overwrite any value previously authored by ``addEmissiveColorToPbrMaterial()``.
+
+            Note:
+
+                ``emissiveLuminance`` is in ``cd/m^2`` (Candelas per square meter, also known as Nits), per the
+                `OpenPBR Surface specification <https://academysoftwarefoundation.github.io/OpenPBR/>`_. UsdPreviewSurface does not have a
+                separate luminance input, so the universal render context only receives the emissive texture (without luminance scaling).
+
+            Args:
+                material: The material prim
+                texturePath: The ``Sdf.AssetPath`` for the texture
+                luminance: The emissive luminance in ``cd/m^2`` (Nits). Must be at least 0.0 (no upper bound). Defaults to 1000.0, which is
+                    roughly the brightness of an indoor LED light panel and produces a clearly visible emission in most scenes.
+
+            Returns:
+                Whether or not the texture was added to the material
+        )"
+    );
+
+    m.def(
+        "addPrimvarShaderToPbrMaterial",
+        [](UsdShadeMaterial& material, const std::string& surfaceInputName, const std::string& primvarName, const VtValue& fallbackValue)
+        {
+            VtValue castValue = fallbackValue;
+            if (fallbackValue.GetType() == SdfValueTypeNames->Double.GetType())
+            {
+                castValue = VtValue::Cast<float>(fallbackValue);
+            }
+            return addPrimvarShaderToPbrMaterial(material, surfaceInputName, primvarName, castValue);
+        },
+        arg("material"),
+        arg("surfaceInputName"),
+        arg("primvarName"),
+        arg("fallbackValue") = nullptr,
+        R"(
+            Adds a Primvar Reader shader to the OpenPBR material and connects it to a surface input.
+
+            It is expected that the material was created by ``definePbrMaterial()``.
+
+            Note:
+
+                This function will only work on the surface shader ``open_pbr_surface_surfaceshader``, not shaders within the shader network.
+                For connecting inputs within a shader network, use ``connectPrimvarShader()``.
+
+            Args:
+                material: The material prim
+                surfaceInputName: The name of the input on the surface shader (not including the ``inputs:`` prefix, eg. ``base_color``)
+                primvarName: The name of the primvar to read (not including the ``primvars:`` prefix, eg. ``paintColor``)
+                fallbackValue: An optional fallback value to use if the primvar is not found
+            Returns:
+                Whether the primvar shader was successfully added and connected.
+        )"
+    );
+
+    m.def(
+        "addColorTextureToPreviewMaterial",
+        &addColorTextureToPreviewMaterial,
+        arg("material"),
+        arg("texturePath"),
+        R"(
+            Adds a color texture to a preview material
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
@@ -259,7 +753,7 @@ void bindMaterialAlgo(module& m)
             Adds an ORM (occlusion, roughness, metallic) texture to a preview material
 
             An ORM texture is a normal 3-channel image asset, where the R channel represents occlusion, the G channel represents roughness,
-            and the B channel represents metallic/metallness.
+            and the B channel represents metallic/metalness.
 
             It is expected that the material was created by ``definePreviewMaterial()``
 
@@ -383,6 +877,11 @@ void bindMaterialAlgo(module& m)
 
             It is expected that the material was created by ``definePreviewMaterial()``.
 
+            Note:
+
+                This function will only work on the surface shader ``UsdPreviewSurface``, not shaders within the shader network.
+                For connecting inputs within a shader network, use ``connectPrimvarShader()``.
+
             Args:
                 - material: The material prim
                 - surfaceInputName: The name of the input on the surface shader (not including the ``inputs:`` prefix, eg. ``diffuseColor``)
@@ -408,17 +907,17 @@ void bindMaterialAlgo(module& m)
         arg("primvarName"),
         arg("fallbackValue") = nullptr,
         R"(
-            Connects a surface input to a primvar reader shader.
+            Connects a shader input to a primvar reader shader.
 
             A primvar reader shader will be created if it does not already exist.
 
             Args:
-                shaderInput: The surface input (``UsdShade.Input``) to connect the primvar reader to
+                shaderInput: The shader input (``UsdShade.Input``) to connect the primvar reader to
                 primvarName: The name of the primvar to read (not including the ``primvars:`` prefix, eg. ``paintColor``)
                 fallbackValue: An optional fallback value to use if the primvar is not found
 
             Returns:
-                Whether or not the primvar shader was connected to the surface input
+                Whether or not the primvar shader was connected to the shader input
         )"
     );
 
@@ -444,7 +943,7 @@ void bindMaterialAlgo(module& m)
 
                 This function will fail if there is any other render context driving the material surface. It is only suitable for use on Preview
                 Shader networks, such as the network generated by ``definePreviewMaterial()`` and its associated ``add*Texture`` functions. If you
-                require multiple contexts, you should instead construct a Material Interface directly, or with targetted end-user interaction.
+                require multiple contexts, you should instead construct a Material Interface directly, or with targeted end-user interaction.
 
             Args:
                 material: The material prim

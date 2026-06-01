@@ -6,11 +6,18 @@
 
 #include "usdex/core/StageAlgo.h"
 
+#include <pxr/base/tf/stringUtils.h>
+#include <pxr/base/vt/dictionary.h>
+#include <pxr/usd/sdf/attributeSpec.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 #include <pxr/usd/usdShade/tokens.h>
 #include <pxr/usd/usdUtils/pipeline.h>
+
+#if PXR_VERSION >= 2511
+#include <pxr/usd/usd/attributeLimits.h>
+#endif
 
 using namespace pxr;
 
@@ -20,11 +27,15 @@ static constexpr const char* g_omniPbrAssetPath("OmniPBR.mdl");
 
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
-    ((defaultValue, "default"))
-    ((rangeMin, "range:min"))
-    ((rangeMax, "range:max"))
-    ((softRangeMin, "soft_range:min"))
-    ((softRangeMax, "soft_range:max"))
+    ((uiMin, "uimin"))
+    ((uiMax, "uimax"))
+    ((uiSoftMin, "uisoftmin"))
+    ((uiSoftMax, "uisoftmax"))
+    ((limits, "limits"))
+    ((hard, "hard"))
+    ((soft, "soft"))
+    ((minimum, "minimum"))
+    ((maximum, "maximum"))
     ((mdl, "mdl"))
     ((out, "out"))
     ((colorSpaceAuto, "auto"))
@@ -54,6 +65,7 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((omniGlass, "OmniGlass"))
     ((omniGlassColor, "glass_color"))
     ((omniGlassIor, "glass_ior"))
+    ((omniGlassFrostingRoughness, "frosting_roughness"))
     ((usdPreviewSurface, "UsdPreviewSurface"))
     ((usdPreviewSurfaceColor, "diffuseColor"))
     ((usdPreviewSurfaceFile, "file"))
@@ -64,8 +76,8 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((usdPreviewSurfaceOpacity, "opacity"))
     ((usdPreviewSurfaceRoughness, "roughness"))
     ((usdPreviewSurfaceEmissiveColor, "emissiveColor"))
-    ((materialColor, "diffuseColor"))
-    ((materialColorInputs, "inputs:diffuseColor"))
+    ((materialColor, "color"))
+    ((materialColorInputs, "inputs:color"))
     ((materialOpacity, "opacity"))
     ((materialOpacityInputs, "inputs:opacity"))
     ((materialRoughness, "roughness"))
@@ -77,7 +89,7 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((materialEmissiveColorInputs, "inputs:emissiveColor"))
     ((materialEmissiveEnable, "emissiveEnable"))
     ((materialEmissiveIntensity, "emissiveIntensity"))
-    ((materialDiffuseTexture, "DiffuseTexture"))
+    ((materialDiffuseTexture, "ColorTexture"))
     ((materialNormalTexture, "NormalTexture"))
     ((materialOpacityTexture, "OpacityTexture"))
     ((materialOrmTexture, "ORMTexture"))
@@ -97,6 +109,141 @@ void setFractionalOpacity(UsdStagePtr stage, bool isOn = true)
     renderSettings["rtx:raytracing:fractionalCutoutOpacity"] = isOn;
     cld.SetValueAtPath("renderSettings", VtValue(renderSettings));
     stage->GetRootLayer()->SetCustomLayerData(cld);
+}
+
+// These sdrMetadata helper functions are a copy of the functions in core/library/MaterialAlgo.cpp
+std::string getSdrMetadataValueString(const VtValue& value)
+{
+    if (value.IsHolding<float>())
+    {
+        return TfStringPrintf("%g", value.Get<float>());
+    }
+    if (value.IsHolding<double>())
+    {
+        return TfStringPrintf("%g", value.Get<double>());
+    }
+    if (value.IsHolding<int>())
+    {
+        return TfStringPrintf("%d", value.Get<int>());
+    }
+    if (value.IsHolding<bool>())
+    {
+        return value.Get<bool>() ? "true" : "false";
+    }
+    if (value.IsHolding<GfVec2f>())
+    {
+        const GfVec2f& vec = value.Get<GfVec2f>();
+        return TfStringPrintf("%g, %g", vec[0], vec[1]);
+    }
+    if (value.IsHolding<GfVec3f>())
+    {
+        const GfVec3f& vec = value.Get<GfVec3f>();
+        return TfStringPrintf("%g, %g, %g", vec[0], vec[1], vec[2]);
+    }
+    if (value.IsHolding<GfVec4f>())
+    {
+        const GfVec4f& vec = value.Get<GfVec4f>();
+        return TfStringPrintf("%g, %g, %g, %g", vec[0], vec[1], vec[2], vec[3]);
+    }
+    return TfStringify(value);
+}
+
+#if PXR_VERSION < 2511
+void setLimitMetadataByField(const UsdAttribute& attr, const TfToken& category, const TfToken& bound, const VtValue& value)
+{
+    SdfLayerHandle layer = attr.GetStage()->GetEditTarget().GetLayer();
+    if (!layer)
+    {
+        return;
+    }
+
+    SdfAttributeSpecHandle attrSpec = layer->GetAttributeAtPath(attr.GetPath());
+    if (!attrSpec)
+    {
+        return;
+    }
+
+    VtDictionary limits = attrSpec->GetFieldAs<VtDictionary>(_tokens->limits);
+    VtDictionary categoryLimits;
+    VtDictionary::const_iterator categoryIt = limits.find(category.GetString());
+    if (categoryIt != limits.end() && categoryIt->second.IsHolding<VtDictionary>())
+    {
+        categoryLimits = categoryIt->second.UncheckedGet<VtDictionary>();
+    }
+
+    categoryLimits[bound.GetString()] = value;
+    limits[category.GetString()] = VtValue(categoryLimits);
+    attrSpec->SetField(_tokens->limits, VtValue(limits));
+}
+#endif
+
+void setHardMinimum(const UsdAttribute& attr, const VtValue& value)
+{
+#if PXR_VERSION >= 2511
+    attr.GetHardLimits().SetMinimum(value);
+#else
+    setLimitMetadataByField(attr, _tokens->hard, _tokens->minimum, value);
+#endif
+}
+
+void setHardMaximum(const UsdAttribute& attr, const VtValue& value)
+{
+#if PXR_VERSION >= 2511
+    attr.GetHardLimits().SetMaximum(value);
+#else
+    setLimitMetadataByField(attr, _tokens->hard, _tokens->maximum, value);
+#endif
+}
+
+void setSoftMinimum(const UsdAttribute& attr, const VtValue& value)
+{
+#if PXR_VERSION >= 2511
+    attr.GetSoftLimits().SetMinimum(value);
+#else
+    setLimitMetadataByField(attr, _tokens->soft, _tokens->minimum, value);
+#endif
+}
+
+void setSoftMaximum(const UsdAttribute& attr, const VtValue& value)
+{
+#if PXR_VERSION >= 2511
+    attr.GetSoftLimits().SetMaximum(value);
+#else
+    setLimitMetadataByField(attr, _tokens->soft, _tokens->maximum, value);
+#endif
+}
+
+void setLimitMetadata(
+    const UsdShadeInput& input,
+    const VtValue& min,
+    const VtValue& max = VtValue(),
+    const VtValue& softMin = VtValue(),
+    const VtValue& softMax = VtValue()
+)
+{
+    if (!input)
+    {
+        return;
+    }
+
+    const UsdAttribute attr = input.GetAttr();
+    input.SetSdrMetadataByKey(_tokens->uiMin, getSdrMetadataValueString(min));
+    setHardMinimum(attr, min);
+    if (!max.IsEmpty())
+    {
+        input.SetSdrMetadataByKey(_tokens->uiMax, getSdrMetadataValueString(max));
+        setHardMaximum(attr, max);
+    }
+    if (!softMin.IsEmpty())
+    {
+        input.SetSdrMetadataByKey(_tokens->uiSoftMin, getSdrMetadataValueString(softMin));
+        setSoftMinimum(attr, softMin);
+    }
+    if (!softMax.IsEmpty())
+    {
+        input.SetSdrMetadataByKey(_tokens->uiSoftMax, getSdrMetadataValueString(softMax));
+        setSoftMaximum(attr, softMax);
+    }
 }
 
 // Remove a property from a prim within the current edit target
@@ -178,6 +325,19 @@ bool verifyValidOmniPbrMaterial(UsdShadeMaterial& material)
     if (!mdlShader || (mdlShader.GetPrim() == psShader.GetPrim()))
     {
         TF_WARN("UsdShadeMaterial <%s> does not have a valid MDL Shader", material.GetPath().GetAsString().c_str());
+        return false;
+    }
+    SdfAssetPath sourceAsset;
+    bool sourceAssetSet = mdlShader.GetSourceAsset(&sourceAsset, _tokens->mdl);
+    if (!sourceAssetSet || (sourceAsset.GetAssetPath() != std::string(g_omniPbrAssetPath)))
+    {
+        TF_WARN(
+            "UsdShadeMaterial <%s> does not have a valid OmniPBR MDL Shader: the UsdShadeShader <%s> does not have the correct source asset <%s>. It is using <%s>",
+            material.GetPath().GetAsString().c_str(),
+            mdlShader.GetPath().GetAsString().c_str(),
+            g_omniPbrAssetPath,
+            sourceAssetSet ? sourceAsset.GetAssetPath().c_str() : ""
+        );
         return false;
     }
     return true;
@@ -458,22 +618,29 @@ UsdShadeMaterial usdex::rtx::definePbrMaterial(
     UsdShadeInput materialRoughnessInput = material.CreateInput(_tokens->materialRoughness, SdfValueTypeNames->Float);
     UsdShadeInput materialMetallicInput = material.CreateInput(_tokens->materialMetallic, SdfValueTypeNames->Float);
 
-    // Set the min, max and default metadata on the material interface
+    // Set limit metadata on the material interface
     // We would copy this metadata from the connected MDL shader inputs, however the Sdr registry for MDL shaders may not be available.
     // Instead we author the same values that are enforced within this function.
-    materialColorInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(GfVec3f(0.2f, 0.2f, 0.2f)));
-
-    materialOpacityInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(1.0f));
-    materialOpacityInput.GetAttr().SetCustomDataByKey(_tokens->rangeMin, VtValue(0.0f));
-    materialOpacityInput.GetAttr().SetCustomDataByKey(_tokens->rangeMax, VtValue(1.0f));
-
-    materialRoughnessInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(0.5f));
-    materialRoughnessInput.GetAttr().SetCustomDataByKey(_tokens->rangeMin, VtValue(0.0f));
-    materialRoughnessInput.GetAttr().SetCustomDataByKey(_tokens->rangeMax, VtValue(1.0f));
-
-    materialMetallicInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(0.0f));
-    materialMetallicInput.GetAttr().SetCustomDataByKey(_tokens->rangeMin, VtValue(0.0f));
-    materialMetallicInput.GetAttr().SetCustomDataByKey(_tokens->rangeMax, VtValue(1.0f));
+    setLimitMetadata(
+        materialColorInput, /* input */
+        VtValue(GfVec3f(0.0f, 0.0f, 0.0f)), /* min */
+        VtValue(GfVec3f(1.0f, 1.0f, 1.0f)) /* max */
+    );
+    setLimitMetadata(
+        materialOpacityInput, /* input */
+        VtValue(0.0f), /* min */
+        VtValue(1.0f) /* max */
+    );
+    setLimitMetadata(
+        materialRoughnessInput, /* input */
+        VtValue(0.0f), /* min */
+        VtValue(1.0f) /* max */
+    );
+    setLimitMetadata(
+        materialMetallicInput, /* input */
+        VtValue(0.0f), /* min */
+        VtValue(1.0f) /* max */
+    );
 
     // Set the supplied values on the material interface
     materialColorInput.Set(color);
@@ -573,18 +740,13 @@ bool usdex::rtx::addEmissiveColorToPbrMaterial(UsdShadeMaterial& material, const
         return false;
     }
 
-    if (color[0] < 0.0 || color[1] < 0.0 || color[2] < 0.0)
+    if (color[0] > 1.0 || color[1] > 1.0 || color[2] > 1.0)
     {
-        const std::string reason = TfStringPrintf(
-            "Color value (%g, %g, %g) is invalid: each component must be at least 0 (no upper bound).",
-            color[0],
-            color[1],
-            color[2]
-        );
+        const std::string r = TfStringPrintf("Color value (%f, %f, %f) is invalid: each component must be at most 1.0.", color[0], color[1], color[2]);
         TF_RUNTIME_ERROR(
             "Unable to add emissive color to PBR material at \"%s\" due to an invalid shader parameter value: %s",
             material.GetPath().GetAsString().c_str(),
-            reason.c_str()
+            r.c_str()
         );
         return false;
     }
@@ -613,10 +775,19 @@ bool usdex::rtx::addEmissiveColorToPbrMaterial(UsdShadeMaterial& material, const
     UsdShadeInput materialEmissiveEnableInput = material.CreateInput(_tokens->materialEmissiveEnable, SdfValueTypeNames->Bool);
     UsdShadeInput materialEmissiveIntensityInput = material.CreateInput(_tokens->materialEmissiveIntensity, SdfValueTypeNames->Float);
 
-    // Set the default metadata on the material interface
-    materialEmissiveColorInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(GfVec3f(1.0f, 0.1f, 0.1f)));
-    materialEmissiveEnableInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(false));
-    materialEmissiveIntensityInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(40.0f));
+    // Set limit metadata on the material interface
+    setLimitMetadata(
+        materialEmissiveColorInput, /* input */
+        VtValue(GfVec3f(0.0f, 0.0f, 0.0f)), /* min */
+        VtValue(GfVec3f(1.0f, 1.0f, 1.0f)) /* max */
+    );
+    setLimitMetadata(
+        materialEmissiveIntensityInput, /* input */
+        VtValue(0.0f), /* min */
+        VtValue(), /* max */
+        VtValue(), /* softMin */
+        VtValue(1000.0f) /* softMax */
+    );
 
     // Set the supplied values on the material interface
     materialEmissiveColorInput.Set(color);
@@ -636,14 +807,14 @@ bool usdex::rtx::addEmissiveColorToPbrMaterial(UsdShadeMaterial& material, const
     return true;
 }
 
-bool usdex::rtx::addDiffuseTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
+bool usdex::rtx::addColorTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
 {
     if (!verifyValidOmniPbrMaterial(material, texturePath))
     {
         return false;
     }
 
-    if (!usdex::core::addDiffuseTextureToPreviewMaterial(material, texturePath))
+    if (!usdex::core::addColorTextureToPreviewMaterial(material, texturePath))
     {
         // Do not report the reason as the function we called will have already logged the diagnostic for us.
         return false;
@@ -668,12 +839,17 @@ bool usdex::rtx::addDiffuseTextureToPbrMaterial(UsdShadeMaterial& material, cons
     );
 
     // Connect the texture shader to the material interface. Note this makes unchecked assumptions about the behavior of `definePreviewMaterial`
-    // and `addDiffuseTextureToPreviewMaterial` in the core library. If those implementations change, this code needs to be adjusted to match.
+    // and `addColorTextureToPreviewMaterial` in the core library. If those implementations change, this code needs to be adjusted to match.
     UsdShadeShader previewSurface = usdex::core::computeEffectivePreviewSurfaceShader(material);
     UsdShadeConnectionSourceInfo info = previewSurface.GetInput(_tokens->usdPreviewSurfaceColor).GetConnectedSources()[0];
     info.source.GetInput(_tokens->usdPreviewSurfaceFile).ConnectToSource(matTextureInput);
 
     return true;
+}
+
+bool usdex::rtx::addDiffuseTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
+{
+    return usdex::rtx::addColorTextureToPbrMaterial(material, texturePath);
 }
 
 bool usdex::rtx::addNormalTextureToPbrMaterial(UsdShadeMaterial& material, const SdfAssetPath& texturePath)
@@ -903,53 +1079,20 @@ bool usdex::rtx::addEmissiveTextureToPbrMaterial(UsdShadeMaterial& material, con
     return true;
 }
 
-UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdStagePtr stage, const SdfPath& path, const GfVec3f& color, const float indexOfRefraction)
+UsdShadeMaterial usdex::rtx::defineGlassMaterial(
+    UsdStagePtr stage,
+    const SdfPath& path,
+    const GfVec3f& color,
+    const float indexOfRefraction,
+    const float roughness
+)
 {
-    // Early out if the proposed prim location is invalid
-    std::string reason;
-    if (!usdex::core::isEditablePrimLocation(stage, path, &reason))
-    {
-        TF_RUNTIME_ERROR("Unable to define UsdShadeMaterial due to an invalid location: %s", reason.c_str());
-        return UsdShadeMaterial();
-    }
-
-    // The color value must be within the defined min, max range
-    if (color[0] < 0.0 || color[1] < 0.0 || color[2] < 0.0 || color[0] > 1.0 || color[1] > 1.0 || color[2] > 1.0)
-    {
-        reason = TfStringPrintf("Color value (%g, %g, %g)  is outside range [(0, 0, 0) - (1, 1, 1)].", color[0], color[1], color[2]);
-        TF_RUNTIME_ERROR(
-            "Unable to define UsdShadeMaterial at \"%s\" due to an invalid shader parameter value: %s",
-            path.GetAsString().c_str(),
-            reason.c_str()
-        );
-        return UsdShadeMaterial();
-    }
-
-    // The index of refraction value must be within the defined soft min, soft max range
-    if (indexOfRefraction < 1.0 || indexOfRefraction > 4.0)
-    {
-        reason = TfStringPrintf("IOR value %g is outside range [1.0 - 4.0].", indexOfRefraction);
-        TF_RUNTIME_ERROR(
-            "Unable to define UsdShadeMaterial at \"%s\" due to an invalid shader parameter value: %s",
-            path.GetAsString().c_str(),
-            reason.c_str()
-        );
-        return UsdShadeMaterial();
-    }
-
-    // Define the material
-    // We do not use usdex::rtx::createMaterial here to avoid double validations
-    UsdShadeMaterial material = UsdShadeMaterial::Define(stage, path);
+    // Define the Preview Material first -- it validates location, parameter ranges, and creates the UPS shader network
+    UsdShadeMaterial material = usdex::core::defineGlassPreviewMaterial(stage, path, color, indexOfRefraction, roughness);
     if (!material)
     {
-        TF_RUNTIME_ERROR("Unable to define UsdShadeMaterial at \"%s\"", path.GetAsString().c_str());
         return UsdShadeMaterial();
     }
-
-    // Explicitly author the specifier and type name
-    UsdPrim prim = material.GetPrim();
-    prim.SetSpecifier(SdfSpecifierDef);
-    prim.SetTypeName(prim.GetTypeName());
 
     // Define the surface shader to be used in the "mdl" rendering context
     static const std::string mdlShaderName = "MDLShader";
@@ -961,55 +1104,67 @@ UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdStagePtr stage, const SdfPat
         return UsdShadeMaterial();
     }
 
-    // Define the surface shader to be used in the universal rendering context
-    // The shader parameters will produce a low fidelity approximation of the "mdl" rendering context for use with non-RTX renderers
-    static constexpr const char* s_previewShaderName = "PreviewSurface";
-    if (!usdex::core::isEditablePrimLocation(prim, s_previewShaderName, &reason))
-    {
-        TF_RUNTIME_ERROR("Unable to define UsdShadeShader named \"%s\" as a child of \"%s\"", s_previewShaderName, path.GetAsString().c_str());
-        return UsdShadeMaterial();
-    }
-    UsdShadeShader previewShader = UsdShadeShader::Define(stage, prim.GetPath().AppendChild(TfToken(s_previewShaderName)));
-    previewShader.SetShaderId(_tokens->usdPreviewSurface);
-    material.CreateSurfaceOutput().ConnectToSource(previewShader.CreateOutput(UsdShadeTokens->surface, SdfValueTypeNames->Token));
-    material.CreateDisplacementOutput().ConnectToSource(previewShader.CreateOutput(UsdShadeTokens->displacement, SdfValueTypeNames->Token));
-
     // Expose inputs on the material that will be connected to the corresponding inputs on the surface shaders
     // This acts as a Material interface from which value changes will be reflected across multiple renderers
     UsdShadeInput materialColorInput = material.CreateInput(_tokens->materialColor, SdfValueTypeNames->Color3f);
     UsdShadeInput materialIorInput = material.CreateInput(_tokens->materialIor, SdfValueTypeNames->Float);
+    UsdShadeInput materialRoughnessInput = material.CreateInput(_tokens->materialRoughness, SdfValueTypeNames->Float);
+    UsdShadeInput materialOpacityInput = material.CreateInput(_tokens->usdPreviewSurfaceOpacity, SdfValueTypeNames->Float);
 
-    // Set the min, max and default metadata on the material interface
-    // We would copy this metadata from the connected MDL shader inputs, however the Sdr registry for MDL shaders may not be available.
-    // Instead we author the same values that are enforced within this function.
-    materialColorInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(GfVec3f(1.0, 1.0, 1.0)));
-    materialColorInput.GetAttr().SetCustomDataByKey(_tokens->rangeMin, VtValue(GfVec3f(0.0, 0.0, 0.0)));
-    materialColorInput.GetAttr().SetCustomDataByKey(_tokens->rangeMax, VtValue(GfVec3f(1.0, 1.0, 1.0)));
-
-    materialIorInput.GetAttr().SetCustomDataByKey(_tokens->defaultValue, VtValue(1.491f));
-    materialIorInput.GetAttr().SetCustomDataByKey(_tokens->softRangeMin, VtValue(1.0f));
-    materialIorInput.GetAttr().SetCustomDataByKey(_tokens->softRangeMax, VtValue(4.0f));
+    // Set limit metadata on the material interface.
+    // The MDL Sdr registry may not be available, so these values mirror the enforced bounds and OmniGlass UI guidance.
+    setLimitMetadata(
+        materialColorInput, /* input */
+        VtValue(GfVec3f(0.0f, 0.0f, 0.0f)), /* min */
+        VtValue(GfVec3f(1.0f, 1.0f, 1.0f)) /* max */
+    );
+    setLimitMetadata(
+        materialIorInput, /* input */
+        VtValue(1.0f), /* min */
+        VtValue(), /* max */
+        VtValue(), /* softMin */
+        VtValue(4.0f) /* softMax */
+    );
+    setLimitMetadata(
+        materialRoughnessInput, /* input */
+        VtValue(0.0f), /* min */
+        VtValue(1.0f) /* max */
+    );
+    setLimitMetadata(
+        materialOpacityInput, /* input */
+        VtValue(0.0f), /* min */
+        VtValue(1.0f) /* max */
+    );
 
     // Set the supplied values on the material interface
     materialColorInput.Set(color);
     materialIorInput.Set(indexOfRefraction);
+    materialRoughnessInput.Set(roughness);
+    materialOpacityInput.Set(0.2f);
 
-    // Create MDL shader inputs to produce a glass result with the supplied values
-    // Inputs are either set or connected to the material interface
+    // Create MDL shader inputs and connect them to the material interface
     mdlShader.CreateInput(_tokens->omniGlassColor, SdfValueTypeNames->Color3f).ConnectToSource(materialColorInput);
     mdlShader.CreateInput(_tokens->omniGlassIor, SdfValueTypeNames->Float).ConnectToSource(materialIorInput);
+    mdlShader.CreateInput(_tokens->omniGlassFrostingRoughness, SdfValueTypeNames->Float).ConnectToSource(materialRoughnessInput);
 
-    // Create default shader inputs to produce a glass result with the supplied values
-    // Inputs are either set or connected to the material interface
-    // Set "opacity" to 0.0 so that the "UsdPreviewSurface" mimics the behavior of OmniGlass.mdl
+    // Create default shader inputs and connect them to the material interface
+    // The Preview Surface "opacity" input is connected to the material interface so that the color is incorporated
+    UsdShadeShader previewShader = usdex::core::computeEffectivePreviewSurfaceShader(material);
     previewShader.CreateInput(_tokens->usdPreviewSurfaceColor, SdfValueTypeNames->Color3f).ConnectToSource(materialColorInput);
     previewShader.CreateInput(_tokens->usdPreviewSurfaceIor, SdfValueTypeNames->Float).ConnectToSource(materialIorInput);
-    previewShader.CreateInput(_tokens->usdPreviewSurfaceOpacity, SdfValueTypeNames->Float).Set(0.0f);
+    previewShader.CreateInput(_tokens->usdPreviewSurfaceRoughness, SdfValueTypeNames->Float).ConnectToSource(materialRoughnessInput);
+    previewShader.CreateInput(_tokens->usdPreviewSurfaceOpacity, SdfValueTypeNames->Float).ConnectToSource(materialOpacityInput);
 
     return material;
 }
 
-UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdPrim parent, const std::string& name, const GfVec3f& color, const float indexOfRefraction)
+UsdShadeMaterial usdex::rtx::defineGlassMaterial(
+    UsdPrim parent,
+    const std::string& name,
+    const GfVec3f& color,
+    const float indexOfRefraction,
+    const float roughness
+)
 {
     // Early out if the proposed prim location is invalid
     std::string reason;
@@ -1022,10 +1177,10 @@ UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdPrim parent, const std::stri
     // Call overloaded function
     UsdStageWeakPtr stage = parent.GetStage();
     const SdfPath path = parent.GetPath().AppendChild(TfToken(name));
-    return usdex::rtx::defineGlassMaterial(stage, path, color, indexOfRefraction);
+    return usdex::rtx::defineGlassMaterial(stage, path, color, indexOfRefraction, roughness);
 }
 
-UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdPrim prim, const GfVec3f& color, const float indexOfRefraction)
+UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdPrim prim, const GfVec3f& color, const float indexOfRefraction, const float roughness)
 {
 
     // Early out if the prim is not valid
@@ -1059,5 +1214,5 @@ UsdShadeMaterial usdex::rtx::defineGlassMaterial(UsdPrim prim, const GfVec3f& co
     // Call the stage/path version
     UsdStageWeakPtr stage = prim.GetStage();
     const SdfPath& path = prim.GetPath();
-    return usdex::rtx::defineGlassMaterial(stage, path, color, indexOfRefraction);
+    return usdex::rtx::defineGlassMaterial(stage, path, color, indexOfRefraction, roughness);
 }

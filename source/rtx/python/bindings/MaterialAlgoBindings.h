@@ -216,17 +216,17 @@ void bindMaterialAlgo(module& m)
         )"
     );
     m.def(
-        "addDiffuseTextureToPbrMaterial",
-        &addDiffuseTextureToPbrMaterial,
+        "addColorTextureToPbrMaterial",
+        &addColorTextureToPbrMaterial,
         arg("material"),
         arg("texturePath"),
         R"(
-            Add a diffuse texture to a PBR material
+            Add a color texture to a PBR material
 
             It is expected that the material was created by ``usdex.rtx.definePbrMaterial()``.
 
             Note:
-                The material prim's "Color" input will be removed and replaced with "DiffuseTexture".
+                The material prim's "color" input will be removed and replaced with "ColorTexture".
                 Due to the input removal this function should be used at initial authoring time rather than in a stronger layer.
 
             Args:
@@ -237,6 +237,7 @@ void bindMaterialAlgo(module& m)
                 Whether or not the texture was added to the material
         )"
     );
+
     m.def(
         "addNormalTextureToPbrMaterial",
         &addNormalTextureToPbrMaterial,
@@ -367,7 +368,7 @@ void bindMaterialAlgo(module& m)
             Args:
                 material: The UsdShade.Material prim to add the texture
                 texturePath: The Sdf.AssetPath for the texture
-                intensity: The intensity of the emissive color
+                intensity: The intensity of the emissive texture
 
             Returns:
                 Whether or not the texture was added to the material
@@ -375,11 +376,12 @@ void bindMaterialAlgo(module& m)
     );
     m.def(
         "defineGlassMaterial",
-        overload_cast<UsdStagePtr, const SdfPath&, const GfVec3f&, const float>(&defineGlassMaterial),
+        overload_cast<UsdStagePtr, const SdfPath&, const GfVec3f&, const float, const float>(&defineGlassMaterial),
         arg("stage"),
         arg("path"),
         arg("color"),
         arg("indexOfRefraction") = 1.491f,
+        arg("roughness") = 0.02f,
         R"(
             Defines a Glass ``UsdShade.Material`` interface that drives both an RTX render context and the universal render context.
 
@@ -395,7 +397,8 @@ void bindMaterialAlgo(module& m)
                 - **stage** - The stage on which to define the Material
                 - **path** - The absolute prim path at which to define the Material
                 - **color** - The color of the Material
-                - **indexOfRefraction** - The Index of Refraction to set, 1.0-4.0 range
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; soft maximum 4.0
+                - **roughness** - The roughness of the frosted glass surface, 0.0-1.0 range where 1.0 is frosted and 0.0 is clear
 
             Returns:
                 The newly defined UsdShade.Material. Returns an Invalid prim on error
@@ -403,11 +406,12 @@ void bindMaterialAlgo(module& m)
     );
     m.def(
         "defineGlassMaterial",
-        overload_cast<UsdPrim, const std::string&, const GfVec3f&, const float>(&defineGlassMaterial),
+        overload_cast<UsdPrim, const std::string&, const GfVec3f&, const float, const float>(&defineGlassMaterial),
         arg("parent"),
         arg("name"),
         arg("color"),
         arg("indexOfRefraction") = 1.491f,
+        arg("roughness") = 0.02f,
         R"(
             Defines a Glass ``UsdShade.Material`` interface that drives both an RTX render context and the universal render context.
 
@@ -417,7 +421,8 @@ void bindMaterialAlgo(module& m)
                 - **parent** - Prim below which to define the Material
                 - **name** - Name of the Material
                 - **color** - The color of the Material
-                - **indexOfRefraction** - The Index of Refraction to set, 1.0-4.0 range
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; soft maximum 4.0
+                - **roughness** - The roughness of the frosted glass surface, 0.0-1.0 range where 1.0 is frosted and 0.0 is clear
 
             Returns:
                 The newly defined UsdShade.Material. Returns an Invalid prim on error
@@ -425,10 +430,11 @@ void bindMaterialAlgo(module& m)
     );
     m.def(
         "defineGlassMaterial",
-        overload_cast<UsdPrim, const GfVec3f&, const float>(&defineGlassMaterial),
+        overload_cast<UsdPrim, const GfVec3f&, const float, const float>(&defineGlassMaterial),
         arg("prim"),
         arg("color"),
         arg("indexOfRefraction") = 1.491f,
+        arg("roughness") = 0.02f,
         R"(
             Defines a Glass ``UsdShade.Material`` interface that drives both an RTX render context and the universal render context.
 
@@ -437,7 +443,8 @@ void bindMaterialAlgo(module& m)
             Parameters:
                 - **prim** - Prim to define the Material on
                 - **color** - The color of the Material
-                - **indexOfRefraction** - The Index of Refraction to set, 1.0-4.0 range
+                - **indexOfRefraction** - The Index of Refraction to set, minimum 1.0; soft maximum 4.0
+                - **roughness** - The roughness of the frosted glass surface, 0.0-1.0 range where 1.0 is frosted and 0.0 is clear
 
             Returns:
                 The newly defined UsdShade.Material. Returns an Invalid prim on error

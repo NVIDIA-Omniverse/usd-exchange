@@ -13,6 +13,34 @@ import usdex.test
 from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 
+def assertMetadataValueEqual(testCase: usdex.test.TestCase, actual: Any, expected: Any):
+    if isinstance(expected, Gf.Vec3f):
+        testCase.assertTrue(Gf.IsClose(actual, expected, 1e-6), msg=f"{actual} != {expected}")
+    else:
+        testCase.assertEqual(actual, expected)
+
+
+def assertLimitMetadata(
+    testCase: usdex.test.TestCase,
+    shaderInput: UsdShade.Input,
+    expectedSdrMetadata: dict[str, str],
+    expectedLimits: dict[str, dict[str, Any]],
+):
+    testCase.assertTrue(shaderInput.HasSdrMetadata())
+    testCase.assertFalse(shaderInput.HasSdrMetadataByKey("default"))
+    for key, value in expectedSdrMetadata.items():
+        testCase.assertEqual(shaderInput.GetSdrMetadataByKey(key), value)
+        testCase.assertNotIn(key, shaderInput.GetAttr().GetCustomData())
+
+    limits = shaderInput.GetAttr().GetMetadata("limits")
+    testCase.assertTrue(limits)
+    for subDictKey, expectedSubDict in expectedLimits.items():
+        testCase.assertIn(subDictKey, limits)
+        for key, expectedValue in expectedSubDict.items():
+            testCase.assertIn(key, limits[subDictKey])
+            assertMetadataValueEqual(testCase, limits[subDictKey][key], expectedValue)
+
+
 class MaterialAlgoTest(usdex.test.TestCase):
 
     def testCreateMaterial(self):
@@ -260,6 +288,64 @@ class MaterialAlgoTest(usdex.test.TestCase):
         self.assertTrue(shader)
         self.assertNotEqual(shader.GetPrim(), otherShader.GetPrim())
         self.assertEqual(shader.GetPrim(), previewShader.GetPrim())
+
+    def testComputeEffectiveMtlxSurfaceShader(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # An un-initialized Material will result in an invalid shader
+        material = UsdShade.Material()
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertFalse(shader)
+
+        # An invalid Material will result in an invalid shader
+        material = UsdShade.Material(stage.GetPrimAtPath("/Root"))
+        self.assertFalse(material)
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertFalse(shader)
+
+        # A Material with no connected shaders will result in an invalid shader
+        material = usdex.core.createMaterial(materials, "MtlxMaterial")
+        self.assertTrue(material)
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertFalse(shader)
+
+        # With only the universal render context connected, that shader will be returned for both render contexts
+        universalShader = UsdShade.Shader.Define(stage, material.GetPrim().GetPath().AppendChild("PreviewSurface"))
+        self.assertTrue(universalShader)
+        material.CreateSurfaceOutput().ConnectToSource(universalShader.CreateOutput("out", Sdf.ValueTypeNames.Token))
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim(), universalShader.GetPrim())
+        # Confirm the universal function does find it
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim(), universalShader.GetPrim())
+
+        # A shader connected to the mtlx context IS found
+        mtlxShader = UsdShade.Shader.Define(stage, material.GetPrim().GetPath().AppendChild("OpenPBR"))
+        self.assertTrue(mtlxShader)
+        material.CreateSurfaceOutput("mtlx").ConnectToSource(mtlxShader.CreateOutput("out", Sdf.ValueTypeNames.Token))
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim(), mtlxShader.GetPrim())
+
+        # The universal context still returns the universal shader, not the mtlx one
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim(), universalShader.GetPrim())
+        self.assertNotEqual(shader.GetPrim(), mtlxShader.GetPrim())
+
+        # A material with only an mtlx output does not return a shader for the universal context
+        mtlxOnlyMaterial = usdex.core.createMaterial(materials, "MtlxOnlyMaterial")
+        mtlxOnlyShader = UsdShade.Shader.Define(stage, mtlxOnlyMaterial.GetPrim().GetPath().AppendChild("OpenPBR"))
+        mtlxOnlyMaterial.CreateSurfaceOutput("mtlx").ConnectToSource(mtlxOnlyShader.CreateOutput("out", Sdf.ValueTypeNames.Token))
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(mtlxOnlyMaterial)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim(), mtlxOnlyShader.GetPrim())
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(mtlxOnlyMaterial)
+        self.assertFalse(shader)
 
     def testColorSpaceToken(self):
         self.assertEqual(usdex.core.getColorSpaceToken(usdex.core.ColorSpace.eAuto), "auto")
@@ -678,46 +764,8 @@ class MaterialAlgoTest(usdex.test.TestCase):
         self.assertIsValidUsd(stage)
 
 
-class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
-
-    # Configure the DefineFunctionTestCase
-    defineFunc = usdex.core.definePreviewMaterial
-    requiredArgs = tuple([Gf.Vec3f(1.0, 1.0, 1.0)])
-    typeName = "Material"
-    schema = UsdShade.Material
-    requiredPropertyNames = set()
-
-    def assertIsSurfaceShader(self, material: UsdShade.Material, shader: UsdShade.Shader):
-        surfaceOutput = material.GetSurfaceOutput()
-        self.assertTrue(surfaceOutput.HasConnectedSource())
-        surface = surfaceOutput.GetConnectedSource()[0]
-        self.assertEqual(surface.GetOutput(UsdShade.Tokens.surface).GetAttr(), shader.GetOutput(UsdShade.Tokens.surface).GetAttr())
-
-    def assertInvalidPreviewMaterialForTextureFunctions(self, parent: Usd.Prim, texture: Sdf.AssetPath):
-        # an invalid material will error gracefully
-        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
-            result = usdex.core.addDiffuseTextureToPreviewMaterial(UsdShade.Material(), texture)
-        self.assertFalse(result)
-
-        # an invalid surface shader will error gracefully
-        badMaterial = UsdShade.Material.Define(parent.GetStage(), parent.GetPath().AppendChild("BadMaterial"))
-        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
-            result = usdex.core.addDiffuseTextureToPreviewMaterial(badMaterial, texture)
-        self.assertFalse(result)
-
-        # a surface shader without an ID will error gracefully
-        otherShader = UsdShade.Shader.Define(parent.GetStage(), badMaterial.GetPath().AppendChild("NoShaderId"))
-        badMaterial.CreateSurfaceOutput().ConnectToSource(otherShader.CreateOutput(UsdShade.Tokens.surface, Sdf.ValueTypeNames.Token))
-        self.assertIsSurfaceShader(badMaterial, otherShader)
-        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
-            result = usdex.core.addDiffuseTextureToPreviewMaterial(badMaterial, texture)
-        self.assertFalse(result)
-
-        # an surface shader that is not a UPS will error gracefully
-        otherShader.SetShaderId("UsdUvTexture")
-        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
-            result = usdex.core.addDiffuseTextureToPreviewMaterial(badMaterial, texture)
-        self.assertFalse(result)
+class PreviewMaterialHelpersMixin:
+    """Mixin providing UPS texture network validation for test classes that verify PreviewSurface shader networks."""
 
     def assertValidPreviewMaterialTextureNetwork(
         self,
@@ -767,6 +815,55 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
             self.assertFalse(surface.GetInput(inputName).GetAttr().HasAuthoredValue())
             self.assertEqual(len(surface.GetInput(inputName).GetValueProducingAttributes()), 1)
             self.assertEqual(surface.GetInput(inputName).GetValueProducingAttributes()[0], textureReader.GetOutput(outputName).GetAttr())
+
+    def assertIsSurfaceShader(self, material: UsdShade.Material, shader: UsdShade.Shader):
+        surfaceOutput = material.GetSurfaceOutput("mtlx")
+        self.assertTrue(surfaceOutput)
+        self.assertTrue(surfaceOutput.HasConnectedSource())
+        surface = surfaceOutput.GetConnectedSource()[0]
+        self.assertEqual(surface.GetOutput(UsdShade.Tokens.surface).GetAttr(), shader.GetOutput(UsdShade.Tokens.surface).GetAttr())
+
+
+class DefinePreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFunctionTestCase):
+
+    # Configure the DefineFunctionTestCase
+    defineFunc = usdex.core.definePreviewMaterial
+    requiredArgs = tuple([Gf.Vec3f(1.0, 1.0, 1.0)])
+    typeName = "Material"
+    schema = UsdShade.Material
+    requiredPropertyNames = set()
+
+    def assertIsSurfaceShader(self, material: UsdShade.Material, shader: UsdShade.Shader):
+        surfaceOutput = material.GetSurfaceOutput()
+        self.assertTrue(surfaceOutput.HasConnectedSource())
+        surface = surfaceOutput.GetConnectedSource()[0]
+        self.assertEqual(surface.GetOutput(UsdShade.Tokens.surface).GetAttr(), shader.GetOutput(UsdShade.Tokens.surface).GetAttr())
+
+    def assertInvalidPreviewMaterialForTextureFunctions(self, parent: Usd.Prim, texture: Sdf.AssetPath):
+        # an invalid material will error gracefully
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
+            result = usdex.core.addColorTextureToPreviewMaterial(UsdShade.Material(), texture)
+        self.assertFalse(result)
+
+        # an invalid surface shader will error gracefully
+        badMaterial = UsdShade.Material.Define(parent.GetStage(), parent.GetPath().AppendChild("BadMaterial"))
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
+            result = usdex.core.addColorTextureToPreviewMaterial(badMaterial, texture)
+        self.assertFalse(result)
+
+        # a surface shader without an ID will error gracefully
+        otherShader = UsdShade.Shader.Define(parent.GetStage(), badMaterial.GetPath().AppendChild("NoShaderId"))
+        badMaterial.CreateSurfaceOutput().ConnectToSource(otherShader.CreateOutput(UsdShade.Tokens.surface, Sdf.ValueTypeNames.Token))
+        self.assertIsSurfaceShader(badMaterial, otherShader)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
+            result = usdex.core.addColorTextureToPreviewMaterial(badMaterial, texture)
+        self.assertFalse(result)
+
+        # an surface shader that is not a UPS will error gracefully
+        otherShader.SetShaderId("UsdUvTexture")
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
+            result = usdex.core.addColorTextureToPreviewMaterial(badMaterial, texture)
+        self.assertFalse(result)
 
     def assertValidPreviewMaterialPrimvarNetwork(
         self,
@@ -906,7 +1003,7 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         self.assertTrue(material)
         self.assertIsValidUsd(stage)
 
-    def testAddDiffuseTexture(self):
+    def testAddColorTexture(self):
         stage = Usd.Stage.CreateInMemory()
         usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
         materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
@@ -914,19 +1011,40 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
 
         self.assertInvalidPreviewMaterialForTextureFunctions(parent=materials, texture=texture)
 
-        # a valid preview material will successfully add a diffuse texture
+        # a valid preview material will successfully add a color texture
         material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.0, 0.5, 1.0))
-        result = usdex.core.addDiffuseTextureToPreviewMaterial(material, texture)
+        result = usdex.core.addColorTextureToPreviewMaterial(material, texture)
         self.assertTrue(result)
         self.assertValidPreviewMaterialTextureNetwork(
             material,
             texture,
-            textureReaderName="DiffuseTexture",
+            textureReaderName="ColorTexture",
             colorSpace=usdex.core.ColorSpace.eAuto,
             fallbackColor=Gf.Vec3f(0.0, 0.5, 1.0),
             connectionInfo=[("diffuseColor", Sdf.ValueTypeNames.Color3f, "rgb")],
         )
 
+        self.assertIsValidUsd(stage)
+
+    def testDeprecatedDiffuseTexture(self):
+        texture = self.tmpFile(name="BaseColor", ext="png")
+
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.8, 0.1, 0.1))
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Use `addColorTextureToPreviewMaterial` instead")]):
+            self.assertTrue(usdex.core.addDiffuseTextureToPreviewMaterial(material, texture))
+
+        self.assertValidPreviewMaterialTextureNetwork(
+            material,
+            texture,
+            textureReaderName="ColorTexture",
+            colorSpace=usdex.core.ColorSpace.eAuto,
+            fallbackColor=Gf.Vec3f(0.8, 0.1, 0.1),
+            connectionInfo=[("diffuseColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+        )
         self.assertIsValidUsd(stage)
 
     def testAddNormalTexture(self):
@@ -1348,7 +1466,7 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         )
         self.assertIsValidUsd(stage)
 
-    def testAddPrimvarShaderWithDiffuseTexture(self):
+    def testAddPrimvarShaderWithColorTexture(self):
         stage = Usd.Stage.CreateInMemory()
         usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
         materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
@@ -1368,9 +1486,9 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
             ],
         )
 
-        # Check that a diffuse texture can now be assigned
-        diffuseTexture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
-        result = usdex.core.addDiffuseTextureToPreviewMaterial(material, diffuseTexture)
+        # Check that a color texture can now be assigned
+        colorTexture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
+        result = usdex.core.addColorTextureToPreviewMaterial(material, colorTexture)
         self.assertTrue(result)
         self.assertValidPreviewMaterialPrimvarNetwork(
             material,
@@ -1378,8 +1496,8 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         )
         self.assertValidPreviewMaterialTextureNetwork(
             material,
-            diffuseTexture,
-            textureReaderName="DiffuseTexture",
+            colorTexture,
+            textureReaderName="ColorTexture",
             colorSpace=usdex.core.ColorSpace.eAuto,
             fallbackColor=Gf.Vec3f(0.0, 0.0, 0.0),  # default fallback
             connectionInfo=[("diffuseColor", Sdf.ValueTypeNames.Color3f, "rgb")],
@@ -1551,12 +1669,12 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         stage = Usd.Stage.CreateInMemory()
         usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
         materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
-        diffuseTexture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
+        colorTexture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
         normalTexture = Sdf.AssetPath(self.tmpFile(name="N", ext="png"))
 
-        # a valid preview material will successfully add a diffuse texture
+        # a valid preview material will successfully add a color texture
         material = usdex.core.definePreviewMaterial(materials, "Test", Gf.Vec3f(0.0, 0.5, 1.0))
-        result = usdex.core.addDiffuseTextureToPreviewMaterial(material, diffuseTexture)
+        result = usdex.core.addColorTextureToPreviewMaterial(material, colorTexture)
         self.assertTrue(result)
         result = usdex.core.addNormalTextureToPreviewMaterial(material, normalTexture)
         self.assertTrue(result)
@@ -1564,8 +1682,8 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         # both inputs are driven by the expected textures
         self.assertValidPreviewMaterialTextureNetwork(
             material,
-            diffuseTexture,
-            textureReaderName="DiffuseTexture",
+            colorTexture,
+            textureReaderName="ColorTexture",
             colorSpace=usdex.core.ColorSpace.eAuto,
             fallbackColor=Gf.Vec3f(0.0, 0.5, 1.0),
             connectionInfo=[("diffuseColor", Sdf.ValueTypeNames.Color3f, "rgb")],
@@ -1739,7 +1857,1774 @@ class DefinePreviewMaterialTest(usdex.test.DefineFunctionTestCase):
         self.assertFalse(material)
 
 
-class ConnectPrimvarShaderTest(usdex.test.TestCase):
+class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFunctionTestCase):
+
+    # Configure the DefineFunctionTestCase (same pattern as DefinePreviewMaterialTest)
+    defineFunc = usdex.core.definePbrMaterial
+    requiredArgs = tuple([Gf.Vec3f(1.0, 1.0, 1.0)])
+    typeName = "Material"
+    schema = UsdShade.Material
+    requiredPropertyNames = set()
+
+    def _assertFileColorSpace(self, fileAttr: Usd.Attribute, expectedToken: str):
+        # MaterialAlgo.cpp authors the file input color space using UsdAttribute.SetColorSpace(...)
+        if hasattr(fileAttr, "GetColorSpace"):
+            self.assertEqual(fileAttr.GetColorSpace(), expectedToken)
+        else:
+            self.assertEqual(fileAttr.GetMetadata("colorSpace"), expectedToken)
+
+    def assertValidPbrTexCoordNetwork(self, material: UsdShade.Material):
+        texCoord = UsdShade.Shader(material.GetPrim().GetChild("MtlxPrimvar_st_float2"))
+        self.assertTrue(texCoord)
+        self.assertEqual(texCoord.GetShaderId(), "ND_geompropvalue_vector2")
+        self.assertEqual(texCoord.GetInput("geomprop").GetAttr().Get(), UsdUtils.GetPrimaryUVSetName())
+        return texCoord
+
+    def assertValidPbrTiledImageCommon(
+        self,
+        material: UsdShade.Material,
+        texShaderName: str,
+        expectedShaderId: str,
+        texture: Sdf.AssetPath,
+        expectedFileColorSpace: usdex.core.ColorSpace,
+    ) -> UsdShade.Shader:
+        texCoord = self.assertValidPbrTexCoordNetwork(material)
+
+        texShader = UsdShade.Shader(material.GetPrim().GetChild(texShaderName))
+        self.assertTrue(texShader)
+        self.assertEqual(texShader.GetShaderId(), expectedShaderId)
+
+        fileInput = texShader.GetInput("file")
+        self.assertTrue(fileInput)
+        # Make sure there is a material interface for the "file" inputs
+        self.assertTrue(fileInput.HasConnectedSource())
+        materialFileInput = fileInput.GetValueProducingAttributes()[0]
+        self.assertEqual(materialFileInput.Get().path, texture)
+        self._assertFileColorSpace(materialFileInput, usdex.core.getColorSpaceToken(expectedFileColorSpace))
+
+        # texcoord is connected to TexCoord.out
+        tcInput = texShader.GetInput("texcoord")
+        self.assertTrue(tcInput.HasConnectedSource())
+        self.assertEqual(tcInput.GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texCoord.GetOutput("out").GetAttr())
+
+        self.assertEqual(texShader.GetInput("uvtiling").GetAttr().Get(), Gf.Vec2f(1.0, 1.0))
+        self.assertEqual(texShader.GetInput("uvoffset").GetAttr().Get(), Gf.Vec2f(0.0, 0.0))
+
+        return texShader
+
+    def testInvalidPbrMaterialForTextureFunctions(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        texture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
+
+        # invalid material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addColorTextureToPbrMaterial(UsdShade.Material(), texture)
+        self.assertFalse(result)
+
+        # no surface shader wired for mtlx
+        badMaterial = UsdShade.Material.Define(materials.GetStage(), materials.GetPath().AppendChild("BadPbrMaterial"))
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addColorTextureToPbrMaterial(badMaterial, texture)
+        self.assertFalse(result)
+
+        # surface output wired, but shader has no id / wrong id
+        otherShader = UsdShade.Shader.Define(materials.GetStage(), badMaterial.GetPath().AppendChild("NoShaderId"))
+        badMaterial.CreateSurfaceOutput("mtlx").ConnectToSource(otherShader.CreateOutput(UsdShade.Tokens.surface, Sdf.ValueTypeNames.Token))
+        self.assertTrue(badMaterial.GetSurfaceOutput("mtlx").HasConnectedSource())
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addColorTextureToPbrMaterial(badMaterial, texture)
+        self.assertFalse(result)
+
+        otherShader.SetShaderId("NotOpenPbr")
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addColorTextureToPbrMaterial(badMaterial, texture)
+        self.assertFalse(result)
+
+    def testPbrMaterialShaders(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.0, 0.5, 1.0), opacity=0.2, roughness=0.3, metallic=0.4)
+        self.assertTrue(material)
+
+        assertLimitMetadata(
+            self,
+            material.GetInput("color"),
+            {
+                "uimin": "0, 0, 0",
+                "uimax": "1, 1, 1",
+            },
+            {"hard": {"minimum": Gf.Vec3f(0.0, 0.0, 0.0), "maximum": Gf.Vec3f(1.0, 1.0, 1.0)}},
+        )
+        assertLimitMetadata(
+            self,
+            material.GetInput("opacity"),
+            {"uimin": "0", "uimax": "1"},
+            {"hard": {"minimum": 0.0, "maximum": 1.0}},
+        )
+        assertLimitMetadata(
+            self,
+            material.GetInput("roughness"),
+            {"uimin": "0", "uimax": "1"},
+            {"hard": {"minimum": 0.0, "maximum": 1.0}},
+        )
+        assertLimitMetadata(
+            self,
+            material.GetInput("metallic"),
+            {"uimin": "0", "uimax": "1"},
+            {"hard": {"minimum": 0.0, "maximum": 1.0}},
+        )
+
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim().GetName(), "OpenPBR")
+        self.assertEqual(shader.GetShaderId(), "ND_open_pbr_surface_surfaceshader")
+        self.assertIsSurfaceShader(material, shader)
+
+        # base_color
+        shaderInput = shader.GetInput("base_color")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), Gf.Vec3f(0.0, 0.5, 1.0), 1e-6))
+
+        # geometry_opacity
+        shaderInput = shader.GetInput("geometry_opacity")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 0.2)
+
+        # specular_roughness
+        shaderInput = shader.GetInput("specular_roughness")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 0.3)
+
+        # base_metalness
+        shaderInput = shader.GetInput("base_metalness")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 0.4)
+        self.assertIsValidUsd(stage)
+
+    def testPbrSdrMetadata(self):
+        def normalizeMetadataValue(value):
+            if isinstance(value, str):
+                return tuple(float(component.strip()) for component in value.split(","))
+
+            try:
+                return tuple(float(component) for component in value)
+            except TypeError:
+                return (float(value),)
+
+        def assertMetadataValueIsClose(actual, expected):
+            actualValues = normalizeMetadataValue(actual)
+            expectedValues = normalizeMetadataValue(expected)
+            self.assertEqual(len(actualValues), len(expectedValues))
+            for actualValue, expectedValue in zip(actualValues, expectedValues):
+                self.assertAlmostEqual(actualValue, expectedValue)
+
+        shaderNodeDef = Sdr.Registry().GetShaderNodeByIdentifier("ND_open_pbr_surface_surfaceshader")
+        if self.isUsdOlderThan("0.25.08"):
+            self.skipTest("Skipping until the MaterialX OpenPBR standard library is available to Sdr")
+
+        self.assertTrue(shaderNodeDef, "Shader node definition not found")
+
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        pbrMaterial = usdex.core.definePbrMaterial(materials, "SdrMetadataPbr", Gf.Vec3f(0.2, 0.4, 0.6))
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(pbrMaterial, Gf.Vec3f(1.0, 0.5, 0.25)))
+        glassMaterial = usdex.core.defineGlassPbrMaterial(materials, "SdrMetadataGlass", Gf.Vec3f(0.9, 0.95, 1.0))
+
+        elevatedInputs = [
+            (pbrMaterial, "color", "base_color"),
+            (pbrMaterial, "opacity", "geometry_opacity"),
+            (pbrMaterial, "roughness", "specular_roughness"),
+            (pbrMaterial, "metallic", "base_metalness"),
+            (pbrMaterial, "emissiveColor", "emission_color"),
+            (pbrMaterial, "emissiveLuminance", "emission_luminance"),
+            (glassMaterial, "color", "transmission_color"),
+            (glassMaterial, "ior", "specular_ior"),
+            (glassMaterial, "roughness", "specular_roughness"),
+        ]
+
+        for material, interfaceInputName, openPbrInputName in elevatedInputs:
+            inputProperty = shaderNodeDef.GetShaderInput(openPbrInputName)
+            self.assertTrue(inputProperty)
+            interfaceInput = material.GetInput(interfaceInputName)
+            self.assertTrue(interfaceInput)
+
+            hints = inputProperty.GetHints()
+            limits = interfaceInput.GetAttr().GetMetadata("limits")
+
+            self.assertFalse(interfaceInput.HasSdrMetadataByKey("default"))
+            for key, expectedValue in hints.items():
+                self.assertTrue(interfaceInput.HasSdrMetadataByKey(key), msg=f"Missing {key} on {interfaceInputName}")
+                assertMetadataValueIsClose(interfaceInput.GetSdrMetadataByKey(key), expectedValue)
+                if key == "uimin":
+                    assertMetadataValueIsClose(limits["hard"]["minimum"], expectedValue)
+                elif key == "uimax":
+                    assertMetadataValueIsClose(limits["hard"]["maximum"], expectedValue)
+                elif key == "uisoftmin":
+                    assertMetadataValueIsClose(limits["soft"]["minimum"], expectedValue)
+                elif key == "uisoftmax":
+                    assertMetadataValueIsClose(limits["soft"]["maximum"], expectedValue)
+
+        self.assertIsValidUsd(stage)
+
+    def testDefinePbrMaterialInvalidInputs(self):
+        # mirror testInvalidInputs() for Preview materials
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Opacity value -0.000001 is outside range")]):
+            material = usdex.core.definePbrMaterial(materials, "BadOpacity", Gf.Vec3f(1, 0, 0), opacity=-0.000001)
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Opacity value 1.000001 is outside range")]):
+            material = usdex.core.definePbrMaterial(materials, "BadOpacity", Gf.Vec3f(1, 0, 0), opacity=1.000001)
+        self.assertFalse(material)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Roughness value -0.000001 is outside range")]):
+            material = usdex.core.definePbrMaterial(materials, "BadRoughness", Gf.Vec3f(1, 0, 0), roughness=-0.000001)
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Roughness value 1.000001 is outside range")]):
+            material = usdex.core.definePbrMaterial(materials, "BadRoughness", Gf.Vec3f(1, 0, 0), roughness=1.000001)
+        self.assertFalse(material)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Metallic value -0.000001 is outside range")]):
+            material = usdex.core.definePbrMaterial(materials, "BadMetallic", Gf.Vec3f(1, 0, 0), metallic=-0.000001)
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Metallic value 1.000001 is outside range")]):
+            material = usdex.core.definePbrMaterial(materials, "BadMetallic", Gf.Vec3f(1, 0, 0), metallic=1.000001)
+        self.assertFalse(material)
+
+        material = usdex.core.definePbrMaterial(materials, "LowestValidInputs", Gf.Vec3f(0, 0, 0), opacity=0, roughness=0, metallic=0)
+        self.assertTrue(material)
+        self.assertIsValidUsd(stage)
+
+        material = usdex.core.definePbrMaterial(materials, "HighestValidInputs", Gf.Vec3f(1, 1, 1), opacity=1, roughness=1, metallic=1)
+        self.assertTrue(material)
+        self.assertIsValidUsd(stage)
+
+    def testAddColorTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png")), Sdf.AssetPath(self.tmpFile(name="BaseColor2", ext="png"))]
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.1, 0.2, 0.3))
+
+        for texture in textures:
+            result = usdex.core.addColorTextureToPbrMaterial(material, texture)
+            self.assertTrue(result)
+
+            # Verify the Mtlx texture network
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxBaseColorTexture",
+                expectedShaderId="ND_tiledimage_color3",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eSrgb,
+            )
+            self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.1, 0.2, 0.3))
+
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("base_color").HasConnectedSource())
+            self.assertEqual(surface.GetInput("base_color").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texShader.GetOutput("out").GetAttr())
+            self.assertFalse(surface.GetInput("base_color").GetAttr().HasAuthoredValue())
+
+            # Verify the UPS texture network was also created
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="ColorTexture",
+                colorSpace=usdex.core.ColorSpace.eAuto,
+                fallbackColor=Gf.Vec3f(0.1, 0.2, 0.3),
+                connectionInfo=[("diffuseColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+            )
+            self.assertIsValidUsd(stage)
+
+    def testAddRoughnessTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="roughness", ext="png")), Sdf.AssetPath(self.tmpFile(name="roughness2", ext="png"))]
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8), roughness=0.1)
+
+        for texture in textures:
+            result = usdex.core.addRoughnessTextureToPbrMaterial(material, texture)
+            self.assertTrue(result)
+
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxRoughnessTexture",
+                expectedShaderId="ND_tiledimage_float",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+            )
+            self.assertAlmostEqual(texShader.GetInput("default").GetAttr().Get(), 0.1)
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("specular_roughness").HasConnectedSource())
+            self.assertFalse(surface.GetInput("specular_roughness").GetAttr().HasAuthoredValue())
+
+            # Verify the UPS texture network was also created
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="RoughnessTexture",
+                colorSpace=usdex.core.ColorSpace.eRaw,
+                fallbackColor=Gf.Vec3f(0.1, 0.0, 0.0),
+                connectionInfo=[("roughness", Sdf.ValueTypeNames.Float, "r")],
+            )
+            self.assertIsValidUsd(stage)
+
+    def testAddMetallicTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="metallic", ext="png")), Sdf.AssetPath(self.tmpFile(name="metallic2", ext="png"))]
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8), metallic=0.9)
+
+        for texture in textures:
+            result = usdex.core.addMetallicTextureToPbrMaterial(material, texture)
+            self.assertTrue(result)
+
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxMetallicTexture",
+                expectedShaderId="ND_tiledimage_float",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+            )
+            self.assertAlmostEqual(texShader.GetInput("default").GetAttr().Get(), 0.9)
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("base_metalness").HasConnectedSource())
+            self.assertFalse(surface.GetInput("base_metalness").GetAttr().HasAuthoredValue())
+
+            # Verify the UPS texture network was also created
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="MetallicTexture",
+                colorSpace=usdex.core.ColorSpace.eRaw,
+                fallbackColor=Gf.Vec3f(0.9, 0.0, 0.0),
+                connectionInfo=[("metallic", Sdf.ValueTypeNames.Float, "r")],
+            )
+            self.assertIsValidUsd(stage)
+
+    def testAddOpacityTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="opacity", ext="png")), Sdf.AssetPath(self.tmpFile(name="opacity2", ext="png"))]
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8), opacity=0.25)
+
+        for texture in textures:
+            result = usdex.core.addOpacityTextureToPbrMaterial(material, texture)
+            self.assertTrue(result)
+
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxOpacityTexture",
+                expectedShaderId="ND_tiledimage_float",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+            )
+            self.assertAlmostEqual(texShader.GetInput("default").GetAttr().Get(), 0.25)
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("geometry_opacity").HasConnectedSource())
+            self.assertFalse(surface.GetInput("geometry_opacity").GetAttr().HasAuthoredValue())
+
+            # Verify the UPS texture network was also created
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="OpacityTexture",
+                colorSpace=usdex.core.ColorSpace.eRaw,
+                fallbackColor=Gf.Vec3f(0.25, 0.0, 0.0),
+                connectionInfo=[("opacity", Sdf.ValueTypeNames.Float, "r")],
+            )
+            self.assertIsValidUsd(stage)
+
+    def testAddNormalTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="N", ext="png")), Sdf.AssetPath(self.tmpFile(name="N2", ext="png"))]
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        for texture in textures:
+            result = usdex.core.addNormalTextureToPbrMaterial(material, texture)
+            self.assertTrue(result)
+
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxNormalTexture",
+                expectedShaderId="ND_tiledimage_vector3",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+            )
+            self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.5, 0.5, 1.0))
+
+            normalMap = UsdShade.Shader(material.GetPrim().GetChild("MtlxNormalMap"))
+            self.assertTrue(normalMap)
+            self.assertEqual(normalMap.GetShaderId(), "ND_normalmap")
+            self.assertTrue(normalMap.GetInput("in").HasConnectedSource())
+            self.assertEqual(normalMap.GetInput("in").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texShader.GetOutput("out").GetAttr())
+
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("geometry_normal").HasConnectedSource())
+            self.assertEqual(
+                surface.GetInput("geometry_normal").GetConnectedSource()[0].GetOutputs()[0].GetAttr(),
+                normalMap.GetOutput("out").GetAttr(),
+            )
+
+            # Verify the UPS texture network was also created
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="NormalTexture",
+                colorSpace=usdex.core.ColorSpace.eRaw,
+                fallbackColor=Gf.Vec3f(0.0, 0.0, 1.0),
+                connectionInfo=[("normal", Sdf.ValueTypeNames.Normal3f, "rgb")],
+            )
+            self.assertIsValidUsd(stage)
+
+    def testAddOrmTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="ORM", ext="png")), Sdf.AssetPath(self.tmpFile(name="ORM2", ext="png"))]
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8), roughness=0.25, metallic=0.9)
+
+        for texture in textures:
+            result = usdex.core.addOrmTextureToPbrMaterial(material, texture)
+            self.assertTrue(result)
+
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxORMTexture",
+                expectedShaderId="ND_tiledimage_vector3",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+            )
+            self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.0, 0.25, 0.9))
+
+            sep = UsdShade.Shader(material.GetPrim().GetChild("MtlxSeparateORM"))
+            self.assertTrue(sep)
+            self.assertEqual(sep.GetShaderId(), "ND_separate3_vector3")
+            self.assertTrue(sep.GetInput("in").HasConnectedSource())
+            self.assertEqual(sep.GetInput("in").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texShader.GetOutput("out").GetAttr())
+
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("specular_roughness").HasConnectedSource())
+            self.assertEqual(
+                surface.GetInput("specular_roughness").GetConnectedSource()[0].GetOutputs()[1].GetAttr(), sep.GetOutput("outy").GetAttr()
+            )
+            self.assertTrue(surface.GetInput("base_metalness").HasConnectedSource())
+            self.assertEqual(surface.GetInput("base_metalness").GetConnectedSource()[0].GetOutputs()[2].GetAttr(), sep.GetOutput("outz").GetAttr())
+
+            # Verify the UPS texture network was also created
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="ORMTexture",
+                colorSpace=usdex.core.ColorSpace.eRaw,
+                fallbackColor=Gf.Vec3f(1.0, 0.25, 0.9),
+                connectionInfo=[
+                    ("occlusion", Sdf.ValueTypeNames.Float, "r"),
+                    ("roughness", Sdf.ValueTypeNames.Float, "g"),
+                    ("metallic", Sdf.ValueTypeNames.Float, "b"),
+                ],
+            )
+            self.assertIsValidUsd(stage)
+
+    def testAddEmissiveColor(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        color = Gf.Vec3f(1.0, 1.0, 0.0)
+        luminance = 3000.0
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, color, luminance))
+
+        # Verify the material interface inputs were created and have the supplied values
+        emissiveColorInput = material.GetInput("emissiveColor")
+        self.assertTrue(emissiveColorInput)
+        self.assertEqual(emissiveColorInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(Gf.IsClose(emissiveColorInput.Get(), color, 1e-6))
+        assertLimitMetadata(
+            self,
+            emissiveColorInput,
+            {
+                "uimin": "0, 0, 0",
+                "uimax": "1, 1, 1",
+            },
+            {"hard": {"minimum": Gf.Vec3f(0.0, 0.0, 0.0), "maximum": Gf.Vec3f(1.0, 1.0, 1.0)}},
+        )
+
+        emissiveLuminanceInput = material.GetInput("emissiveLuminance")
+        self.assertTrue(emissiveLuminanceInput)
+        self.assertEqual(emissiveLuminanceInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(emissiveLuminanceInput.Get(), luminance)
+        assertLimitMetadata(
+            self,
+            emissiveLuminanceInput,
+            {"uimin": "0", "uisoftmax": "1000"},
+            {"hard": {"minimum": 0.0}, "soft": {"maximum": 1000.0}},
+        )
+
+        # The OpenPBR shader's emission_color and emission_luminance are connected to the material interface
+        mtlxShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        emissionColor = mtlxShader.GetInput("emission_color")
+        self.assertTrue(emissionColor)
+        self.assertEqual(emissionColor.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(emissionColor.HasConnectedSource())
+        self.assertEqual(emissionColor.GetValueProducingAttributes()[0], emissiveColorInput.GetAttr())
+        self.assertFalse(emissionColor.GetAttr().HasAuthoredValue())
+        self.assertTrue(Gf.IsClose(emissionColor.GetValueProducingAttributes()[0].Get(), color, 1e-6))
+
+        emissionLuminance = mtlxShader.GetInput("emission_luminance")
+        self.assertTrue(emissionLuminance)
+        self.assertEqual(emissionLuminance.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertTrue(emissionLuminance.HasConnectedSource())
+        self.assertEqual(emissionLuminance.GetValueProducingAttributes()[0], emissiveLuminanceInput.GetAttr())
+        self.assertFalse(emissionLuminance.GetAttr().HasAuthoredValue())
+        self.assertAlmostEqual(emissionLuminance.GetValueProducingAttributes()[0].Get(), luminance)
+
+        # The UPS shader's emissiveColor is connected to the material interface (no authored direct value)
+        previewShader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        previewEmissive = previewShader.GetInput("emissiveColor")
+        self.assertTrue(previewEmissive)
+        self.assertEqual(previewEmissive.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(previewEmissive.HasConnectedSource())
+        self.assertEqual(previewEmissive.GetValueProducingAttributes()[0], emissiveColorInput.GetAttr())
+        self.assertFalse(previewEmissive.GetAttr().HasAuthoredValue())
+        self.assertTrue(Gf.IsClose(previewEmissive.GetValueProducingAttributes()[0].Get(), color, 1e-6))
+
+        # Calling again with new values updates the material interface (and therefore both shaders)
+        newColor = Gf.Vec3f(0.5, 0.0, 0.5)
+        newLuminance = 100.0
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, newColor, newLuminance))
+        self.assertTrue(Gf.IsClose(material.GetInput("emissiveColor").Get(), newColor, 1e-6))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), newLuminance)
+
+        self.assertIsValidUsd(stage)
+
+    def testAddEmissiveColorDefaultLuminance(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # Omitting the luminance argument should fall back to the documented 1000.0 cd/m^2 default
+        color = Gf.Vec3f(1.0, 1.0, 0.0)
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, color))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), 1000.0)
+        self.assertTrue(Gf.IsClose(material.GetInput("emissiveColor").Get(), color, 1e-6))
+
+        self.assertIsValidUsd(stage)
+
+    def testInvalidAddEmissiveColor(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+
+        # Invalid emissive color (negative component)
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is invalid: each component must be at least 0 \(no upper bound\).")]
+        ):
+            result = usdex.core.addEmissiveColorToPbrMaterial(material, Gf.Vec3f(-1.0, 1.0, 0.0), 100.0)
+        self.assertFalse(result)
+
+        # Invalid emissive color (component above the hard maximum)
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is invalid: each component must be at most 1.0.")]
+        ):
+            result = usdex.core.addEmissiveColorToPbrMaterial(material, Gf.Vec3f(1.1, 1.0, 0.0), 100.0)
+        self.assertFalse(result)
+
+        # Invalid luminance (negative)
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Luminance value .* is invalid: must be at least 0.0 \(no upper bound\).")]
+        ):
+            result = usdex.core.addEmissiveColorToPbrMaterial(material, Gf.Vec3f(1.0, 1.0, 0.0), -1.0)
+        self.assertFalse(result)
+
+        # Invalid material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addEmissiveColorToPbrMaterial(UsdShade.Material(), Gf.Vec3f(1.0, 1.0, 0.0), 100.0)
+        self.assertFalse(result)
+
+        # Material that is not a definePbrMaterial-style material (no MaterialX OpenPBR surface)
+        previewMaterial = usdex.core.definePreviewMaterial(materials, "PreviewOnly", Gf.Vec3f(0.2, 0.2, 0.2))
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addEmissiveColorToPbrMaterial(previewMaterial, Gf.Vec3f(1.0, 1.0, 0.0), 100.0)
+        self.assertFalse(result)
+
+        # Material with no Preview surface
+        previewSurfacePath = usdex.core.computeEffectivePreviewSurfaceShader(material).GetPrim().GetPath()
+        stage.RemovePrim(previewSurfacePath)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addEmissiveColorToPbrMaterial(material, Gf.Vec3f(1.0, 1.0, 0.0), 100.0)
+        self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
+    def testAddEmissiveTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="emissive", ext="png")), Sdf.AssetPath(self.tmpFile(name="emissive2", ext="png"))]
+
+        # Without a prior emissive color, the OpenPBR `emission_color` is zero (default), so the Mtlx and UPS fallbacks are zero.
+        # The luminance defaults to 1000.0 cd/m^2, creating a new `emissiveLuminance` material interface input.
+        material = usdex.core.definePbrMaterial(materials, "NoColor", Gf.Vec3f(0.8, 0.8, 0.8))
+        result = usdex.core.addEmissiveTextureToPbrMaterial(material, textures[0])
+        self.assertTrue(result)
+
+        # The default luminance was authored on a new material interface input
+        self.assertTrue(material.GetInput("emissiveLuminance"))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), 1000.0)
+        assertLimitMetadata(
+            self,
+            material.GetInput("emissiveLuminance"),
+            {"uimin": "0", "uisoftmax": "1000"},
+            {"hard": {"minimum": 0.0}, "soft": {"maximum": 1000.0}},
+        )
+
+        texShader = self.assertValidPbrTiledImageCommon(
+            material,
+            texShaderName="MtlxEmissiveTexture",
+            expectedShaderId="ND_tiledimage_color3",
+            texture=textures[0],
+            expectedFileColorSpace=usdex.core.ColorSpace.eAuto,
+        )
+        self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.0, 0.0, 0.0))
+        surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(surface.GetInput("emission_color").HasConnectedSource())
+        self.assertEqual(surface.GetInput("emission_color").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texShader.GetOutput("out").GetAttr())
+        self.assertFalse(surface.GetInput("emission_color").GetAttr().HasAuthoredValue())
+
+        # OpenPBR emission_luminance is connected to the material interface emissiveLuminance
+        emissionLuminance = surface.GetInput("emission_luminance")
+        self.assertTrue(emissionLuminance.HasConnectedSource())
+        self.assertEqual(emissionLuminance.GetValueProducingAttributes()[0], material.GetInput("emissiveLuminance").GetAttr())
+
+        self.assertValidPreviewMaterialTextureNetwork(
+            material,
+            textures[0],
+            textureReaderName="EmissiveTexture",
+            colorSpace=usdex.core.ColorSpace.eAuto,
+            fallbackColor=Gf.Vec3f(0.0, 0.0, 0.0),
+            connectionInfo=[("emissiveColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+        )
+
+        # The previously authored emissive color value is used as the texture fallback, and the `emissiveColor` interface input is removed
+        # in favor of the `EmissiveTexture` interface input. An explicit luminance argument overrides any value previously set by
+        # `addEmissiveColorToPbrMaterial`.
+        material = usdex.core.definePbrMaterial(materials, "InitialValues", Gf.Vec3f(0.8, 0.8, 0.8))
+        emissiveColor = Gf.Vec3f(1.0, 1.0, 0.2)
+        emissiveLuminance = 500.0
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, emissiveColor, emissiveLuminance))
+        self.assertTrue(material.GetInput("emissiveColor"))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), emissiveLuminance)
+
+        textureLuminance = 250.0
+        for texture in textures:
+            result = usdex.core.addEmissiveTextureToPbrMaterial(material, texture, textureLuminance)
+            self.assertTrue(result)
+
+            # The scalar emissiveColor interface input is removed (replaced by EmissiveTexture); luminance is overwritten with textureLuminance
+            self.assertFalse(material.GetInput("emissiveColor"))
+            self.assertTrue(material.GetInput("emissiveLuminance"))
+            self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), textureLuminance)
+
+            texShader = self.assertValidPbrTiledImageCommon(
+                material,
+                texShaderName="MtlxEmissiveTexture",
+                expectedShaderId="ND_tiledimage_color3",
+                texture=texture,
+                expectedFileColorSpace=usdex.core.ColorSpace.eAuto,
+            )
+            # The fallback default was set to the previously authored emissive color on the first call and persists across subsequent calls.
+            self.assertTrue(Gf.IsClose(texShader.GetInput("default").GetAttr().Get(), emissiveColor, 1e-6))
+
+            surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(surface.GetInput("emission_color").HasConnectedSource())
+            self.assertEqual(
+                surface.GetInput("emission_color").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texShader.GetOutput("out").GetAttr()
+            )
+            self.assertFalse(surface.GetInput("emission_color").GetAttr().HasAuthoredValue())
+
+            # The OpenPBR `emission_luminance` remains connected to the material interface
+            emissionLuminance = surface.GetInput("emission_luminance")
+            self.assertTrue(emissionLuminance.HasConnectedSource())
+            self.assertEqual(emissionLuminance.GetValueProducingAttributes()[0], material.GetInput("emissiveLuminance").GetAttr())
+
+            # The UPS fallback was set to the previously authored emissive color on the first call and persists across subsequent calls.
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="EmissiveTexture",
+                colorSpace=usdex.core.ColorSpace.eAuto,
+                fallbackColor=emissiveColor,
+                connectionInfo=[("emissiveColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+            )
+
+        self.assertIsValidUsd(stage)
+
+    def testInvalidAddEmissiveTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        texture = Sdf.AssetPath(self.tmpFile(name="emissive", ext="png"))
+
+        # Invalid material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addEmissiveTextureToPbrMaterial(UsdShade.Material(), texture)
+        self.assertFalse(result)
+
+        # Material that is not a definePbrMaterial-style material (no MaterialX OpenPBR surface)
+        previewMaterial = usdex.core.definePreviewMaterial(materials, "PreviewOnly", Gf.Vec3f(0.2, 0.2, 0.2))
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addEmissiveTextureToPbrMaterial(previewMaterial, texture)
+        self.assertFalse(result)
+
+        # Invalid luminance (negative)
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.2, 0.2, 0.2))
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Luminance value .* is invalid: must be at least 0.0 \(no upper bound\).")]
+        ):
+            result = usdex.core.addEmissiveTextureToPbrMaterial(material, texture, luminance=-1.0)
+        self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
+    def testTexturesShareTexCoordReader(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        baseColorTex = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
+        normalTex = Sdf.AssetPath(self.tmpFile(name="N", ext="png"))
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.2, 0.3, 0.4))
+        self.assertTrue(usdex.core.addColorTextureToPbrMaterial(material, baseColorTex))
+        self.assertTrue(usdex.core.addNormalTextureToPbrMaterial(material, normalTex))
+
+        def findTexCoord(stage):
+            tex = []
+            for prim in stage.Traverse():
+                shader = UsdShade.Shader(prim)
+                if shader and shader.GetShaderId() == "ND_geompropvalue_vector2":
+                    tex.append(shader)
+            return tex
+
+        texReaders = findTexCoord(stage)
+        self.assertEqual(len(texReaders), 1)
+        self.assertEqual(texReaders[0].GetPrim(), material.GetPrim().GetChild("MtlxPrimvar_st_float2"))
+
+    def testDefinePbrMaterialPrimOverload(self):
+        # mirror testDefinePreviewMaterialPrimOverload()
+        stage = Usd.Stage.CreateInMemory()
+        prim = stage.DefinePrim("/World/PbrMaterial", "Material")
+
+        color = Gf.Vec3f(0.5, 0.7, 0.9)
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, '.*Redefining prim.*from type.*Material.*to.*Material.*Expected original type to be "" or .*Scope.*')],
+        ):
+            material = usdex.core.definePbrMaterial(prim, color)
+
+        self.assertTrue(material)
+        self.assertEqual(material.GetPrim().GetPath(), prim.GetPath())
+        self.assertEqual(material.GetPrim().GetTypeName(), "Material")
+
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetShaderId(), "ND_open_pbr_surface_surfaceshader")
+        shaderInput = shader.GetInput("base_color")
+        self.assertEqual(shaderInput.GetValueProducingAttributes()[0].Get(), color)
+
+    def testDefinePbrMaterialPrimOverloadWithOptionalParams(self):
+        stage = Usd.Stage.CreateInMemory()
+        prim = stage.DefinePrim("/World/PbrMaterialWithParams", "Material")
+
+        color = Gf.Vec3f(0.5, 0.7, 0.9)
+        opacity = 0.8
+        roughness = 0.3
+        metallic = 0.5
+
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, '.*Redefining prim.*from type.*Material.*to.*Material.*Expected original type to be "" or .*Scope.*')],
+        ):
+            material = usdex.core.definePbrMaterial(prim, color, opacity=opacity, roughness=roughness, metallic=metallic)
+
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        shaderInput = shader.GetInput("base_color")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), color, 1e-6))
+        shaderInput = shader.GetInput("geometry_opacity")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), opacity, 1e-6))
+        shaderInput = shader.GetInput("specular_roughness")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), roughness, 1e-6))
+        shaderInput = shader.GetInput("base_metalness")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), metallic, 1e-6))
+
+    def testDefinePbrMaterialPrimOverloadMinimalParams(self):
+        stage = Usd.Stage.CreateInMemory()
+        prim = stage.DefinePrim("/World/PbrMaterialMinimal", "Material")
+
+        color = Gf.Vec3f(1.0, 0.5, 0.2)
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, '.*Redefining prim.*from type.*Material.*to.*Material.*Expected original type to be "" or .*Scope.*')],
+        ):
+            material = usdex.core.definePbrMaterial(prim, color)
+
+        shader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        shaderInput = shader.GetInput("base_color")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), color, 1e-6))
+        shaderInput = shader.GetInput("geometry_opacity")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), 1.0, 1e-6))
+        shaderInput = shader.GetInput("specular_roughness")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), 0.3, 1e-6))
+        shaderInput = shader.GetInput("base_metalness")
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), 0.0, 1e-6))
+
+    def testDefinePbrMaterialPrimOverloadInvalidPrim(self):
+        prim = Usd.Prim()
+        self.assertFalse(prim.IsValid())
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*invalid prim")]):
+            material = usdex.core.definePbrMaterial(prim, Gf.Vec3f(1.0, 1.0, 1.0))
+        self.assertFalse(material)
+
+    def testDefinePbrMaterialPrimOverloadTypeGuards(self):
+        stage = Usd.Stage.CreateInMemory()
+        color = Gf.Vec3f(0.5, 0.7, 0.9)
+
+        meshPrim = stage.DefinePrim("/World/MeshPrimPbr", "Mesh")
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, '.*Redefining prim.*from type.*Mesh.*to.*Material.*Expected original type to be "" or .*Scope.*')],
+        ):
+            material = usdex.core.definePbrMaterial(meshPrim, color)
+        self.assertTrue(material)
+
+        scopePrim = stage.DefinePrim("/World/ScopePrimPbr", "Scope")
+        with usdex.test.ScopedDiagnosticChecker(self, []):
+            material = usdex.core.definePbrMaterial(scopePrim, color)
+        self.assertTrue(material)
+
+        xformPrim = stage.DefinePrim("/World/XformPrimPbr", "Xform")
+        with usdex.test.ScopedDiagnosticChecker(
+            self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Cannot redefine.*from.*Xform.*to.*Material.*because Material is not Xformable")]
+        ):
+            material = usdex.core.definePbrMaterial(xformPrim, color)
+        self.assertFalse(material)
+
+    def testMaterialInterface(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.5, 0.7, 0.9))
+        self.assertTrue(material)
+
+        # Verify the material interface (names match UPS / RTX conventions)
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["color", "metallic", "opacity", "roughness"],
+        )
+
+        usdex.core.addColorTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "metallic", "opacity", "roughness"],
+        )
+
+        usdex.core.addRoughnessTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Roughness", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "RoughnessTexture", "metallic", "opacity"],
+        )
+
+        usdex.core.addNormalTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Normal", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "NormalTexture", "RoughnessTexture", "metallic", "opacity"],
+        )
+
+        usdex.core.addOpacityTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Opacity", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "NormalTexture", "OpacityTexture", "RoughnessTexture", "metallic"],
+        )
+
+        usdex.core.addMetallicTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Metallic", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "MetallicTexture", "NormalTexture", "OpacityTexture", "RoughnessTexture"],
+        )
+
+        # Adding an emissive color creates two new material interface inputs
+        usdex.core.addEmissiveColorToPbrMaterial(material, Gf.Vec3f(1.0, 0.5, 0.0), 100.0)
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "MetallicTexture", "NormalTexture", "OpacityTexture", "RoughnessTexture", "emissiveColor", "emissiveLuminance"],
+        )
+
+        # Adding an emissive texture replaces the scalar emissiveColor with EmissiveTexture (luminance is preserved)
+        usdex.core.addEmissiveTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Emissive", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ColorTexture", "EmissiveTexture", "MetallicTexture", "NormalTexture", "OpacityTexture", "RoughnessTexture", "emissiveLuminance"],
+        )
+
+        # Try with a new material the ORM texture
+        material = usdex.core.definePbrMaterial(materials, "TestORM", Gf.Vec3f(0.5, 0.7, 0.9))
+        self.assertTrue(material)
+
+        # Verify the material interface
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["color", "metallic", "opacity", "roughness"],
+        )
+
+        usdex.core.addOrmTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="ORM", ext="png")))
+        self.assertEqual(
+            sorted([x.GetBaseName() for x in material.GetInterfaceInputs()]),
+            ["ORMTexture", "color", "opacity"],
+        )
+        self.assertIsValidUsd(stage)
+
+    def testRemoveMaterialInterface(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.5, 0.7, 0.9))
+        self.assertTrue(material)
+
+        class TextureInfo:
+            def __init__(self, texture, func, shaderName, shaderId, colorSpace):
+                self.texture = texture
+                self.func = func
+                self.shaderName = shaderName
+                self.shaderId = shaderId
+                self.colorSpace = colorSpace
+
+            def add(self, material):
+                return self.func(material, self.texture)
+
+        textureInfos = [
+            TextureInfo(
+                Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png")),
+                usdex.core.addColorTextureToPbrMaterial,
+                "MtlxBaseColorTexture",
+                "ND_tiledimage_color3",
+                usdex.core.ColorSpace.eSrgb,
+            ),
+            TextureInfo(
+                Sdf.AssetPath(self.tmpFile(name="Normal", ext="png")),
+                usdex.core.addNormalTextureToPbrMaterial,
+                "MtlxNormalTexture",
+                "ND_tiledimage_vector3",
+                usdex.core.ColorSpace.eRaw,
+            ),
+            TextureInfo(
+                Sdf.AssetPath(self.tmpFile(name="Metallic", ext="png")),
+                usdex.core.addMetallicTextureToPbrMaterial,
+                "MtlxMetallicTexture",
+                "ND_tiledimage_float",
+                usdex.core.ColorSpace.eRaw,
+            ),
+            TextureInfo(
+                Sdf.AssetPath(self.tmpFile(name="Opacity", ext="png")),
+                usdex.core.addOpacityTextureToPbrMaterial,
+                "MtlxOpacityTexture",
+                "ND_tiledimage_float",
+                usdex.core.ColorSpace.eRaw,
+            ),
+            TextureInfo(
+                Sdf.AssetPath(self.tmpFile(name="Roughness", ext="png")),
+                usdex.core.addRoughnessTextureToPbrMaterial,
+                "MtlxRoughnessTexture",
+                "ND_tiledimage_float",
+                usdex.core.ColorSpace.eRaw,
+            ),
+            TextureInfo(
+                Sdf.AssetPath(self.tmpFile(name="Emissive", ext="png")),
+                usdex.core.addEmissiveTextureToPbrMaterial,
+                "MtlxEmissiveTexture",
+                "ND_tiledimage_color3",
+                usdex.core.ColorSpace.eAuto,
+            ),
+        ]
+        for textureInfo in textureInfos:
+            result = textureInfo.add(material)
+            self.assertTrue(result)
+
+        result = usdex.core.removeMaterialInterface(material)
+        self.assertTrue(result)
+        self.assertEqual(material.GetInterfaceInputs(), [])
+
+        # verify that every mtlx input has been disconnected from the material inputs and has the correct value
+        for textureInfo in textureInfos:
+            texShader = UsdShade.Shader(material.GetPrim().GetChild(textureInfo.shaderName))
+            self.assertTrue(texShader)
+            self.assertEqual(texShader.GetShaderId(), textureInfo.shaderId)
+
+            fileInput = texShader.GetInput("file")
+            self.assertTrue(fileInput)
+            self.assertTrue(fileInput.GetAttr().HasAuthoredValue())
+            self.assertFalse(fileInput.HasConnectedSource())
+            self.assertEqual(fileInput.Get().path, textureInfo.texture)
+            self._assertFileColorSpace(fileInput.GetAttr(), usdex.core.getColorSpaceToken(textureInfo.colorSpace))
+
+        self.assertIsValidUsd(stage)
+
+    def assertValidPbrMaterialPrimvarNetwork(
+        self,
+        material: UsdShade.Material,
+        primvarInfo: List[Tuple[str, str, Any]],  # inputName, primvarName, fallbackValue
+    ):
+        surfaceShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(surfaceShader)
+        self.assertEqual(surfaceShader.GetPrim().GetName(), "OpenPBR")
+        self.assertEqual(surfaceShader.GetShaderId(), "ND_open_pbr_surface_surfaceshader")
+
+        mtlxTypeMappings = {
+            Sdf.ValueTypeNames.Float: "float",
+            Sdf.ValueTypeNames.Color3f: "color3",
+            Sdf.ValueTypeNames.Float3: "vector3",
+        }
+
+        for inputName, primvarName, fallbackValue in primvarInfo:
+            input = surfaceShader.GetInput(inputName)
+            outputTypeName = input.GetTypeName()
+
+            mtlxTypeId = mtlxTypeMappings.get(
+                outputTypeName,
+                outputTypeName.GetAsToken().GetString() if hasattr(outputTypeName, "GetAsToken") else str(outputTypeName),
+            )
+
+            validPrimvarName = primvarName.replace(":", "_")
+            primvarReaderName = usdex.core.getValidPrimName(f"MtlxPrimvar_{validPrimvarName}_{outputTypeName}")
+            primvarReader = UsdShade.Shader(material.GetPrim().GetChild(primvarReaderName))
+            self.assertTrue(primvarReader, msg=f"Expected primvar reader {primvarReaderName} not found")
+            self.assertEqual(primvarReader.GetShaderId(), f"ND_geompropvalue_{mtlxTypeId}")
+            self.assertEqual(primvarReader.GetInput("geomprop").GetAttr().Get(), primvarName)
+
+            self.assertTrue(input.HasConnectedSource())
+            self.assertEqual(len(input.GetValueProducingAttributes()), 1)
+            self.assertEqual(input.GetValueProducingAttributes()[0], primvarReader.GetOutput("out").GetAttr())
+            self.assertFalse(input.GetAttr().HasAuthoredValue())
+
+    def testAddPrimvarShaderToInvalidMaterial(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addPrimvarShaderToPbrMaterial(UsdShade.Material(), "base_color", "perInstanceColor")
+        self.assertFalse(result)
+
+        material = usdex.core.createMaterial(materials, "NonPbrMaterial")
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial")]):
+            result = usdex.core.addPrimvarShaderToPbrMaterial(material, "base_color", "perInstanceColor")
+        self.assertFalse(result)
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShader(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        result = usdex.core.addPrimvarShaderToPbrMaterial(material, "base_color", "perInstanceColor")
+        self.assertTrue(result)
+        result = usdex.core.addPrimvarShaderToPbrMaterial(material, "specular_roughness", "perInstanceRoughness")
+        self.assertTrue(result)
+
+        self.assertValidPbrMaterialPrimvarNetwork(
+            material,
+            [
+                ("base_color", "perInstanceColor", None),
+                ("specular_roughness", "perInstanceRoughness", None),
+            ],
+        )
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderInvalidInputs(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot add primvar.*on surface shader.*")]):
+            result = usdex.core.addPrimvarShaderToPbrMaterial(material, "invalidInput", "perInstanceColor")
+            self.assertFalse(result)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot add primvar.*there is no input with that name.*")]):
+            result = usdex.core.addPrimvarShaderToPbrMaterial(material, "", "perInstanceColor")
+            self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
+    def testAddPrimvarShaderWithColorTexture(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Test", Gf.Vec3f(0.8, 0.8, 0.8))
+
+        result = usdex.core.addPrimvarShaderToPbrMaterial(material, "base_color", "perInstanceColor")
+        self.assertTrue(result)
+        result = usdex.core.addPrimvarShaderToPbrMaterial(material, "specular_roughness", "perInstanceRoughness")
+        self.assertTrue(result)
+
+        self.assertValidPbrMaterialPrimvarNetwork(
+            material,
+            [
+                ("base_color", "perInstanceColor", None),
+                ("specular_roughness", "perInstanceRoughness", None),
+            ],
+        )
+
+        texture = Sdf.AssetPath(self.tmpFile(name="BaseColor", ext="png"))
+        result = usdex.core.addColorTextureToPbrMaterial(material, texture)
+        self.assertTrue(result)
+
+        # Verify the Mtlx texture network
+        texShader = self.assertValidPbrTiledImageCommon(
+            material,
+            texShaderName="MtlxBaseColorTexture",
+            expectedShaderId="ND_tiledimage_color3",
+            texture=texture,
+            expectedFileColorSpace=usdex.core.ColorSpace.eSrgb,
+        )
+
+        # The original default value is lost with primvar connections, so it should be zeroed out
+        self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.0, 0.0, 0.0))
+
+        # The texture replaced the primvar connection on base_color;
+        # specular_roughness primvar should still be intact
+        self.assertValidPbrMaterialPrimvarNetwork(
+            material,
+            [("specular_roughness", "perInstanceRoughness", None)],
+        )
+
+        # Re-adding the primvar to base_color should overwrite the texture connection
+        result = usdex.core.addPrimvarShaderToPbrMaterial(material, "base_color", "perInstanceColor")
+        self.assertTrue(result)
+        self.assertValidPbrMaterialPrimvarNetwork(
+            material,
+            [
+                ("base_color", "perInstanceColor", None),
+                ("specular_roughness", "perInstanceRoughness", None),
+            ],
+        )
+
+        self.assertIsValidUsd(stage)
+
+    def testCrossRenderContexts(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePreviewMaterial(materials, "PreviewTest", Gf.Vec3f(0.0, 0.5, 1.0))
+        self.assertTrue(material)
+
+        funcs = [
+            usdex.core.addColorTextureToPbrMaterial,
+            usdex.core.addMetallicTextureToPbrMaterial,
+            usdex.core.addNormalTextureToPbrMaterial,
+            usdex.core.addOpacityTextureToPbrMaterial,
+            usdex.core.addOrmTextureToPbrMaterial,
+            usdex.core.addRoughnessTextureToPbrMaterial,
+            usdex.core.addEmissiveTextureToPbrMaterial,
+        ]
+        for func in funcs:
+            with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial().*")]):
+                result = func(material, Sdf.AssetPath(self.tmpFile(name="TextureFile", ext="png")))
+            self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
+        # Check that the texture function fails when there's no Preview material
+        material = usdex.core.definePbrMaterial(materials, "JustPbrTest", Gf.Vec3f(0.8, 0.8, 0.8))
+        previewSurfacePath = usdex.core.computeEffectivePreviewSurfaceShader(material).GetPrim().GetPath()
+        stage.RemovePrim(previewSurfacePath)
+        for func in funcs:
+            with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePbrMaterial().*")]):
+                result = func(material, Sdf.AssetPath(self.tmpFile(name="TextureFile", ext="png")))
+        self.assertFalse(result)
+
+        self.assertIsValidUsd(stage)
+
+
+# `defineGlassPreviewMaterial` internally calls `definePreviewMaterial`.
+# For this reason, the test here focuses solely on the ior and opacity parameters.
+class DefineGlassPreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFunctionTestCase):
+    # Configure the DefineFunctionTestCase
+    defineFunc = usdex.core.defineGlassPreviewMaterial
+    requiredArgs = tuple([Gf.Vec3f(1.0, 1.0, 1.0)])
+    typeName = "Material"
+    schema = UsdShade.Material
+    requiredPropertyNames = set()
+
+    def assertIsSurfaceShader(self, material: UsdShade.Material, shader: UsdShade.Shader):
+        surfaceOutput = material.GetSurfaceOutput()
+        self.assertTrue(surfaceOutput.HasConnectedSource())
+        surface = surfaceOutput.GetConnectedSource()[0]
+        self.assertEqual(surface.GetOutput(UsdShade.Tokens.surface).GetAttr(), shader.GetOutput(UsdShade.Tokens.surface).GetAttr())
+
+    def testGlassPreviewMaterialShaders(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # the material is created successfully
+        material = usdex.core.defineGlassPreviewMaterial(
+            materials,
+            "Test",
+            Gf.Vec3f(0.0, 0.5, 0.9),
+            indexOfRefraction=1.48,
+            roughness=0.1,
+            opacity=0.4,
+        )
+        self.assertTrue(material)
+
+        # the shader is now in place
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertEqual(shader.GetPrim().GetName(), "PreviewSurface")
+        self.assertEqual(shader.GetShaderId(), "UsdPreviewSurface")
+
+        # the shader should include a Color named "diffuseColor" that has the effective specified value
+        shaderInput = shader.GetInput("diffuseColor")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(Gf.IsClose(shaderInput.GetValueProducingAttributes()[0].Get(), Gf.Vec3f(0.0, 0.5, 0.9), 1e-6))
+
+        # the shader should include a Float named "opacity" that has the effective specified value
+        shaderInput = shader.GetInput("opacity")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 0.4)
+
+        # the shader should include a Float named "ior" that has the effective specified value
+        shaderInput = shader.GetInput("ior")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 1.48)
+
+        # the shader should include a Float named "roughness" that has the effective specified value
+        shaderInput = shader.GetInput("roughness")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 0.1)
+
+        # the shader should include a Float named "metallic" that has the effective specified value
+        shaderInput = shader.GetInput("metallic")
+        self.assertTrue(shaderInput)
+        self.assertEqual(shaderInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(shaderInput.GetValueProducingAttributes()[0].Get(), 0.0)
+
+        # the shader is driving the surface of the material for the universal render context
+        self.assertIsSurfaceShader(material, shader)
+
+        # the shader is driving the displacement of the material for the universal render context
+        displacementOutput = material.GetDisplacementOutput()
+        self.assertTrue(displacementOutput.HasConnectedSource())
+        displacement = displacementOutput.GetConnectedSource()[0]
+        self.assertEqual(displacement.GetOutput(UsdShade.Tokens.displacement).GetAttr(), shader.GetOutput(UsdShade.Tokens.displacement).GetAttr())
+
+        # the volume output was not setup as this is not a volumetric material
+        volumeOutput = material.GetVolumeOutput()
+        self.assertFalse(volumeOutput.HasConnectedSource())
+        self.assertFalse(shader.GetOutput(UsdShade.Tokens.volume))
+
+        # all authored data is valid
+        self.assertIsValidUsd(stage)
+
+    def testGlassPreviewMaterialDefaultValues(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.defineGlassPreviewMaterial(materials, "Test", Gf.Vec3f(0.0, 0.5, 0.9))
+        self.assertTrue(material)
+
+        shader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertTrue(shader)
+        self.assertAlmostEqual(shader.GetInput("opacity").GetValueProducingAttributes()[0].Get(), 0.2)
+        self.assertAlmostEqual(shader.GetInput("ior").GetValueProducingAttributes()[0].Get(), 1.5)
+        self.assertAlmostEqual(shader.GetInput("roughness").GetValueProducingAttributes()[0].Get(), 0.02)
+
+        self.assertIsValidUsd(stage)
+
+    def testInvalidInputs(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # An out-of-range color will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is outside range")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadColor", Gf.Vec3f(-0.000001, -0.000001, -0.000001))
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is outside range")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadColor", Gf.Vec3f(1.000001, 1.000001, 1.000001))
+        self.assertFalse(material)
+
+        # An indexOfRefraction below the minimum will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*IOR value -0.000001 is below minimum value 1.0")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadIndexOfRefraction", Gf.Vec3f(1, 0, 0), indexOfRefraction=-0.000001)
+        self.assertFalse(material)
+        material = usdex.core.defineGlassPreviewMaterial(materials, "HighIndexOfRefraction", Gf.Vec3f(1, 0, 0), indexOfRefraction=4.000001)
+        self.assertTrue(material)
+
+        # An out-of-range roughness will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Roughness value -0.000001 is outside range")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadRoughness", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, roughness=-0.000001)
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Roughness value 1.000001 is outside range")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadRoughness", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, roughness=1.000001)
+        self.assertFalse(material)
+
+        # An out-of-range opacity will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Opacity value -0.000001 is outside range")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadOpacity", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, opacity=-0.000001)
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Opacity value 1.000001 is outside range")]):
+            material = usdex.core.defineGlassPreviewMaterial(materials, "BadOpacity", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, opacity=1.000001)
+        self.assertFalse(material)
+
+        self.assertIsValidUsd(stage)
+
+
+class DefineGlassMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFunctionTestCase):
+    defineFunc = usdex.core.defineGlassPbrMaterial
+    requiredArgs = tuple([Gf.Vec3f(1.0, 1.0, 1.0)])
+    typeName = "Material"
+    schema = UsdShade.Material
+    requiredPropertyNames = set()
+
+    def _assertGlassInterfacePreserved(self, material: UsdShade.Material, color: Gf.Vec3f, ior: float, roughness: float, previewOpacity: float):
+        # Verify the glass-specific material interface inputs (color/ior/roughness/opacity) hold the expected values and that
+        # both render contexts' glass-relevant shader inputs (transmission/specular/IOR/roughness/opacity/diffuseColor) remain
+        # routed through that interface. Used for newly-defined glass materials and to guard against emissive helpers stomping
+        # on the glass network.
+        colorInput = material.GetInput("color")
+        self.assertTrue(colorInput)
+        self.assertEqual(colorInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(Gf.IsClose(colorInput.Get(), color, 1e-6))
+
+        iorInput = material.GetInput("ior")
+        self.assertTrue(iorInput)
+        self.assertEqual(iorInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(iorInput.Get(), ior)
+
+        roughnessInput = material.GetInput("roughness")
+        self.assertTrue(roughnessInput)
+        self.assertEqual(roughnessInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(roughnessInput.Get(), roughness)
+
+        opacityInput = material.GetInput("opacity")
+        self.assertTrue(opacityInput)
+        self.assertEqual(opacityInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(opacityInput.Get(), previewOpacity)
+
+        assertLimitMetadata(
+            self,
+            colorInput,
+            {
+                "uimin": "0, 0, 0",
+                "uimax": "1, 1, 1",
+            },
+            {"hard": {"minimum": Gf.Vec3f(0.0, 0.0, 0.0), "maximum": Gf.Vec3f(1.0, 1.0, 1.0)}},
+        )
+        assertLimitMetadata(
+            self,
+            iorInput,
+            {
+                "uimin": "0",
+                "uisoftmin": "1",
+                "uisoftmax": "3",
+            },
+            {"hard": {"minimum": 0.0}, "soft": {"minimum": 1.0, "maximum": 3.0}},
+        )
+        assertLimitMetadata(
+            self,
+            roughnessInput,
+            {"uimin": "0", "uimax": "1"},
+            {"hard": {"minimum": 0.0, "maximum": 1.0}},
+        )
+        assertLimitMetadata(
+            self,
+            opacityInput,
+            {"uimin": "0", "uimax": "1"},
+            {"hard": {"minimum": 0.0, "maximum": 1.0}},
+        )
+
+        # OpenPBR shader: glass connections (transmission_color/specular_ior/specular_roughness) routed through the material interface
+        mtlxShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        transmissionColor = mtlxShader.GetInput("transmission_color")
+        self.assertTrue(transmissionColor.HasConnectedSource())
+        self.assertEqual(transmissionColor.GetValueProducingAttributes()[0], colorInput.GetAttr())
+
+        specularIor = mtlxShader.GetInput("specular_ior")
+        self.assertTrue(specularIor.HasConnectedSource())
+        self.assertEqual(specularIor.GetValueProducingAttributes()[0], iorInput.GetAttr())
+
+        specularRoughness = mtlxShader.GetInput("specular_roughness")
+        self.assertTrue(specularRoughness.HasConnectedSource())
+        self.assertEqual(specularRoughness.GetValueProducingAttributes()[0], roughnessInput.GetAttr())
+
+        # OpenPBR fixed weights remain unchanged
+        self.assertAlmostEqual(mtlxShader.GetInput("base_weight").GetAttr().Get(), 0.0)
+        self.assertAlmostEqual(mtlxShader.GetInput("specular_weight").GetAttr().Get(), 1.0)
+        self.assertAlmostEqual(mtlxShader.GetInput("transmission_weight").GetAttr().Get(), 1.0)
+
+        # UPS shader: glass connections (diffuseColor/ior/opacity/roughness) routed through the material interface
+        previewShader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        diffuseColor = previewShader.GetInput("diffuseColor")
+        self.assertTrue(diffuseColor.HasConnectedSource())
+        self.assertEqual(diffuseColor.GetValueProducingAttributes()[0], colorInput.GetAttr())
+
+        previewIor = previewShader.GetInput("ior")
+        self.assertTrue(previewIor.HasConnectedSource())
+        self.assertEqual(previewIor.GetValueProducingAttributes()[0], iorInput.GetAttr())
+
+        previewOpacityInput = previewShader.GetInput("opacity")
+        self.assertTrue(previewOpacityInput.HasConnectedSource())
+        self.assertEqual(previewOpacityInput.GetValueProducingAttributes()[0], opacityInput.GetAttr())
+
+        previewRoughness = previewShader.GetInput("roughness")
+        self.assertTrue(previewRoughness.HasConnectedSource())
+        self.assertEqual(previewRoughness.GetValueProducingAttributes()[0], roughnessInput.GetAttr())
+
+    def testGlassMaterialShaders(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        color = Gf.Vec3f(0.0, 0.5, 0.9)
+        ior = 1.48
+        roughness = 0.1
+        previewOpacity = 0.4
+        material = usdex.core.defineGlassPbrMaterial(
+            materials, "Test", color, indexOfRefraction=ior, roughness=roughness, previewOpacity=previewOpacity
+        )
+        self.assertTrue(material)
+
+        # check the preview surface shader has the expected name + id
+        previewShader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        self.assertTrue(previewShader)
+        self.assertEqual(previewShader.GetPrim().GetName(), "PreviewSurface")
+        self.assertEqual(previewShader.GetShaderId(), "UsdPreviewSurface")
+
+        # check the OpenPBR shader has the expected name + id and is the bound mtlx surface
+        mtlxShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        self.assertTrue(mtlxShader)
+        self.assertEqual(mtlxShader.GetPrim().GetName(), "OpenPBR")
+        self.assertEqual(mtlxShader.GetShaderId(), "ND_open_pbr_surface_surfaceshader")
+        self.assertIsSurfaceShader(material, mtlxShader)
+
+        # base_color and geometry_opacity are deliberately omitted on the OpenPBR shader -- glass uses transmission, not diffuse/opacity
+        self.assertFalse(mtlxShader.GetInput("base_color"))
+        self.assertFalse(mtlxShader.GetInput("geometry_opacity"))
+
+        # All glass-specific interface inputs and shader connections are correctly authored on a freshly defined glass material
+        self._assertGlassInterfacePreserved(material, color, ior, roughness, previewOpacity)
+
+        self.assertIsValidUsd(stage)
+
+    def testGlassMaterialDefaultValues(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        color = Gf.Vec3f(0.0, 0.5, 0.9)
+        material = usdex.core.defineGlassPbrMaterial(materials, "Test", color)
+        self.assertTrue(material)
+
+        self._assertGlassInterfacePreserved(material, color, 1.5, 0.02, 0.2)
+
+        self.assertIsValidUsd(stage)
+
+    def testAddEmissiveColor(self):
+        # Mirrors DefinePbrMaterialTest.testAddEmissiveColor, but verifies the glass material's existing interface inputs and
+        # shader connections (transmission, IOR, opacity, roughness) are preserved alongside the new emissive ones.
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        glassColor = Gf.Vec3f(0.85, 0.95, 1.0)
+        ior = 1.5
+        roughness = 0.05
+        previewOpacity = 0.4
+        emissiveColor = Gf.Vec3f(1.0, 0.9, 0.2)
+        emissiveLuminance = 3000.0
+
+        material = usdex.core.defineGlassPbrMaterial(
+            materials, "Test", glassColor, indexOfRefraction=ior, roughness=roughness, previewOpacity=previewOpacity
+        )
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, emissiveColor, emissiveLuminance))
+
+        # New emissive material interface inputs were created with the supplied values
+        emissiveColorInput = material.GetInput("emissiveColor")
+        self.assertTrue(emissiveColorInput)
+        self.assertEqual(emissiveColorInput.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(Gf.IsClose(emissiveColorInput.Get(), emissiveColor, 1e-6))
+
+        emissiveLuminanceInput = material.GetInput("emissiveLuminance")
+        self.assertTrue(emissiveLuminanceInput)
+        self.assertEqual(emissiveLuminanceInput.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertAlmostEqual(emissiveLuminanceInput.Get(), emissiveLuminance)
+
+        # OpenPBR emission_color / emission_luminance connect to the material interface (no direct authored values on the shader)
+        mtlxShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        emissionColor = mtlxShader.GetInput("emission_color")
+        self.assertTrue(emissionColor)
+        self.assertEqual(emissionColor.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(emissionColor.HasConnectedSource())
+        self.assertEqual(emissionColor.GetValueProducingAttributes()[0], emissiveColorInput.GetAttr())
+        self.assertFalse(emissionColor.GetAttr().HasAuthoredValue())
+        self.assertTrue(Gf.IsClose(emissionColor.GetValueProducingAttributes()[0].Get(), emissiveColor, 1e-6))
+
+        emissionLuminance = mtlxShader.GetInput("emission_luminance")
+        self.assertTrue(emissionLuminance)
+        self.assertEqual(emissionLuminance.GetTypeName(), Sdf.ValueTypeNames.Float)
+        self.assertTrue(emissionLuminance.HasConnectedSource())
+        self.assertEqual(emissionLuminance.GetValueProducingAttributes()[0], emissiveLuminanceInput.GetAttr())
+        self.assertFalse(emissionLuminance.GetAttr().HasAuthoredValue())
+        self.assertAlmostEqual(emissionLuminance.GetValueProducingAttributes()[0].Get(), emissiveLuminance)
+
+        # UPS emissiveColor connects to the material interface (no direct authored value on the shader)
+        previewShader = usdex.core.computeEffectivePreviewSurfaceShader(material)
+        previewEmissive = previewShader.GetInput("emissiveColor")
+        self.assertTrue(previewEmissive)
+        self.assertEqual(previewEmissive.GetTypeName(), Sdf.ValueTypeNames.Color3f)
+        self.assertTrue(previewEmissive.HasConnectedSource())
+        self.assertEqual(previewEmissive.GetValueProducingAttributes()[0], emissiveColorInput.GetAttr())
+        self.assertFalse(previewEmissive.GetAttr().HasAuthoredValue())
+        self.assertTrue(Gf.IsClose(previewEmissive.GetValueProducingAttributes()[0].Get(), emissiveColor, 1e-6))
+
+        # The glass-specific interface inputs and shader connections are untouched
+        self._assertGlassInterfacePreserved(material, glassColor, ior, roughness, previewOpacity)
+
+        # Calling again with new values updates the material interface (and therefore both shaders), without disturbing glass inputs
+        newEmissiveColor = Gf.Vec3f(0.5, 0.0, 0.5)
+        newEmissiveLuminance = 100.0
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, newEmissiveColor, newEmissiveLuminance))
+        self.assertTrue(Gf.IsClose(material.GetInput("emissiveColor").Get(), newEmissiveColor, 1e-6))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), newEmissiveLuminance)
+        self._assertGlassInterfacePreserved(material, glassColor, ior, roughness, previewOpacity)
+
+        # Omitting the luminance argument should fall back to the documented 1000.0 cd/m^2 default
+        defaultMaterial = usdex.core.defineGlassPbrMaterial(
+            materials, "DefaultLuminance", glassColor, indexOfRefraction=ior, roughness=roughness, previewOpacity=previewOpacity
+        )
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(defaultMaterial, emissiveColor))
+        self.assertAlmostEqual(defaultMaterial.GetInput("emissiveLuminance").Get(), 1000.0)
+        self.assertTrue(Gf.IsClose(defaultMaterial.GetInput("emissiveColor").Get(), emissiveColor, 1e-6))
+
+        self.assertIsValidUsd(stage)
+
+    def testAddEmissiveTexture(self):
+        # Mirrors DefinePbrMaterialTest.testAddEmissiveTexture, but for glass: the texture must drive emission while the
+        # transmission/IOR/opacity glass shader network remains intact in both render contexts.
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+        textures = [Sdf.AssetPath(self.tmpFile(name="emissive", ext="png")), Sdf.AssetPath(self.tmpFile(name="emissive2", ext="png"))]
+
+        glassColor = Gf.Vec3f(0.85, 0.95, 1.0)
+        ior = 1.5
+        roughness = 0.05
+        previewOpacity = 0.4
+
+        # No prior emissive color: OpenPBR `emission_color` defaults to zero, so the texture fallback / UPS fallback are zero.
+        # The luminance defaults to 1000.0 cd/m^2, creating a new `emissiveLuminance` material interface input.
+        material = usdex.core.defineGlassPbrMaterial(
+            materials, "NoColor", glassColor, indexOfRefraction=ior, roughness=roughness, previewOpacity=previewOpacity
+        )
+        self.assertTrue(usdex.core.addEmissiveTextureToPbrMaterial(material, textures[0]))
+
+        self.assertTrue(material.GetInput("emissiveLuminance"))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), 1000.0)
+
+        # The OpenPBR emissive texture shader is wired to a material-interface file input and to the shared MtlxPrimvar tex coord reader.
+        mtlxTexCoord = UsdShade.Shader(material.GetPrim().GetChild("MtlxPrimvar_st_float2"))
+        self.assertTrue(mtlxTexCoord)
+        self.assertEqual(mtlxTexCoord.GetShaderId(), "ND_geompropvalue_vector2")
+        self.assertEqual(mtlxTexCoord.GetInput("geomprop").GetAttr().Get(), UsdUtils.GetPrimaryUVSetName())
+
+        mtlxTexShader = UsdShade.Shader(material.GetPrim().GetChild("MtlxEmissiveTexture"))
+        self.assertTrue(mtlxTexShader)
+        self.assertEqual(mtlxTexShader.GetShaderId(), "ND_tiledimage_color3")
+        self.assertEqual(mtlxTexShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.0, 0.0, 0.0))
+        # `file` reads from the material interface input
+        fileInput = mtlxTexShader.GetInput("file")
+        self.assertTrue(fileInput.HasConnectedSource())
+        materialFileAttr = fileInput.GetValueProducingAttributes()[0]
+        self.assertEqual(materialFileAttr.Get().path, textures[0])
+        # tex coord wiring + standard tile defaults
+        self.assertTrue(mtlxTexShader.GetInput("texcoord").HasConnectedSource())
+        self.assertEqual(
+            mtlxTexShader.GetInput("texcoord").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), mtlxTexCoord.GetOutput("out").GetAttr()
+        )
+        self.assertEqual(mtlxTexShader.GetInput("uvtiling").GetAttr().Get(), Gf.Vec2f(1.0, 1.0))
+        self.assertEqual(mtlxTexShader.GetInput("uvoffset").GetAttr().Get(), Gf.Vec2f(0.0, 0.0))
+
+        mtlxShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+        # OpenPBR `emission_color` is driven by the texture shader output (no authored direct value)
+        self.assertTrue(mtlxShader.GetInput("emission_color").HasConnectedSource())
+        self.assertEqual(
+            mtlxShader.GetInput("emission_color").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), mtlxTexShader.GetOutput("out").GetAttr()
+        )
+        self.assertFalse(mtlxShader.GetInput("emission_color").GetAttr().HasAuthoredValue())
+        # OpenPBR `emission_luminance` connects to the new material interface input
+        emissionLuminance = mtlxShader.GetInput("emission_luminance")
+        self.assertTrue(emissionLuminance.HasConnectedSource())
+        self.assertEqual(emissionLuminance.GetValueProducingAttributes()[0], material.GetInput("emissiveLuminance").GetAttr())
+
+        # UPS texture network: shared UV reader + texture reader fed into the PreviewSurface emissiveColor input
+        self.assertValidPreviewMaterialTextureNetwork(
+            material,
+            textures[0],
+            textureReaderName="EmissiveTexture",
+            colorSpace=usdex.core.ColorSpace.eAuto,
+            fallbackColor=Gf.Vec3f(0.0, 0.0, 0.0),
+            connectionInfo=[("emissiveColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+        )
+
+        # Glass-specific connections survived the texture authoring
+        self._assertGlassInterfacePreserved(material, glassColor, ior, roughness, previewOpacity)
+
+        # When an emissive color was authored beforehand, it becomes the texture fallback (Mtlx `default` and UPS `fallback`),
+        # the scalar `emissiveColor` interface input is replaced by the `EmissiveTexture` interface input,
+        # and the explicit luminance argument overwrites any value previously set by addEmissiveColorToPbrMaterial.
+        material = usdex.core.defineGlassPbrMaterial(
+            materials, "InitialValues", glassColor, indexOfRefraction=ior, roughness=roughness, previewOpacity=previewOpacity
+        )
+        emissiveColor = Gf.Vec3f(1.0, 1.0, 0.2)
+        emissiveLuminance = 500.0
+        self.assertTrue(usdex.core.addEmissiveColorToPbrMaterial(material, emissiveColor, emissiveLuminance))
+        self.assertTrue(material.GetInput("emissiveColor"))
+        self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), emissiveLuminance)
+        self._assertGlassInterfacePreserved(material, glassColor, ior, roughness, previewOpacity)
+
+        textureLuminance = 250.0
+        for texture in textures:
+            self.assertTrue(usdex.core.addEmissiveTextureToPbrMaterial(material, texture, textureLuminance))
+
+            # Scalar emissiveColor interface input is removed (replaced by EmissiveTexture); luminance is overwritten
+            self.assertFalse(material.GetInput("emissiveColor"))
+            self.assertTrue(material.GetInput("emissiveLuminance"))
+            self.assertAlmostEqual(material.GetInput("emissiveLuminance").Get(), textureLuminance)
+
+            mtlxTexShader = UsdShade.Shader(material.GetPrim().GetChild("MtlxEmissiveTexture"))
+            self.assertTrue(mtlxTexShader)
+            self.assertEqual(mtlxTexShader.GetShaderId(), "ND_tiledimage_color3")
+            # `file` updates across calls; the previously authored emissive color persists as the fallback `default`.
+            self.assertEqual(mtlxTexShader.GetInput("file").GetValueProducingAttributes()[0].Get().path, texture)
+            self.assertTrue(Gf.IsClose(mtlxTexShader.GetInput("default").GetAttr().Get(), emissiveColor, 1e-6))
+
+            mtlxShader = usdex.core.computeEffectiveMtlxSurfaceShader(material)
+            self.assertTrue(mtlxShader.GetInput("emission_color").HasConnectedSource())
+            self.assertEqual(
+                mtlxShader.GetInput("emission_color").GetConnectedSource()[0].GetOutputs()[0].GetAttr(),
+                mtlxTexShader.GetOutput("out").GetAttr(),
+            )
+            self.assertFalse(mtlxShader.GetInput("emission_color").GetAttr().HasAuthoredValue())
+
+            # The OpenPBR emission_luminance remains connected to the material interface
+            emissionLuminance = mtlxShader.GetInput("emission_luminance")
+            self.assertTrue(emissionLuminance.HasConnectedSource())
+            self.assertEqual(emissionLuminance.GetValueProducingAttributes()[0], material.GetInput("emissiveLuminance").GetAttr())
+
+            # UPS fallback was set to the previously authored emissive color and persists across subsequent calls.
+            self.assertValidPreviewMaterialTextureNetwork(
+                material,
+                texture,
+                textureReaderName="EmissiveTexture",
+                colorSpace=usdex.core.ColorSpace.eAuto,
+                fallbackColor=emissiveColor,
+                connectionInfo=[("emissiveColor", Sdf.ValueTypeNames.Color3f, "rgb")],
+            )
+
+            # Glass-specific connections still intact across repeated texture authoring
+            self._assertGlassInterfacePreserved(material, glassColor, ior, roughness, previewOpacity)
+
+        self.assertIsValidUsd(stage)
+
+    def testInvalidInputs(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        # An out-of-range color will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is outside range")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadColor", Gf.Vec3f(-0.000001, -0.000001, -0.000001), indexOfRefraction=1.5, roughness=0.1, previewOpacity=0.4
+            )
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is outside range")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadColor", Gf.Vec3f(1.000001, 1.000001, 1.000001), indexOfRefraction=1.5, roughness=0.1, previewOpacity=0.4
+            )
+        self.assertFalse(material)
+
+        # An indexOfRefraction below the minimum will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*IOR value -0.000001 is below minimum value 1.0")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadIndexOfRefraction", Gf.Vec3f(1, 0, 0), indexOfRefraction=-0.000001, roughness=0.1, previewOpacity=0.4
+            )
+        self.assertFalse(material)
+        material = usdex.core.defineGlassPbrMaterial(
+            materials, "HighIndexOfRefraction", Gf.Vec3f(1, 0, 0), indexOfRefraction=4.000001, roughness=0.1, previewOpacity=0.4
+        )
+        self.assertTrue(material)
+
+        # An out-of-range roughness will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Roughness value -0.000001 is outside range")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadRoughness", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, roughness=-0.000001, previewOpacity=0.4
+            )
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Roughness value 1.000001 is outside range")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadRoughness", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, roughness=1.000001, previewOpacity=0.4
+            )
+        self.assertFalse(material)
+
+        # An out-of-range previewOpacity will prevent authoring a material
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Opacity value -0.000001 is outside range")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadOpacity", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, roughness=0.1, previewOpacity=-0.000001
+            )
+        self.assertFalse(material)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Opacity value 1.000001 is outside range")]):
+            material = usdex.core.defineGlassPbrMaterial(
+                materials, "BadOpacity", Gf.Vec3f(1, 0, 0), indexOfRefraction=1.5, roughness=0.1, previewOpacity=1.000001
+            )
+        self.assertFalse(material)
+
+        self.assertIsValidUsd(stage)
+
+
+class ConnectPreviewSurfacePrimvarShaderTest(usdex.test.TestCase):
 
     # input sdfTypeName: (fallback/result SdfTypeName, primvarReaderRoleName, fallbackValue)
     typeMappings = {
@@ -1774,9 +3659,16 @@ class ConnectPrimvarShaderTest(usdex.test.TestCase):
         self.materials = UsdGeom.Scope.Define(
             self.stage, self.stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())
         ).GetPrim()
+
+        # Define the material and the surface shader to ensure we have a Preview Surface surface shader, but specifically
+        # don't use definePbrMaterial() to show that it's not a prerequisite
         self.material = UsdShade.Material.Define(self.stage, self.materials.GetPath().AppendChild("TestMaterial"))
+        surfaceShader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestSurfaceShader"))
+        surfaceShader.SetShaderId("UsdTestSurfaceShader")
+        self.material.CreateSurfaceOutput().ConnectToSource(surfaceShader.CreateOutput("surface", Sdf.ValueTypeNames.Token))
+
         self.shader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestShader"))
-        self.shader.SetShaderId("TestShader")
+        self.shader.SetShaderId("UsdTestShader")
 
     def assertValidShaderPrimvarNetwork(
         self,
@@ -1933,4 +3825,214 @@ class ConnectPrimvarShaderTest(usdex.test.TestCase):
         shaderInput = self.shader.CreateInput("highPrecisionDouble", Sdf.ValueTypeNames.Double)
         with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<double> is not supported.*")]):
             result = usdex.core.connectPrimvarShader(shaderInput, "paintHighPrecisionDouble")
+            self.assertFalse(result)
+
+
+class ConnectMtlxPrimvarShaderTest(usdex.test.TestCase):
+
+    # MaterialX primvar readers use the type name directly (no role distinction).
+    # input sdfTypeName: (output SdfTypeName, mtlxTypeId, fallbackValue)
+    typeMappings = {
+        Sdf.ValueTypeNames.Int: (Sdf.ValueTypeNames.Int, "integer", 1),
+        Sdf.ValueTypeNames.Bool: (Sdf.ValueTypeNames.Bool, "boolean", True),
+        Sdf.ValueTypeNames.Float: (Sdf.ValueTypeNames.Float, "float", 0.8),
+        Sdf.ValueTypeNames.Color3f: (Sdf.ValueTypeNames.Color3f, "color3", Gf.Vec3f(0.1, 0.2, 0.3)),
+        Sdf.ValueTypeNames.Color4f: (Sdf.ValueTypeNames.Color4f, "color4", Gf.Vec4f(0.4, 0.5, 0.6, 0.7)),
+        Sdf.ValueTypeNames.Float2: (Sdf.ValueTypeNames.Float2, "vector2", Gf.Vec2f(0.1, 0.2)),
+        Sdf.ValueTypeNames.Float3: (Sdf.ValueTypeNames.Float3, "vector3", Gf.Vec3f(0.3, 0.4, 0.5)),
+        Sdf.ValueTypeNames.Float4: (Sdf.ValueTypeNames.Float4, "vector4", Gf.Vec4f(0.6, 0.7, 0.8, 0.9)),
+    }
+
+    def getAllShaderNames(self):
+        if hasattr(Sdr.Registry(), "GetShaderNodeNames"):
+            return Sdr.Registry().GetShaderNodeNames()
+        else:
+            return Sdr.Registry().GetNodeNames()
+
+    def setUp(self):
+        super().setUp()
+        self.stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(self.stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        self.materials = UsdGeom.Scope.Define(
+            self.stage, self.stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())
+        ).GetPrim()
+
+        # Define the material and the surface shader to ensure we have a MaterialX surface shader, but specifically
+        # don't use definePbrMaterial() to show that it's not a prerequisite
+        self.material = UsdShade.Material.Define(self.stage, self.materials.GetPath().AppendChild("TestMaterial"))
+        surfaceShader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestSurfaceShader"))
+        surfaceShader.SetShaderId("ND_test_surface_shader")
+        self.material.CreateSurfaceOutput("mtlx").ConnectToSource(surfaceShader.CreateOutput("surface", Sdf.ValueTypeNames.Token))
+
+        self.shader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestShader"))
+        self.shader.SetShaderId("ND_test_shader")
+
+    def assertValidMtlxShaderPrimvarNetwork(
+        self,
+        shader: UsdShade.Shader,
+        primvarInfo: List[Tuple[str, str, Any]],  # inputName, primvarName, fallbackValue
+    ):
+        self.assertTrue(shader)
+
+        for inputName, primvarName, fallbackValue in primvarInfo:
+            input = shader.GetInput(inputName)
+            outputName = "out"
+
+            if input.GetTypeName() in self.typeMappings:
+                outputTypeName, mtlxTypeId, _setFallbackValue = self.typeMappings[input.GetTypeName()]
+            else:
+                outputTypeName = input.GetTypeName()
+                mtlxTypeId = input.GetTypeName().GetAsToken().GetString()
+
+            validPrimvarName = primvarName.replace(":", "_")
+            primvarReaderName = usdex.core.getValidPrimName(f"MtlxPrimvar_{validPrimvarName}_{outputTypeName}")
+            primvarReader = UsdShade.Shader(shader.GetPrim().GetParent().GetChild(primvarReaderName))
+            self.assertTrue(primvarReader, msg=f"Expected primvar reader {primvarReaderName} not found")
+            self.assertEqual(primvarReader.GetShaderId(), f"ND_geompropvalue_{mtlxTypeId}")
+            self.assertEqual(str(primvarReader.GetOutput(outputName).GetTypeName()), str(outputTypeName))
+            self.assertEqual(primvarReader.GetInput("geomprop").GetAttr().Get(), primvarName)
+            if fallbackValue is not None:
+                self.assertEqual(primvarReader.GetInput("default").GetTypeName(), outputTypeName)
+                self.assertAlmostEqual(primvarReader.GetInput("default").GetAttr().Get(), fallbackValue)
+            else:
+                self.assertFalse(primvarReader.GetInput("default"))
+
+            self.assertTrue(input.HasConnectedSource())
+            source, sourceAttr, sourceType = input.GetConnectedSource()
+            self.assertEqual(sourceType, UsdShade.AttributeType.Output)
+            self.assertEqual(
+                source.GetOutput(sourceAttr).GetAttr(),
+                primvarReader.GetOutput(outputName).GetAttr(),
+                msg=f"Incorrect connection for {inputName} ({input.GetTypeName()}) -> {outputName}",
+            )
+            self.assertFalse(input.GetAttr().HasAuthoredValue())
+            self.assertEqual(len(input.GetValueProducingAttributes()), 1)
+            self.assertEqual(input.GetValueProducingAttributes()[0], primvarReader.GetOutput(outputName).GetAttr())
+
+    def testConnect(self):
+        shaderInput = self.shader.CreateInput("base_color", Sdf.ValueTypeNames.Color3f)
+        result = usdex.core.connectPrimvarShader(shaderInput, "paintColor", Gf.Vec3f(0.1, 0.2, 0.3))
+        self.assertTrue(result)
+        self.assertValidMtlxShaderPrimvarNetwork(
+            self.shader,
+            [("base_color", "paintColor", Gf.Vec3f(0.1, 0.2, 0.3))],
+        )
+
+        shaderInput = self.shader.CreateInput("specular_roughness", Sdf.ValueTypeNames.Float)
+        result = usdex.core.connectPrimvarShader(shaderInput, "paint:Roughness")
+        self.assertTrue(result)
+        self.assertValidMtlxShaderPrimvarNetwork(
+            self.shader,
+            [
+                ("base_color", "paintColor", Gf.Vec3f(0.1, 0.2, 0.3)),
+                ("specular_roughness", "paint:Roughness", None),
+            ],
+        )
+        self.assertIsValidUsd(self.stage)
+
+    def testInvalidInput(self):
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*UsdShadeInput is not valid.*")]):
+            result = usdex.core.connectPrimvarShader(UsdShade.Input(), "paintColor")
+            self.assertFalse(result)
+        self.assertIsValidUsd(self.stage)
+
+    def testInvalidNames(self):
+        shaderInput = self.shader.CreateInput("base_color", Sdf.ValueTypeNames.Color3f)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*the primvar name is invalid.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "")
+            self.assertFalse(result)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*the primvar name is invalid.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "inv@lidName")
+            self.assertFalse(result)
+        self.assertIsValidUsd(self.stage)
+
+    def testAllInputTypes(self):
+        connectionData = []
+        for inputType in self.typeMappings.keys():
+            connectionType, mtlxTypeId, fallbackValue = self.typeMappings[inputType]
+            shaderInput = self.shader.CreateInput(f"shaderInput_{mtlxTypeId}", inputType)
+            result = usdex.core.connectPrimvarShader(shaderInput, f"pv_{mtlxTypeId}", fallbackValue)
+            self.assertTrue(result, msg=f"Failed to connect primvar for type {inputType}")
+            connectionData.append((f"shaderInput_{mtlxTypeId}", f"pv_{mtlxTypeId}", fallbackValue))
+
+        self.assertValidMtlxShaderPrimvarNetwork(
+            self.shader,
+            connectionData,
+        )
+        self.assertIsValidUsd(self.stage)
+
+    def testAllInputTypesWithSdrRegistry(self):
+        # @TODO: Remove this once we move away from 25.05, just keeping this around in case we need it
+        # This test requires the MaterialX standard library to be relocatable in USD 25.08, until then if this
+        # is the only test run (-f testMaterialAlgo.ConnectMtlxPrimvarShaderTest.testAllInputTypesWithSdrRegistry)
+        # the standard library will be found by the environment variable PXR_MTLX_STDLIB_SEARCH_PATHS.
+        # import omni.repo.man
+        # test_root = omni.repo.man.resolve_tokens("$test_root")
+        # os.environ["PXR_MTLX_STDLIB_SEARCH_PATHS"] = f"{test_root}/lib/usd/usdMtlx/resources/libraries"
+
+        if self.isUsdOlderThan("0.25.08"):
+            self.skipTest("Skipping until the MaterialX standard library is relocatable in USD 25.08")
+
+        #  Run the test that creates all of the currently supported USD Preview Surface input types
+        self.testAllInputTypes()
+
+        shaderIdNames = self.getAllShaderNames()
+        for prim in self.material.GetPrim().GetChildren():
+            shader = UsdShade.Shader(prim)
+            if "ND_geompropvalue_" not in shader.GetShaderId():
+                continue
+
+            self.assertIn(shader.GetShaderId(), shaderIdNames)
+
+            # Check that "fallback" and "result" are the correct types
+            fallback = shader.GetInput("default")
+            result = shader.GetOutput("out")
+
+            shaderNodeDef = Sdr.Registry().GetShaderNodeByIdentifier(shader.GetShaderId())
+            inputProperty = shaderNodeDef.GetShaderInput("default")
+            self.assertTrue(inputProperty)
+            outputProperty = shaderNodeDef.GetShaderOutput("out")
+            self.assertTrue(outputProperty)
+
+            # In USD 24.11, SdfTypeIndicator was converted from a std::pair to a full class
+            if isinstance(inputProperty.GetTypeAsSdfType(), tuple):
+                inputPropertySdfType = inputProperty.GetTypeAsSdfType()[0]
+                outputPropertySdfType = outputProperty.GetTypeAsSdfType()[0]
+            else:
+                inputPropertySdfType = inputProperty.GetTypeAsSdfType().GetSdfType()
+                outputPropertySdfType = outputProperty.GetTypeAsSdfType().GetSdfType()
+
+            self.assertEqual(fallback.GetTypeName(), inputPropertySdfType)
+            self.assertEqual(result.GetTypeName(), outputPropertySdfType)
+
+    def testOverwriteOutputType(self):
+        shaderInput = self.shader.CreateInput("specular_roughness", Sdf.ValueTypeNames.Float)
+        shaderPath = self.shader.GetPrim().GetParent().GetPath().AppendChild("MtlxPrimvar_paintRoughness_float")
+        primvarShader = UsdShade.Shader.Define(self.stage, shaderPath)
+
+        primvarShader.CreateOutput("out", Sdf.ValueTypeNames.String)
+
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*existing shader.*does not match the input type.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintRoughness")
+            self.assertFalse(result)
+
+    def testUnsupportedMtlxInputType(self):
+        shaderInput = self.shader.CreateInput("unsupportedNormal", Sdf.ValueTypeNames.Normal3f)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<normal3f> is not supported.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintNormal")
+            self.assertFalse(result)
+
+        shaderInput = self.shader.CreateInput("unsupportedString", Sdf.ValueTypeNames.String)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<string> is not supported.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintString")
+            self.assertFalse(result)
+
+        shaderInput = self.shader.CreateInput("unsupportedMatrix", Sdf.ValueTypeNames.Matrix4d)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<matrix4d> is not supported.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintMatrix")
+            self.assertFalse(result)
+
+        shaderInput = self.shader.CreateInput("unsupportedDouble", Sdf.ValueTypeNames.Double)
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot connect primvar.*<double> is not supported.*")]):
+            result = usdex.core.connectPrimvarShader(shaderInput, "paintDouble")
             self.assertFalse(result)
