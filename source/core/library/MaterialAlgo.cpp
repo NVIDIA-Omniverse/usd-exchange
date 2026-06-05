@@ -1082,7 +1082,6 @@ UsdShadeMaterial usdex::core::definePreviewMaterial(
     UsdShadeShader shader = UsdShadeShader::Define(stage, shaderPath);
     shader.SetShaderId(_tokens->upsId);
     material.CreateSurfaceOutput().ConnectToSource(shader.CreateOutput(UsdShadeTokens->surface, SdfValueTypeNames->Token));
-    material.CreateDisplacementOutput().ConnectToSource(shader.CreateOutput(UsdShadeTokens->displacement, SdfValueTypeNames->Token));
 
     // Create default shader inputs to produce a physically based rendering result with the supplied values
     shader.CreateInput(_tokens->color, SdfValueTypeNames->Color3f).Set(color);

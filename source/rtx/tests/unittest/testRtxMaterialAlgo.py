@@ -437,9 +437,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         self.assertEqual(surface.GetOutput(UsdShade.Tokens.surface).GetAttr(), shader.GetOutput(UsdShade.Tokens.surface).GetAttr())
 
         displacementOutput = material.GetDisplacementOutput()
-        self.assertTrue(displacementOutput.HasConnectedSource())
-        displacement = displacementOutput.GetConnectedSource()[0]
-        self.assertEqual(displacement.GetOutput(UsdShade.Tokens.displacement).GetAttr(), shader.GetOutput(UsdShade.Tokens.displacement).GetAttr())
+        self.assertFalse(displacementOutput.HasConnectedSource())
 
         volumeOutput = material.GetVolumeOutput()
         self.assertFalse(volumeOutput.HasConnectedSource())
