@@ -101,7 +101,7 @@ These licenses pertain to the `usdex.test` python module, which is based on pyth
 ```{eval-rst}
 - OpenUSD Exchange :ref:`(jump to license) <usdexlicense>`
 - OpenUSD `(jump to license) <usd LICENSE_>`_
-- Omni Asset Validator `(jump to license) <omni.asset_validator LICENSE_>`_
+- USD Validation (NVIDIA) :ref:`(jump to license) <validatorlicense>`
 - TBB :ref:`(jump to license) <tbblicense>`
 - hwloc :ref:`(jump to license) <hwloclicense>`
 - zlib :ref:`(jump to license) <zliblicense>`
@@ -136,9 +136,21 @@ usd-exchange License
 
 ```{eval-rst}
 .. include-licenses:: /_build/target-deps/usd/release/PACKAGE-LICENSES/usd-license.txt
+```
 
-.. include-licenses:: /_build/target-deps/omni_asset_validator/PACKAGE-LICENSES/omni.asset_validator-LICENSE.txt
+```{eval-rst}
+.. _validatorlicense:
 
+usd-validation-nvidia License
+-----------------------------
+
+.. dropdown:: usd-validation-nvidia License
+
+   .. literalinclude:: /LICENSE.md
+      :language: text
+```
+
+```{eval-rst}
 .. Workaround for TBB as the name of the license file varies between packages
 
 .. _tbblicense:
