@@ -19,9 +19,4 @@
     <package name="doctest" version="2.4.5+nv1-3" />
   </dependency>
 
-  <!-- Optional Omniverse addons -->
-  <dependency name="omni_asset_validator" linkPath="../_build/target-deps/omni_asset_validator" tags="non-redist">
-    <package name="omni.asset_validator" version="1.15.1+v1-15-1.8753.60e8f059.gl.${platform_target_abi}" />
-  </dependency>
-
 </project>

@@ -10,29 +10,7 @@ import shutil
 from typing import Callable, Dict
 
 import omni.repo.man
-import packmanapi
 import toml
-
-
-def __resolve_oav_version() -> str:
-    tokens = {
-        "platform_target_abi": omni.repo.man.resolve_tokens("${platform_target_abi}"),
-        "platform_host": omni.repo.man.resolve_tokens("${platform}"),
-        "platform": omni.repo.man.resolve_tokens("${platform}"),
-        "config": omni.repo.man.resolve_tokens("${config}"),
-    }
-
-    try:
-        info = packmanapi.resolve_dependency(
-            "omni_asset_validator",
-            "deps/target-deps.packman.xml",
-            platform=tokens["platform_target_abi"],
-            remotes=["packman:cloudfront"],
-            tokens=tokens,
-        )
-        return info["remote_filename"].partition("@")[-1].partition("+")[0]
-    except Exception as e:
-        raise omni.repo.man.ExpectedError(f"Failed to resolve omni-asset-validator version: {e}")
 
 
 def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
@@ -53,7 +31,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usdFlavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usdVer = omni.repo.man.resolve_tokens("${usd_ver}")
         usdIdentifier = f"{usdFlavor}{usdVer}".replace(".", "").replace("-", "")
-        oav_version = __resolve_oav_version()
+        validatorVersion = omni.repo.man.resolve_tokens("${usd_validation_ver}")
         fullVersion = omni.repo.man.build_number.generate_build_number_from_file(repoVersionFile)
         realVersion, label = fullVersion.split("+")
         if os.environ.get("CI_COMMIT_TAG"):
@@ -88,7 +66,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         data["project"]["optional-dependencies"].update(
             {
                 usdIdentifier: [],
-                "test": [f"omniverse-asset-validator=={oav_version}"],
+                "test": [f"usd-validation-nvidia=={validatorVersion}"],
             }
         )
         with open(pyproject_target, "w") as f:

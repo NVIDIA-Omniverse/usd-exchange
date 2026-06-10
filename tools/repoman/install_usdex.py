@@ -222,8 +222,6 @@ def __install(
     runtimeDeps = [f"usd-{buildConfig}"]
     if python_ver != "0":
         runtimeDeps.append("python")
-        if installTestModules:
-            runtimeDeps.append("omni_asset_validator")
 
     print("Download usd-exchange dependencies...")
     depsFile = f"{usd_exchange_path}/dev/deps/all-deps.packman.xml"
@@ -251,7 +249,29 @@ def __install(
 
     python_path = f"{targetDepsDir}/python"
     usd_path = f"{targetDepsDir}/usd/{buildConfig}"
-    validator_path = f"{targetDepsDir}/omni_asset_validator"
+
+    # Acquire the asset validator from PyPI. It is a pure-python wheel, so a single pip install into the staging dir
+    # provides the module that is assembled into the install tree below (covers both in-repo and standalone installs).
+    validator_path = f"{targetDepsDir}/usd-validation-nvidia"
+    if installTestModules and python_ver != "0":
+        validatorVersion = omni.repo.man.resolve_tokens("${usd_validation_ver}")
+        # the packman python package exposes the canonical `python${exe_ext}` entry point
+        pythonExecutable = os.path.join(python_path, "python" + mapping["exe_ext"])
+        print(f"Install usd-validation-nvidia=={validatorVersion} from PyPI to {validator_path}")
+        omni.repo.man.run_process(
+            [
+                pythonExecutable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "--no-deps",
+                f"usd-validation-nvidia=={validatorVersion}",
+                "--target",
+                validator_path,
+            ],
+            exit_on_error=True,
+        )
 
     libInstallDir = "${install_dir}/lib"
     usdNativePluginSourceDir = f"{usd_path}/lib/usd"
@@ -342,7 +362,7 @@ def __install(
             usdPlugins.append("ndr")
 
     if installTestModules and python_ver != "0":
-        # omni.asset_validator uses some OpenUSD modules that we don't otherwise require in our runtime
+        # usd_validation_nvidia uses some OpenUSD modules that we don't otherwise require in our runtime
         extraPlugins.extend(["usdSkel", "usdMtlx"])
 
     # allow for extra user supplied plugins
@@ -457,8 +477,8 @@ def __install(
         # usdex.test
         if installTestModules:
             __installPythonModule(prebuild_dict["copy"], f"{usd_exchange_path}/python", "usdex/test", None)
-            __installPythonModule(prebuild_dict["copy"], f"{validator_path}/python", "omni/asset_validator", None)
-            __installPythonModule(prebuild_dict["copy"], f"{validator_path}/python", "omni/capabilities", None)
+            # usd_validation_nvidia is pip-installed above; copy the whole package (the capabilities submodule comes along)
+            prebuild_dict["copy"].append([f"{validator_path}/usd_validation_nvidia", "${install_dir}/python/usd_validation_nvidia"])
 
         # allow for extra user supplied plugins
         for extra in extraPlugins:
