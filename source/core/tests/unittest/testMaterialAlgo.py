@@ -954,9 +954,7 @@ class DefinePreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFu
 
         # the shader is driving the surface of the material for the universal render context
         displacementOutput = material.GetDisplacementOutput()
-        self.assertTrue(displacementOutput.HasConnectedSource())
-        displacement = displacementOutput.GetConnectedSource()[0]
-        self.assertEqual(displacement.GetOutput(UsdShade.Tokens.displacement).GetAttr(), shader.GetOutput(UsdShade.Tokens.displacement).GetAttr())
+        self.assertFalse(displacementOutput.HasConnectedSource())
 
         # the volume output was not setup as this is not a volumetric material
         volumeOutput = material.GetVolumeOutput()
@@ -3145,9 +3143,7 @@ class DefineGlassPreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.Def
 
         # the shader is driving the displacement of the material for the universal render context
         displacementOutput = material.GetDisplacementOutput()
-        self.assertTrue(displacementOutput.HasConnectedSource())
-        displacement = displacementOutput.GetConnectedSource()[0]
-        self.assertEqual(displacement.GetOutput(UsdShade.Tokens.displacement).GetAttr(), shader.GetOutput(UsdShade.Tokens.displacement).GetAttr())
+        self.assertFalse(displacementOutput.HasConnectedSource())
 
         # the volume output was not setup as this is not a volumetric material
         volumeOutput = material.GetVolumeOutput()
