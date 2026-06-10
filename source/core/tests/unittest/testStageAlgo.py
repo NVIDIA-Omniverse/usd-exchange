@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-import omni.asset_validator
+import usd_validation_nvidia
 import usdex.core
 import usdex.test
 from pxr import Gf, Sdf, Tf, Usd, UsdGeom, UsdPhysics
@@ -323,7 +323,9 @@ class ConfigureStageTestCase(usdex.test.TestCase):
         self.assertEqual(stage.GetDefaultPrim().GetTypeName(), "Scope")
         self.assertIsValidUsd(
             stage,
-            issuePredicates=[omni.asset_validator.IssuePredicates.ContainsMessage("The prim <root> (/root) is a sibling of the default prim <Root>")],
+            issuePredicates=[
+                usd_validation_nvidia.IssuePredicates.ContainsMessage("The prim <root> (/root) is a sibling of the default prim <Root>")
+            ],
         )
 
         # If there is already a prim specified in the root layer with the given name then it will be untouched
@@ -340,10 +342,10 @@ class ConfigureStageTestCase(usdex.test.TestCase):
         self.assertIsInvalidUsd(
             stage,
             issuePredicates=[
-                omni.asset_validator.IssuePredicates.ContainsMessage(
+                usd_validation_nvidia.IssuePredicates.ContainsMessage(
                     "dangling over and does not contain the target prim/property of a relationship or connection attribute."
                 ),
-                omni.asset_validator.IssuePredicates.ContainsMessage('The default prim <root> of type "" is not Xformable'),
+                usd_validation_nvidia.IssuePredicates.ContainsMessage('The default prim <root> of type "" is not Xformable'),
             ],
         )
 
@@ -685,7 +687,7 @@ class SaveStageTestCase(usdex.test.TestCase):
             stage,
             issuePredicates=[
                 # we defined many typeless prims in this test for convenience
-                omni.asset_validator.IssuePredicates.ContainsMessage("Missing type for Prim"),
+                usd_validation_nvidia.IssuePredicates.ContainsMessage("Missing type for Prim"),
             ],
         )
 

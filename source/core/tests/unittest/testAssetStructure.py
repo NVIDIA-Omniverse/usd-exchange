@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from abc import abstractmethod
 
-import omni.asset_validator
+import usd_validation_nvidia
 import usdex.core
 import usdex.test
 from pxr import Gf, Kind, Sdf, Tf, Usd, UsdGeom, Vt
@@ -105,8 +105,8 @@ class AssetStructureTestCase(usdex.test.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
-        self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.AnchoredAssetPathsChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.SupportedFileTypesChecker)
 
     def assertLayerNotRegistered(self, identifier):
         """Assert that an Sdf.Layer with a given identifier has not been registered"""
@@ -297,8 +297,8 @@ class AddAssetLibraryTestCase(usdex.test.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
-        self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.AnchoredAssetPathsChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.SupportedFileTypesChecker)
 
     def deleteStages(self, stageFiles: list[str]):
         """Delete a list of stages"""
@@ -396,8 +396,8 @@ class AddAssetInterfaceTestCase(usdex.test.TestCase, AssetStructureTestBase):
 
     def setUp(self):
         super().setUp()
-        self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
-        self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.AnchoredAssetPathsChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.SupportedFileTypesChecker)
 
     def testInvalidStages(self):
         assetStageIdentifier = self.tmpFile("testAsset", "usda")
@@ -650,7 +650,7 @@ class AddAssetInterfaceTestCase(usdex.test.TestCase, AssetStructureTestBase):
         #     testAsset.usda ---+
         self.assertIsValidUsd(
             assetStage,
-            issuePredicates=[omni.asset_validator.IssuePredicates.ContainsMessage("is outside of the asset root")],
+            issuePredicates=[usd_validation_nvidia.IssuePredicates.ContainsMessage("is outside of the asset root")],
         )
         self.assertIsValidUsd(payloadStage)
 
@@ -828,8 +828,8 @@ class DefineReferencePayloadBase(AssetStructureTestBase):
             self.assertEqual(ref.primPath, _ref["primPath"])
 
     def testSameDirectory(self):
-        self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
-        self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.AnchoredAssetPathsChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.SupportedFileTypesChecker)
 
         referencingStageIdentifier = self.tmpFile("referencing", "usda")
         referencingStage = usdex.core.createStage(
@@ -867,8 +867,8 @@ class DefineReferencePayloadBase(AssetStructureTestBase):
         self.assertIsValidUsd(self.sourceStage)
 
     def testInternalReference(self):
-        self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
-        self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.AnchoredAssetPathsChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.SupportedFileTypesChecker)
         stageIdentifier = self.tmpFile("referencing", "usda")
         stage = usdex.core.createStage(
             stageIdentifier, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata
@@ -1036,8 +1036,8 @@ class DefineReferencePayloadBase(AssetStructureTestBase):
         self.assertIsValidUsd(stage)
 
     def testRepeatedCalls(self):
-        self.validationEngine.enable_rule(omni.asset_validator.AnchoredAssetPathsChecker)
-        self.validationEngine.enable_rule(omni.asset_validator.SupportedFileTypesChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.AnchoredAssetPathsChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.SupportedFileTypesChecker)
 
         # Test that repeated calls do a reasonable thing
         stage = self.createTestStage()

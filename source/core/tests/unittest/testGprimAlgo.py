@@ -1,10 +1,7 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-from typing import List, Tuple
-
-import omni.asset_validator
 import usdex.core
 import usdex.test
 from pxr import Gf, Usd, UsdGeom

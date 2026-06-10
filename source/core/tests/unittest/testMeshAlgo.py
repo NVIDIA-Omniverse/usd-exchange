@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-import omni.asset_validator
+import usd_validation_nvidia
 import usdex.core
 import usdex.test
 from pxr import Gf, Sdf, Tf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
@@ -50,7 +50,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
     def setUp(self):
         super().setUp()
         # Disable non-core validator rules
-        self.validationEngine.disable_rule(omni.asset_validator.NormalsExistChecker)
+        self.validationEngine.disable_rule(usd_validation_nvidia.NormalsExistChecker)
 
     def assertDefineFunctionSuccess(self, result):
         """Assert the common expectations of a successful call to definePolyMesh"""
@@ -176,7 +176,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         self.assertFalse(mesh)
         self.assertFalse(stage.GetPrimAtPath(path))
 
-        self.validationEngine.disable_rule(omni.asset_validator.IndexedPrimvarChecker)
+        self.validationEngine.disable_rule(usd_validation_nvidia.IndexedPrimvarChecker)
         self.assertIsValidUsd(stage)
 
     def testIndexedUvs(self):
@@ -333,7 +333,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         self.assertEqual(mesh.GetPrim().GetTypeName(), "Mesh")
 
     def testComputeMeshNormals(self):
-        self.validationEngine.enable_rule(omni.asset_validator.NormalsExistChecker)
+        self.validationEngine.enable_rule(usd_validation_nvidia.NormalsExistChecker)
         stage = self.createTestStage()
 
         faceVertexCounts = Vt.IntArray([3])

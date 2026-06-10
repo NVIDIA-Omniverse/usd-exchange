@@ -1,8 +1,8 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
-import omni.asset_validator
+import usd_validation_nvidia
 import usdex.core
 import usdex.test
 from pxr import Gf, Sdf, Tf, Usd, UsdGeom, Vt
@@ -190,7 +190,7 @@ class DefinePointCloudTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineF
             result = self.defineFunc(stage, path, *self.requiredArgs, widths=widths)
         self.assertFalse(result)
         self.assertFalse(stage.GetPrimAtPath(path))
-        self.validationEngine.disable_rule(omni.asset_validator.IndexedPrimvarChecker)
+        self.validationEngine.disable_rule(usd_validation_nvidia.IndexedPrimvarChecker)
         self.assertIsValidUsd(stage)
 
     def testIndexedWidths(self):
