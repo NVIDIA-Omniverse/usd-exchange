@@ -37,6 +37,8 @@
             │   ├── libusd_usd.so
             │   ├── libusd_usdUtils.so
             │   ├── libusd_usdUI.so
+            │   ├── libusd_usdSemantics.so                                  <-- optional, USD 24.11 & newer
+            │   ├── libusd_usdVol.so                                        <-- optional
             │   ├── libusd_vt.so
             │   ├── libusd_work.so
             |   └── usd
@@ -116,6 +118,8 @@
             │   ├── usd_usdShade.dll
             │   ├── usd_usdUtils.dll
             │   ├── usd_usdUI.dll
+            │   ├── usd_usdSemantics.dll                    <-- optional, USD 24.11 & newer
+            │   ├── usd_usdVol.dll                          <-- optional
             │   ├── usd_vt.dll
             │   └── usd_work.dll
             |   └── usd

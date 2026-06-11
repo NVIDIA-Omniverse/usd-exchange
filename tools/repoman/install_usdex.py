@@ -313,6 +313,7 @@ def __install(
             "usdShade",
             "usdUtils",
             "usdUI",
+            "usdVol",
             "vt",
             "work",
         ]
@@ -326,6 +327,7 @@ def __install(
             "usdShade",
             "usdShaders",
             "usdUI",
+            "usdVol",
         ]
         usdPluginLibs = [
             "usdShaders",
@@ -442,6 +444,7 @@ def __install(
             ("pxr/UsdShade", "_usdShade"),
             ("pxr/UsdUtils", "_usdUtils"),
             ("pxr/UsdUI", "_usdUI"),
+            ("pxr/UsdVol", "_usdVol"),
             ("pxr/Vt", "_vt"),
             ("pxr/Work", "_work"),
         ]
@@ -576,7 +579,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         type=str,
         default=[],
         help="""
-        List additional OpenUSD plugins by name (e.g. 'usdVol') to install the necessary plugInfo.json and associated schema,
+        List additional OpenUSD plugins by name (e.g. 'usdMedia') to install the necessary plugInfo.json and associated schema,
         libraries, and python modules.
         If unspecified, only the strictly required OpenUSD plugins will be installed.
         Python modules will be skipped if --python-version=0

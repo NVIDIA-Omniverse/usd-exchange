@@ -147,7 +147,7 @@ Similarly, to download & assemble a minimal monolithic USD 24.11, with no python
 
 If you need more OpenUSD modules than the strict minimal requirements of OpenUSD Exchange SDK, you can install them using `--install-extra-plugins`.
 
-For example, to add on `usdSkel` and `usdVol` call:
+For example, to add on `usdSkel` and `usdMedia` call:
 
 ``````{card}
 `````{tab-set}
@@ -155,14 +155,14 @@ For example, to add on `usdSkel` and `usdVol` call:
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --version ${repo_docs_version} --install-extra-plugins usdSkel usdVol
+./repo.sh install_usdex --version ${repo_docs_version} --install-extra-plugins usdSkel usdMedia
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --version ${repo_docs_version} --install-extra-plugins usdSkel usdVol
+.\repo.bat install_usdex --version ${repo_docs_version} --install-extra-plugins usdSkel usdMedia
 ```
 ````
 `````

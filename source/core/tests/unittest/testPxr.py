@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 import os
@@ -28,3 +28,7 @@ if major >= 24 and minor >= 11:
 """
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env)
         self.assertEqual(result.returncode, 0, f"Failed to import pxr.UsdSemantics: {result.stderr.decode()}")
+
+        code = "from pxr import UsdVol; assert hasattr(UsdVol, 'Volume'), 'UsdVol.Volume not available'"
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, f"Failed to import pxr.UsdVol: {result.stderr.decode()}")
