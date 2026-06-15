@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,6 +7,7 @@
 //! @file usdex/test/FilesystemUtils.h
 //! @brief Utilities for manipulating files and directories in test suites
 
+#include <usdex/core/Api.h>
 #include <usdex/core/Version.h>
 
 #include <pxr/base/arch/defines.h>

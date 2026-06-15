@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -48,3 +48,28 @@
 #else
 #define USDEX_API USDEX_IMPORT
 #endif
+
+// Allow consumers to use `pxr::` regardless of PXR_NS value.
+// MSVC rejects redundant namespace aliases (C2386), so on Windows we detect
+// whether PXR_NS is already "pxr" and skip the alias when it would be redundant.
+// GCC/Clang accept redundant aliases per the C++ standard.
+#include <pxr/base/arch/defines.h>
+#include <pxr/pxr.h>
+#if PXR_USE_NAMESPACES
+#if defined(ARCH_OS_WINDOWS)
+#pragma warning(push)
+#pragma warning(disable : 4668)
+#define USDEX_PP_CAT_IMPL(a, b) a##b
+#define USDEX_PP_CAT(a, b) USDEX_PP_CAT_IMPL(a, b)
+#define USDEX_PXR_NS_IS_pxr 1
+#if !USDEX_PP_CAT(USDEX_PXR_NS_IS_, PXR_NS)
+namespace pxr = ::PXR_NS;
+#endif
+#undef USDEX_PXR_NS_IS_pxr
+#undef USDEX_PP_CAT
+#undef USDEX_PP_CAT_IMPL
+#pragma warning(pop)
+#else
+namespace pxr = ::PXR_NS;
+#endif
+#endif // PXR_USE_NAMESPACES
