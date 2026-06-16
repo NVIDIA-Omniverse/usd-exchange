@@ -6,15 +6,63 @@ import glob
 import inspect
 import json
 import os
+import re
 import shutil
+import tempfile
 from typing import Callable, Dict
 
 import omni.repo.man
 import toml
 
-# Pinned tooling used to repair the linux wheel (bake in shared libs), run via repo_man's vendored uv (`uv tool run`).
-_AUDITWHEEL_VERSION = "6.3.0"
-_PATCHELF_VERSION = "0.17.2.4"
+
+def __patch_usd_pluginfo(uv: str, wheel_path: str, out_dir: str, wheel_version: str):
+    """Patch each OpenUSD plugin's plugInfo ``LibraryPath`` to point at its auditwheel-hashed shared library.
+
+    auditwheel grafts the bundled USD libraries into the wheel with a content-hash suffix appended to each
+    filename, which invalidates the ``LibraryPath`` values OpenUSD ships in its plugInfo files. An incorrect
+    path happens to work for plugins whose library is already loaded by importing the matching ``pxr`` module,
+    but on-demand Ndr/Sdr discovery & parser plugins (e.g. ``usdMtlx``) are never imported, so OpenUSD's
+    ``Plug`` system cannot instantiate them.
+
+    ``wheel unpack`` / ``wheel pack`` are used so the wheel's ``RECORD`` is regenerated correctly.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        omni.repo.man.run_process(
+            [uv, "tool", "run", "--from", f"wheel=={wheel_version}", "wheel", "unpack", wheel_path, "--dest", tmp],
+            exit_on_error=True,
+        )
+        unpacked = glob.glob(f"{tmp}/*/")[0].rstrip("/")
+        libs_root = f"{unpacked}/usd_exchange.libs"
+
+        # Map the original lib name to its auditwheel-hashed name
+        hashed_libs = {}
+        for lib in glob.glob(f"{libs_root}/*.so*"):
+            match = re.match(r"^(lib.+?)-[0-9a-f]{6,}\.so", os.path.basename(lib))
+            if match:
+                hashed_libs[match.group(1)] = os.path.basename(lib)
+
+        for plugInfo in glob.glob(f"{libs_root}/usd/*/resources/plugInfo.json"):
+            with open(plugInfo, "r") as f:
+                # plugInfo.json files use python-style `#` comments that are not valid JSON
+                data = json.loads("".join(line for line in f if not line.lstrip().startswith("#")))
+            modified = False
+            for plug in data.get("Plugins", []):
+                lib = hashed_libs.get(f"libusd_{plug.get('Name')}")
+                if lib and "LibraryPath" in plug:
+                    # LibraryPath is resolved relative to the plugin dir (the parent of `resources/`), so `../..`
+                    # reaches the `usd_exchange.libs/` root where auditwheel places the hashed libraries.
+                    plug["LibraryPath"] = f"../../{lib}"
+                    modified = True
+            if modified:
+                with open(plugInfo, "w") as f:
+                    json.dump(data, f, indent=4)
+
+        # repack (regenerates dist-info/RECORD) in place of the original repaired wheel
+        os.remove(wheel_path)
+        omni.repo.man.run_process(
+            [uv, "tool", "run", "--from", f"wheel=={wheel_version}", "wheel", "pack", unpacked, "--dest-dir", out_dir],
+            exit_on_error=True,
+        )
 
 
 def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
@@ -29,6 +77,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         toolConfig = config["repo_py_package"]
         stagingDir = toolConfig["staging_dir"]
         installDir = toolConfig["install_dir"]
+        auditwheelVersion = toolConfig["auditwheel_version"]
+        patchelfVersion = toolConfig["patchelf_version"]
+        wheelVersion = toolConfig["wheel_version"]
         exclusions = toolConfig.get("exclude", [])
         ignore_callable = shutil.ignore_patterns(*exclusions)
         repoVersionFile = config["repo"]["folders"]["version_file"]
@@ -106,26 +157,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             else:
                 raise omni.repo.man.ExpectedError(f"Unable to find license file for pattern: {src}")
 
-        if omni.repo.man.is_linux():
-            # All plugInfo LibraryPath values are going to be incorrect, because auditwheel appends hashes to lib names
-            # Fortunately, auditwheel also bakes rpaths into each module & the per plugin LibraryPath is unnecessary
-            # Rather than produce plugInfo with false data, we can set empty string to indicate the path is not used.
-            # This matches OpenUSD's approach for usd monolithic builds.
-            for plugInfo in glob.glob(f"{stagingDir}/usd_exchange.libs/usd/*/resources/plugInfo.json"):
-                with open(plugInfo, "r") as f:
-                    # remove illegal python style comments from json
-                    plugContents = "".join([x for x in f.readlines() if not x.lstrip().startswith("#")])
-                plugData = json.loads(plugContents)
-                for plug in plugData.get("Plugins", []):
-                    # usdShaders is a special case, it is not used by the python modules
-                    # but it does have a LibraryPath value that needs to be relative to the plugInfo file
-                    if plug["Name"] == "usdShaders":
-                        continue
-                    if "LibraryPath" in plug:
-                        plug["LibraryPath"] = ""
-                with open(plugInfo, "w") as f:
-                    json.dump(plugData, f, indent=4)
-        elif omni.repo.man.is_windows():
+        if omni.repo.man.is_windows():
             # On Windows, the plugInfo LibraryPaths values are correct, but in order to auto-locate them the python modules
             # need to be configured to look in the usd_exchange.libs folder using the PXR_USD_WINDOWS_DLL_PATH environment variable.
             with open(f"{stagingDir}/pxr/__init__.py", "w") as f:
@@ -140,8 +172,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                         """
                     )
                 )
-        else:
+        elif not omni.repo.man.is_linux():
             raise omni.repo.man.ExpectedError("Unsupported platform")
+        # On Linux the plugInfo LibraryPath values are patched after auditwheel (see __patch_usd_pluginfo), once the
+        # final hashed library names are known.
 
         # copy the hatchling build hook (forces a platform/abi-tagged wheel)
         shutil.copyfile(omni.repo.man.resolve_tokens("$root/tools/pyproject/hatch_build.py"), f"{stagingDir}/hatch_build.py")
@@ -171,9 +205,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                 "tool",
                 "run",
                 "--from",
-                f"auditwheel=={_AUDITWHEEL_VERSION}",
+                f"auditwheel=={auditwheelVersion}",
                 "--with",
-                f"patchelf=={_PATCHELF_VERSION}",
+                f"patchelf=={patchelfVersion}",
                 "auditwheel",
                 "repair",
                 wheel,
@@ -185,5 +219,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             ]
             omni.repo.man.logger.info(" ".join(auditwheel_args))
             omni.repo.man.run_process(auditwheel_args, exit_on_error=True, env=env)
+
+            # auditwheel renames the bundled libs with content hashes, which invalidates the plugInfo LibraryPath values,
+            # so we need to patch the plugInfo LibraryPath values to point at the new hashed library names.
+            wheel_tag_prefix = os.path.basename(wheel).rsplit("-", 1)[0]
+            __patch_usd_pluginfo(uv, f"{installDir}/{wheel_tag_prefix}-{platform_target_abi}.whl", installDir, wheelVersion)
 
     return run_repo_tool

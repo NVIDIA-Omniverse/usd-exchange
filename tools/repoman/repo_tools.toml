@@ -117,3 +117,7 @@ command = "py_package"
 entry_point = "py_package:setup_repo_tool"
 staging_dir = "$root/_build/pyproject"
 install_dir = "$root/_build/packages"
+# Pinned tooling used to repair & repack the linux wheel
+auditwheel_version = "6.3.0"
+patchelf_version = "0.17.2.4"
+wheel_version = "0.45.1"
