@@ -14,8 +14,6 @@ usd_flavor = "usd"
 usd_ver = "25.05"
 python_ver = "3.10"
 abi = "2.35"
-# pinned PyPI version of the usd-validation-nvidia package used by usdex.test
-usd_validation_ver = "1.19.3"
 
 [repo_version_header]
 enabled = true

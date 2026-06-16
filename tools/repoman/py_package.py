@@ -31,7 +31,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usdFlavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usdVer = omni.repo.man.resolve_tokens("${usd_ver}")
         usdIdentifier = f"{usdFlavor}{usdVer}".replace(".", "").replace("-", "")
-        validatorVersion = omni.repo.man.resolve_tokens("${usd_validation_ver}")
+        validatorVersion = config["repo_install_usdex"]["usd_validation_version"]
         fullVersion = omni.repo.man.build_number.generate_build_number_from_file(repoVersionFile)
         realVersion, label = fullVersion.split("+")
         if os.environ.get("CI_COMMIT_TAG"):

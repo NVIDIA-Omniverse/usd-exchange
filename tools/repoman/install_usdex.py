@@ -181,6 +181,7 @@ def __install(
     usd_flavor: str,
     usd_ver: str,
     python_ver: str,
+    usd_validation_version: str,
     repoVersionFile: str,
     buildConfig: str,
     clean: bool,
@@ -250,25 +251,26 @@ def __install(
     python_path = f"{targetDepsDir}/python"
     usd_path = f"{targetDepsDir}/usd/{buildConfig}"
 
-    # Acquire the asset validator from PyPI. It is a pure-python wheel, so a single pip install into the staging dir
+    # Acquire the asset validator from PyPI. It is a pure-python wheel, so a single install into the staging dir
     # provides the module that is assembled into the install tree below (covers both in-repo and standalone installs).
     validator_path = f"{targetDepsDir}/usd-validation-nvidia"
     if installTestModules and python_ver != "0":
-        validatorVersion = omni.repo.man.resolve_tokens("${usd_validation_ver}")
         # the packman python package exposes the canonical `python${exe_ext}` entry point
         pythonExecutable = os.path.join(python_path, "python" + mapping["exe_ext"])
-        print(f"Install usd-validation-nvidia=={validatorVersion} from PyPI to {validator_path}")
+        print(f"Install usd-validation-nvidia=={usd_validation_version} from PyPI to {validator_path}")
+        # `uv pip install` is uv's own native installer (it does not shell out to pip); resolve the vendored uv
+        # binary via get_uv() exactly as repo_man does internally (see omni.repo.man.deps._uv_requirements_load).
+        # `--no-deps` keeps OpenUSD (which we already bundle) out of the validator's staging directory.
         omni.repo.man.run_process(
             [
-                pythonExecutable,
-                "-m",
+                str(omni.repo.man.get_uv()),
                 "pip",
                 "install",
-                "--upgrade",
+                "--no-config",
                 "--no-deps",
-                f"usd-validation-nvidia=={validatorVersion}",
-                "--target",
-                validator_path,
+                f"--python={pythonExecutable}",
+                f"--target={validator_path}",
+                f"usd-validation-nvidia=={usd_validation_version}",
             ],
             exit_on_error=True,
         )
@@ -504,6 +506,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
     usd_flavor = toolConfig["usd_flavor"]
     usd_ver = toolConfig["usd_ver"]
     python_ver = toolConfig["python_ver"]
+    usd_validation_version = toolConfig["usd_validation_version"]
     repoVersionFile = config["repo"]["folders"]["version_file"]
 
     parser.description = "Tool to download and install precompiled OpenUSD Exchange binaries and all of its runtime dependencies."
@@ -595,6 +598,11 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         """,
     )
     parser.add_argument(
+        "--usd-validation-version",
+        dest="usd_validation_version",
+        help=f"The version of the usd-validation-nvidia PyPI package to install with --install-test. Defaults to `{usd_validation_version}`",
+    )
+    parser.add_argument(
         "--install-extra-plugins",
         dest="install_extra_plugins",
         nargs="+",
@@ -616,6 +624,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usd_flavor = options.usd_flavor or toolConfig["usd_flavor"]
         usd_ver = options.usd_ver or toolConfig["usd_ver"]
         python_ver = options.python_ver or toolConfig["python_ver"]
+        usd_validation_version = options.usd_validation_version or toolConfig["usd_validation_version"]
 
         if usd_flavor == "usd-minimal":
             if python_ver != "0":
@@ -629,6 +638,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             usd_flavor,
             usd_ver,
             python_ver,
+            usd_validation_version,
             repoVersionFile,
             options.config,
             options.clean,
