@@ -12,6 +12,10 @@ from typing import Callable, Dict
 import omni.repo.man
 import toml
 
+# Pinned tooling used to repair the linux wheel (bake in shared libs), run via repo_man's vendored uv (`uv tool run`).
+_AUDITWHEEL_VERSION = "6.3.0"
+_PATCHELF_VERSION = "0.17.2.4"
+
 
 def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
     toolConfig = config.get("repo_py_package", {})
@@ -139,12 +143,13 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         else:
             raise omni.repo.man.ExpectedError("Unsupported platform")
 
-        # copy the pyproject setup script
-        shutil.copyfile(omni.repo.man.resolve_tokens("$root/tools/pyproject/pybuild.py"), f"{stagingDir}/pybuild.py")
+        # copy the hatchling build hook (forces a platform/abi-tagged wheel)
+        shutil.copyfile(omni.repo.man.resolve_tokens("$root/tools/pyproject/hatch_build.py"), f"{stagingDir}/hatch_build.py")
 
-        # build the wheel
-        build_cmd = omni.repo.man.resolve_tokens("$root/tools/pyproject/pybuild${shell_ext}")
-        build_args = [build_cmd, "build", "--format=wheel", f"--directory={stagingDir}", f"--output={stagingDir}/dist"]
+        # build the wheel with uv, targeting the packman python so the wheel gets the correct interpreter/abi tag
+        uv = str(omni.repo.man.get_uv())
+        python_exe = omni.repo.man.resolve_tokens("$root/_build/target-deps/python/python${exe_ext}")
+        build_args = [uv, "build", "--wheel", f"--python={python_exe}", f"--out-dir={stagingDir}/dist", stagingDir]
         omni.repo.man.logger.info(" ".join(build_args))
         omni.repo.man.run_process(build_args, exit_on_error=True)
 
@@ -160,8 +165,24 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             platform_target_abi = omni.repo.man.get_abi_platform_translation(tokens["platform"], tokens.get("abi", "2.35"))
             env = os.environ.copy()
             env["LD_LIBRARY_PATH"] = os.path.abspath(os.path.realpath(f"{source}/lib"))
-            auditwheel_cmd = omni.repo.man.resolve_tokens("$root/tools/pyproject/auditwheel${shell_ext}")
-            auditwheel_args = [auditwheel_cmd, "repair", wheel, "--plat", platform_target_abi, "--strip", "-w", installDir]
+            # repair via auditwheel using an ephemeral env; patchelf is auditwheel's runtime dependency
+            auditwheel_args = [
+                uv,
+                "tool",
+                "run",
+                "--from",
+                f"auditwheel=={_AUDITWHEEL_VERSION}",
+                "--with",
+                f"patchelf=={_PATCHELF_VERSION}",
+                "auditwheel",
+                "repair",
+                wheel,
+                "--plat",
+                platform_target_abi,
+                "--strip",
+                "-w",
+                installDir,
+            ]
             omni.repo.man.logger.info(" ".join(auditwheel_args))
             omni.repo.man.run_process(auditwheel_args, exit_on_error=True, env=env)
 
