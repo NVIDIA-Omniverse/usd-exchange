@@ -1,10 +1,10 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
 from typing import List, Tuple
 
-import omni.asset_validator
+import usd_validation_nvidia
 import usdex.core
 import usdex.test
 from pxr import Gf, Tf, Usd, UsdGeom, UsdPhysics
@@ -364,7 +364,7 @@ class PhysicsJointAlgoTest_FixedJoint(PhysicsJointAlgoTest, usdex.test.DefineFun
         self.assertIsValidUsd(
             stage,
             issuePredicates=[
-                omni.asset_validator.IssuePredicates.ContainsMessage("ScaleOrientation is not supported for rigid bodies."),
+                usd_validation_nvidia.IssuePredicates.ContainsMessage("ScaleOrientation is not supported for rigid bodies."),
             ],
         )
 
@@ -1246,7 +1246,7 @@ class PhysicsJointAlgoTest_RevoluteJoint(PhysicsJointAlgoTest, usdex.test.Define
         self.assertIsValidUsd(
             stage,
             issuePredicates=[
-                omni.asset_validator.IssuePredicates.ContainsMessage(
+                usd_validation_nvidia.IssuePredicates.ContainsMessage(
                     "Simulation of multiple rigid bodies in a hierarchy will cause unpredicted results. Please fix the hierarchy or use XformStack reset"
                 ),
             ],

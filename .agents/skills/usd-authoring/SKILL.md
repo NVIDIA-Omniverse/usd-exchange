@@ -55,7 +55,7 @@ Every call to `createStage` / `configureStage` / `saveStage` / `saveLayer` / `ex
 
 ### Validation
 
-If `usdex.test` is available, regression tests should subclass `usdex.test.TestCase` and call `self.assertIsValidUsd(stage)` on every produced stage. Diagnostic-checking tests use `usdex.test.ScopedDiagnosticChecker`. Outside of tests, run the [Omniverse Asset Validator](../../../docs/devtools.md#asset-validator) on output. See `references/diagnostics-and-testing.md`.
+If `usdex.test` is available, regression tests should subclass `usdex.test.TestCase` and call `self.assertIsValidUsd(stage)` on every produced stage. Diagnostic-checking tests use `usdex.test.ScopedDiagnosticChecker`. Outside of tests, run [USD Validation](../../../docs/devtools.md#asset-validator) on output. See `references/diagnostics-and-testing.md`.
 
 ## Canonical authoring flow (prose, not code)
 
@@ -76,7 +76,7 @@ The flow below applies whether you are writing one stage or an asset library. Th
 8. For materials, prefer `definePreviewMaterial` for portability and `usdex.rtx.definePbrMaterial` / `defineGlassMaterial` for RTX. Bind with `bindMaterial` / `bindMaterialSubsets`. See `references/materials.md`.
 9. For physics, define visual / collision geometry first, then apply `UsdPhysicsRigidBodyAPI` / `UsdPhysicsCollisionAPI`, define `UsdPhysics.Scene` (raw schema), and use `definePhysicsFixedJoint` / `definePhysicsRevoluteJoint` / `definePhysicsPrismaticJoint` / `definePhysicsSphericalJoint` for joints. See `references/physics.md`.
 10. Save with `usdex.core.saveStage(stage, AUTHORING_METADATA)`. For single-layer flows, use `saveLayer` / `exportLayer` instead. See `references/stages-and-layers.md`.
-11. Validate the result with `omni.asset_validator.ValidationEngine` or `usdex.test.TestCase.assertIsValidUsd`. See `references/diagnostics-and-testing.md`.
+11. Validate the result with `usd_validation_nvidia.ValidationEngine` or `usdex.test.TestCase.assertIsValidUsd`. See `references/diagnostics-and-testing.md`.
 
 ## Reference index
 

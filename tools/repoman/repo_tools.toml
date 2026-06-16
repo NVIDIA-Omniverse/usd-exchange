@@ -29,6 +29,9 @@ usd_ver = ""
 # Use "0" to indicate that python should be disabled.
 python_ver = ""
 
+# Sets the pinned version of the usd-validation-nvidia PyPI package, which provides the asset validator used by usdex.test.
+usd_validation_version = "1.19.3"
+
 [repo_stubgen]
 enabled = false
 command = "stubgen"

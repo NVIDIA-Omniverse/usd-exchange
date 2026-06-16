@@ -147,7 +147,7 @@ Many concepts in UsdPhysics are fairly straightforward and don't merit higher le
 
 ```{eval-rst}
 .. tip::
-  Use the `Asset Validator <./devtools.html#asset-validator>`_ to ensure the ``UsdPhysics`` schemas have been used correctly.
+  Use `USD Validation <./devtools.html#asset-validator>`_ to ensure the ``UsdPhysics`` schemas have been used correctly.
 ```
 
 However, some other UsdPhysics concepts are more intricate to author correctly, especially given often divergent approaches in the source data specifications across maximal coordinate (free-body) and reduced coordinate solvers.

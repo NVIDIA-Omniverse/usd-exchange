@@ -6,7 +6,7 @@ When developing an application using OpenUSD Exchange SDK it is important to und
 
 It is a good idea to author test data in your source format which you can use during development and for regression testing.
 
-Once your data is converted to USD, it is recommended to test it for correctness & compliance with OpenUSD, using a tool like the [Omniverse Asset Validator](./devtools.md#asset-validator). It is a Python module & CLI which you can use to run a suite of validation rules that check for common USD authoring mistakes.
+Once your data is converted to USD, it is recommended to test it for correctness & compliance with OpenUSD, using a tool like [USD Validation](./devtools.md#asset-validator). It is a Python module & CLI which you can use to run a suite of validation rules that check for common USD authoring mistakes.
 
 ```{eval-rst}
 .. note::

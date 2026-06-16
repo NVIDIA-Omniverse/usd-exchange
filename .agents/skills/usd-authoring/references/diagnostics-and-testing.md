@@ -3,7 +3,7 @@
 
 # Reference: Diagnostics and Testing
 
-`SKILL.md` (rules) is in context. Covers the SDK's diagnostic delegate, `TF_DEBUG`, the `usdex.test` Python module, `usdex/test/*.h` C++ utilities, and the [Omniverse Asset Validator](../../../../docs/devtools.md#asset-validator).
+`SKILL.md` (rules) is in context. Covers the SDK's diagnostic delegate, `TF_DEBUG`, the `usdex.test` Python module, `usdex/test/*.h` C++ utilities, and [USD Validation](../../../../docs/devtools.md#asset-validator).
 
 ## Diagnostics delegate (`usdex/core/Diagnostics.h`)
 
@@ -23,7 +23,7 @@ SDK-specific symbol: `USDEX_TRANSCODING_ERROR` (failure encoding a `UsdPrim` / `
 
 ## Asset Validator
 
-`pip install "usd-exchange[test]"` (or `repo install_usdex --install-test` for native builds). Validate every output before declaring a converter pass complete: `engine = omni.asset_validator.ValidationEngine(init_rules=True)`; `engine.validate(stage_or_path)` returns a `Result` whose `issues()` is an `IssuesList`. Filter with `omni.asset_validator.IssuePredicates.Or(*predicates)`. Wraps OpenUSD's `usdchecker` rules and adds NVIDIA's; CLI usage is in the [Asset Validator CLI sample](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/source/assetValidator/README.md). OpenUSD's own `UsdValidatorSuite` is converging with this; for now C++ tests still rely on `doctest`.
+`pip install "usd-exchange[test]"` (or `repo install_usdex --install-test` for native builds). Validate every output before declaring a converter pass complete: `engine = usd_validation_nvidia.ValidationEngine(init_rules=True)`; `engine.validate(stage_or_path)` returns a `Result` whose `issues()` is an `IssuesList`. Filter with `usd_validation_nvidia.IssuePredicates.Or(*predicates)`. Wraps OpenUSD's `usdchecker` rules and adds NVIDIA's; CLI usage is in the [Asset Validator CLI sample](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/source/assetValidator/README.md). OpenUSD's own `UsdValidatorSuite` is converging with this; for now C++ tests still rely on `doctest`.
 
 ## `usdex.test` (Python)
 
@@ -33,7 +33,7 @@ SDK-specific symbol: `USDEX_TRANSCODING_ERROR` (failure encoding a `UsdPrim` / `
 | --- | --- |
 | `defaultPrimName` (`"Root"`), `defaultUpAxis` (`UsdGeom.Tokens.y`), `defaultLinearUnits` (`UsdGeom.LinearUnits.meters`), `defaultAuthoringMetadata` | Defaults for setting up a stage in tests. Use via `cls.defaultAuthoringMetadata`. |
 | `defaultValidationIssuePredicates` | Override on a subclass to ignore specific validator issues. |
-| `validationEngine` (per test) | Pre-initialized `omni.asset_validator.ValidationEngine`. |
+| `validationEngine` (per test) | Pre-initialized `usd_validation_nvidia.ValidationEngine`. |
 | `assertIsValidUsd(asset, [issuePredicates], [msg])` / `assertIsInvalidUsd(asset, issuePredicates)` | Pass-or-fail / must-fail validation. `asset` is a `Usd.Stage` or path. |
 | `assertSdfLayerIdentifier`, `assertAttributeHasAuthoredValue`, `assertRotationsAlmostEqual` | Layer identifier check, default-time / time-sample check, `Gf.Rotation` / `Gf.Quatf` / `Gf.Quatd` comparison (same concrete type). |
 | `tmpFile([name], [ext])` / `tmpLayer([name], [ext])` / `tmpDir([name])` | Per-test temp filesystem helpers; cleaned up in `tearDownClass`. |

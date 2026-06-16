@@ -19,7 +19,7 @@ from typing import List, Optional
 import usdex.core
 from pxr import Gf, Sdf, Usd, UsdGeom
 
-# usdex.test uses omni.asset_validator, which has a dependency on pxr.UsdSkel
+# usdex.test uses usd_validation_nvidia, which has a dependency on pxr.UsdSkel
 # When usdex.core initializes, it attempts to load all required libraries
 # with a special check for python whl installations on Windows.
 #
@@ -27,14 +27,14 @@ from pxr import Gf, Sdf, Usd, UsdGeom
 # added DLL directory goes out of scope before usdSkel.dll is loaded. In order
 # to support virtual environments on Windows, we need to re-scope this directory
 # and force import UsdSkel to load the required DLLs. We do this by importing
-# omni.asset_validator incase other similar dependencies arise in the future.
+# usd_validation_nvidia incase other similar dependencies arise in the future.
 #
 # This is not an issue on Linux because the bindings use rpaths to locate the libs.
 if platform.system().lower() == "windows":
     if os.path.exists(usdex.core.__whl_libdir):
         with os.add_dll_directory(usdex.core.__whl_libdir):
-            __import__("omni.asset_validator")
-import omni.asset_validator
+            __import__("usd_validation_nvidia")
+import usd_validation_nvidia
 
 
 class TestCase(unittest.TestCase):
@@ -74,9 +74,9 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
 
-        self.validationEngine = omni.asset_validator.ValidationEngine(init_rules=True)
+        self.validationEngine = usd_validation_nvidia.ValidationEngine(init_rules=True)
 
-    def assertIsValidUsd(self, asset: omni.asset_validator.AssetType, issuePredicates: Optional[List] = None, msg: Optional[str] = None):
+    def assertIsValidUsd(self, asset: usd_validation_nvidia.AssetType, issuePredicates: Optional[List] = None, msg: Optional[str] = None):
         """Assert that given asset passes all enabled validation rules
 
         Args:
@@ -101,12 +101,12 @@ class TestCase(unittest.TestCase):
                 msg = "\n".join(self.__issueToString(issue) for issue in list(issues))
             self.fail(msg=msg)
 
-    def assertIsInvalidUsd(self, asset: omni.asset_validator.AssetType, issuePredicates: omni.asset_validator.IssuePredicates):
+    def assertIsInvalidUsd(self, asset: usd_validation_nvidia.AssetType, issuePredicates: usd_validation_nvidia.IssuePredicates):
         """Assert that given asset reported with issuePredicates
 
         Args:
             asset: The Asset to validate. Either a ``Usd.Stage`` object or a path to a USD Layer.
-            issuePredicates (List): List of ``omni.asset_validator.IssuePredicates``.
+            issuePredicates (List): List of ``usd_validation_nvidia.IssuePredicates``.
 
         Returns:
             ``None``
@@ -119,7 +119,7 @@ class TestCase(unittest.TestCase):
                 nonDetectedPredicates.append(predicate)
 
         # Chain all predicates by "or" condition
-        predicate = omni.asset_validator.IssuePredicates.Or(*issuePredicates)
+        predicate = usd_validation_nvidia.IssuePredicates.Or(*issuePredicates)
         unexpectedIssues = set(issues) - set(issues.filter_by(predicate))
 
         if not nonDetectedPredicates and not unexpectedIssues:
@@ -346,10 +346,10 @@ class TestCase(unittest.TestCase):
 
     @staticmethod
     def __validateUsd(
-        asset: omni.asset_validator.AssetType,
-        engine: omni.asset_validator.ValidationEngine,
+        asset: usd_validation_nvidia.AssetType,
+        engine: usd_validation_nvidia.ValidationEngine,
         issuePredicates: Optional[List] = None,
-    ) -> omni.asset_validator.IssuesList:
+    ) -> usd_validation_nvidia.IssuesList:
         """Validate asset passes all enabled validation rules
 
         Args:
@@ -367,9 +367,9 @@ class TestCase(unittest.TestCase):
 
         issues = result.issues()
         if issuePredicates:
-            allowedIssues = issues.filter_by(omni.asset_validator.IssuePredicates.Or(*issuePredicates))
+            allowedIssues = issues.filter_by(usd_validation_nvidia.IssuePredicates.Or(*issuePredicates))
             if allowedIssues:
-                issues = omni.asset_validator.IssuesList(list(set(issues) - set(allowedIssues)))
+                issues = usd_validation_nvidia.IssuesList(list(set(issues) - set(allowedIssues)))
 
         return issues
 
@@ -415,11 +415,11 @@ class TestCase(unittest.TestCase):
         def __repr__(self):
             return f"__SemVersion({'.'.join(map(str, self.parts))})"
 
-    def __issueToString(self, issue: omni.asset_validator.Issue) -> str:
-        """Convert an ``omni.asset_validator.Issue`` to a string
+    def __issueToString(self, issue: usd_validation_nvidia.Issue) -> str:
+        """Convert an ``usd_validation_nvidia.Issue`` to a string
 
         Args:
-            issue: The ``omni.asset_validator.Issue`` to convert
+            issue: The ``usd_validation_nvidia.Issue`` to convert
 
         Returns:
             A string representation of the issue

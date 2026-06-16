@@ -6,7 +6,7 @@ import os
 import re
 from typing import Any, List
 
-import omni.asset_validator
+import usd_validation_nvidia
 import usdex.core
 import usdex.rtx
 import usdex.test
@@ -70,10 +70,10 @@ class MaterialAlgoTest(usdex.test.TestCase):
     def setUp(self):
         super().setUp()
 
-        self.validationEngine.disable_rule(omni.asset_validator.NormalsExistChecker)
+        self.validationEngine.disable_rule(usd_validation_nvidia.NormalsExistChecker)
 
     @staticmethod
-    def allowedIssuePredicates() -> List[omni.asset_validator.IssuePredicates]:
+    def allowedIssuePredicates() -> List[usd_validation_nvidia.IssuePredicates]:
         """Return a list of callables that determine if an issue can be bypassed by tests"""
 
         def checkUnresolvableDependenciesIssue(issue):
@@ -82,9 +82,9 @@ class MaterialAlgoTest(usdex.test.TestCase):
                 return True
 
         # Allows any issue reporting `The path "Omni*.mdl" does not exist.` to be bypassed.
-        omniMdlPredicate = omni.asset_validator.IssuePredicates.And(
-            omni.asset_validator.IssuePredicates.ContainsMessage("The path Omni"),
-            omni.asset_validator.IssuePredicates.ContainsMessage(".mdl does not exist."),
+        omniMdlPredicate = usd_validation_nvidia.IssuePredicates.And(
+            usd_validation_nvidia.IssuePredicates.ContainsMessage("The path Omni"),
+            usd_validation_nvidia.IssuePredicates.ContainsMessage(".mdl does not exist."),
         )
 
         return [omniMdlPredicate, checkUnresolvableDependenciesIssue]
