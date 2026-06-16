@@ -2,20 +2,21 @@
 
 set -e
 
-# Setup the build environment
-VENV=./_build/tests/venv
-echo "Building: $VENV"
-if [[ -d $VENV ]]; then
-    rm -rf $VENV
-fi
-./_build/target-deps/python/python3 -m venv "$VENV"
-source "$VENV/bin/activate"
+# Run from the repo root so relative paths match the rest of the tooling
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-# Install packages with optional private index
+VENV=./_build/tests/venv
+
+# Isolate the wheel under test: ensure the native build tree is not imported over the pip-installed wheel
+unset PYTHONPATH
+
+# (Re)create a clean venv with uv, then install the built wheel(s) with the test extras
+rm -rf "$VENV"
+./repo.sh uv venv --python ./_build/target-deps/python/python3 "$VENV"
 for wheel in _build/packages/*.whl; do
-    python -m pip install "${wheel}[test]"
+    ./repo.sh uv pip install --python "$VENV/bin/python" "${wheel}[test]"
 done
 
-# Run the tests
-python -m unittest discover -v -s source/core/tests/unittest
-python -m unittest discover -v -s source/rtx/tests/unittest
+# Run the tests with the venv interpreter
+"$VENV/bin/python" -m unittest discover -v -s source/core/tests/unittest
+"$VENV/bin/python" -m unittest discover -v -s source/rtx/tests/unittest
