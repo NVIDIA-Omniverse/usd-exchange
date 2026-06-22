@@ -22,6 +22,10 @@ for %%f in ("_build\packages\*.whl") do (
     if %errorlevel% neq 0 ( exit /b %errorlevel% )
 )
 
+REM Verify the usd-exchange modules import from the installed wheel, not a build-tree leak that could mask a broken wheel binary.
+"%VENV%\Scripts\python.exe" tools\pyproject\check_wheel_imports.py
+if %errorlevel% neq 0 ( exit /b %errorlevel% )
+
 REM Run the tests with the venv interpreter
 "%VENV%\Scripts\python.exe" -m unittest discover -v -s source\core\tests\unittest
 if %errorlevel% neq 0 ( exit /b %errorlevel% )

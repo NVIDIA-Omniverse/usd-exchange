@@ -17,6 +17,10 @@ for wheel in _build/packages/*.whl; do
     ./repo.sh uv pip install --python "$VENV/bin/python" "${wheel}[test]"
 done
 
+# Verify the usd-exchange modules import from the installed wheel (test venv),
+# not a build-tree leak that could mask a broken wheel binary.
+"$VENV/bin/python" tools/pyproject/check_wheel_imports.py
+
 # Run the tests with the venv interpreter
 "$VENV/bin/python" -m unittest discover -v -s source/core/tests/unittest
 "$VENV/bin/python" -m unittest discover -v -s source/rtx/tests/unittest
