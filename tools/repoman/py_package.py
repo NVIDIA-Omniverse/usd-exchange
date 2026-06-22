@@ -65,6 +65,32 @@ def __patch_usd_pluginfo(uv: str, wheel_path: str, out_dir: str, wheel_version: 
         )
 
 
+def __strip_shared_objects(lib_globs):
+    """Strip symbols (in place) from the shared objects matched by ``lib_globs``.
+
+    This must run *before* auditwheel's ``patchelf`` does: for the staged python extension modules that means
+    before ``uv build``, and for the grafted external libraries that means before ``auditwheel repair``.
+    Stripping *after* patchelf -- which is exactly what ``auditwheel repair --strip`` does -- rewrites the
+    patchelf-extended ELF and can leave ``LOAD`` segments that are no longer page-aligned, so the dynamic
+    loader rejects the library at import time with "ELF load command address/offset not page-aligned". This
+    only reproduces on some USD flavors (e.g. 25.11) whose binaries trigger the misalignment.
+
+    Symlinks are resolved and de-duplicated so versioned ``.so`` chains (e.g. ``libFoo.so -> libFoo.so.1.2.3``)
+    keep their links intact and only the real ELF files are stripped.
+    """
+    stripped = set()
+    for pattern in lib_globs:
+        for path in glob.glob(pattern, recursive=True):
+            real = os.path.realpath(path)
+            if real in stripped or not os.path.isfile(real):
+                continue
+            with open(real, "rb") as binary:
+                if binary.read(4) != b"\x7fELF":
+                    continue
+            stripped.add(real)
+            omni.repo.man.run_process(["strip", real], exit_on_error=True)
+
+
 def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
     toolConfig = config.get("repo_py_package", {})
     if not toolConfig.get("enabled", True):
@@ -180,6 +206,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         # copy the hatchling build hook (forces a platform/abi-tagged wheel)
         shutil.copyfile(omni.repo.man.resolve_tokens("$root/tools/pyproject/hatch_build.py"), f"{stagingDir}/hatch_build.py")
 
+        if omni.repo.man.is_linux():
+            # Strip the staged binaries, so `strip` runs before auditwheel's `patchelf`
+            __strip_shared_objects([f"{stagingDir}/**/*.so"])
+
         # build the wheel with uv, targeting the packman python so the wheel gets the correct interpreter/abi tag
         uv = str(omni.repo.man.get_uv())
         python_exe = omni.repo.man.resolve_tokens("$root/_build/target-deps/python/python${exe_ext}")
@@ -199,7 +229,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             platform_target_abi = omni.repo.man.get_abi_platform_translation(tokens["platform"], tokens.get("abi", "2.35"))
             env = os.environ.copy()
             env["LD_LIBRARY_PATH"] = os.path.abspath(os.path.realpath(f"{source}/lib"))
-            # repair via auditwheel using an ephemeral env; patchelf is auditwheel's runtime dependency
+            # Strip the external libs auditwheel is about to graft so that `strip` runs before auditwheel's `patchelf`
+            __strip_shared_objects([f"{source}/lib/*.so*"])
+            # repair via auditwheel using an ephemeral env; patchelf is auditwheel's runtime dependency.
             auditwheel_args = [
                 uv,
                 "tool",
@@ -213,7 +245,6 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                 wheel,
                 "--plat",
                 platform_target_abi,
-                "--strip",
                 "-w",
                 installDir,
             ]
