@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,6 +8,7 @@ ARCH_PRAGMA_PUSH
 ARCH_PRAGMA_MAYBE_UNINITIALIZED
 
 #include "AssetStructureBindings.h"
+#include "AttributeAlgoBindings.h"
 #include "CameraAlgoBindings.h"
 #include "CoreBindings.h"
 #include "CurvesAlgoBindings.h"
@@ -41,6 +42,7 @@ PYBIND11_MODULE(_usdex_core, m)
     bindDiagnostics(m);
     bindLayerAlgo(m);
     bindStageAlgo(m);
+    bindAttributeAlgo(m);
     bindAssetStructure(m);
     bindNameAlgo(m);
     bindXformAlgo(m);

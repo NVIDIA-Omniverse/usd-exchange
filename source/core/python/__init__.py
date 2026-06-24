@@ -155,6 +155,8 @@ __all__ = [
     "definePhysicsMaterial",
     "addPhysicsToMaterial",
     "bindPhysicsMaterial",
+    # attribute
+    "setEffectiveAttributeValue",
 ]
 
 import os
