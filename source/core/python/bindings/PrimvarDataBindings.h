@@ -109,6 +109,36 @@ void bindPrimvarDataImpl(module& m, const std::string& typeName, const std::stri
     );
 
     binder.def(
+        "createPrimvar",
+        [](const PrimvarData<T>& primvarData, pxr::UsdPrim prim, const std::string& name, pybind11::object valueTypeName)
+        {
+            pxr::SdfValueTypeName sdfValueTypeName;
+            if (!valueTypeName.is_none())
+            {
+                sdfValueTypeName = valueTypeName.cast<pxr::SdfValueTypeName>();
+            }
+            return primvarData.createPrimvar(prim, name, sdfValueTypeName);
+        },
+        arg("prim"),
+        arg("name"),
+        arg("valueTypeName") = pybind11::none(),
+        R"(
+            Create and author a primvar on a prim from this data.
+
+            Construct ``PrimvarData`` with the desired interpolation, values, indices, and element size, then call this method to create and
+            author the primvar on ``prim``. To author at additional times, use ``setPrimvar()``.
+
+            Args:
+                prim: The prim on which to create the primvar.
+                name: The primvar name (not including the ``primvars:`` prefix).
+                valueTypeName: Optional USD array value type for the primvar attribute. When omitted, a default array type is chosen for the ``PrimvarData`` value type (for example ``Float3Array`` for ``Vec3fPrimvarData``). For ``Vec3fPrimvarData``, ``Color3fArray``, ``Normal3fArray``, and ``Point3fArray`` are also supported.
+
+            Returns:
+                Whether the primvar was successfully created and authored from this data.
+        )"
+    );
+
+    binder.def(
         "setPrimvar",
         &PrimvarData<T>::setPrimvar,
         arg("primvar"),
@@ -340,6 +370,144 @@ void bindPrimvarDataImpl(module& m, const std::string& typeName, const std::stri
     );
 }
 
+template <typename Ret, typename Arg>
+void bindCreateConstantPrimvarOverloadImpl(
+    module& m,
+    Ret (*fn)(pxr::UsdPrim, const std::string&, Arg, const pxr::SdfValueTypeName&),
+    const char* docstring,
+    bool noconvertValue = false
+)
+{
+    auto valueArg = arg("value");
+    if (noconvertValue)
+    {
+        valueArg.noconvert();
+    }
+
+    m.def(
+        "createConstantPrimvar",
+        [fn](pxr::UsdPrim prim, const std::string& name, Arg value, pybind11::object valueTypeName)
+        {
+            pxr::SdfValueTypeName sdfValueTypeName;
+            if (!valueTypeName.is_none())
+            {
+                sdfValueTypeName = valueTypeName.cast<pxr::SdfValueTypeName>();
+            }
+            return fn(prim, name, value, sdfValueTypeName);
+        },
+        arg("prim"),
+        arg("name"),
+        valueArg,
+        arg("valueTypeName") = pybind11::none(),
+        docstring
+    );
+}
+
+template <typename Ret, typename Arg>
+void bindCreateConstantPrimvarOverload(
+    module& m,
+    Ret (*fn)(pxr::UsdPrim, const std::string&, Arg, const pxr::SdfValueTypeName&),
+    bool isOverload = true
+)
+{
+    static constexpr const char* primaryDoc = R"(
+            Create and author a constant primvar on a prim from a single scalar value.
+
+            This is a convenience wrapper around constructing ``PrimvarData`` with ``constant`` interpolation
+            and a single-element values array, then calling ``createPrimvar()``. Use ``isValid()`` on the returned
+            object to confirm success. On failure, an invalid ``PrimvarData`` is returned (see ``getPrimvarData()``).
+
+            Args:
+                prim: The prim on which to create the primvar.
+                name: The primvar name (not including the ``primvars:`` prefix).
+                value: The constant primvar value.
+                valueTypeName: Optional USD array value type for the primvar attribute. When omitted, a default array type is chosen for the value type.
+
+            Returns:
+                The authored ``PrimvarData``, or an invalid one if authoring failed.
+        )";
+    static constexpr const char* overloadDoc = R"(
+            Create and author a constant primvar on a prim from a single scalar value.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Args:
+                prim: The prim on which to create the primvar.
+                name: The primvar name (not including the ``primvars:`` prefix).
+                value: The constant primvar value.
+                valueTypeName: Optional USD array value type for the primvar attribute. When omitted, a default array type is chosen for the value type.
+
+            Returns:
+                The authored ``PrimvarData``, or an invalid one if authoring failed.
+        )";
+    bindCreateConstantPrimvarOverloadImpl(m, fn, isOverload ? overloadDoc : primaryDoc);
+}
+
+void bindCreateConstantStringPrimvar(module& m)
+{
+    static constexpr const char* doc = R"(
+            Create and author a constant ``StringPrimvarData`` or ``TokenPrimvarData`` primvar on a prim from a single Python ``str`` value.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Note: In Python, USD tokens such as ``UsdGeom.Tokens.vertex`` are also ``str``. When ``valueTypeName`` is omitted or is ``StringArray``, a ``StringArray`` primvar is authored. When ``valueTypeName`` is ``TokenArray``, a ``TokenArray`` primvar is authored instead.
+
+            Args:
+                prim: The prim on which to create the primvar.
+                name: The primvar name (not including the ``primvars:`` prefix).
+                value: The constant primvar value.
+                valueTypeName: Optional USD array value type for the primvar attribute. When omitted, ``StringArray`` is used. Specify ``TokenArray`` to author a ``TokenPrimvarData`` primvar.
+
+            Returns:
+                The authored ``PrimvarData``, or an invalid one if authoring failed.
+        )";
+    m.def(
+        "createConstantPrimvar",
+        [](pxr::UsdPrim prim, const std::string& name, const std::string& value, pybind11::object valueTypeName)
+        {
+            pxr::SdfValueTypeName sdfValueTypeName;
+            if (!valueTypeName.is_none())
+            {
+                sdfValueTypeName = valueTypeName.cast<pxr::SdfValueTypeName>();
+            }
+            if (sdfValueTypeName == pxr::SdfValueTypeNames->TokenArray)
+            {
+                return pybind11::cast(createConstantPrimvar(prim, name, pxr::TfToken(value), sdfValueTypeName));
+            }
+            return pybind11::cast(createConstantPrimvar(prim, name, value, sdfValueTypeName));
+        },
+        arg("prim"),
+        arg("name"),
+        arg("value").noconvert(),
+        arg("valueTypeName") = pybind11::none(),
+        doc
+    );
+}
+
+void bindCreateConstantVec3fPrimvar(module& m)
+{
+    static constexpr const char* doc = R"(
+            Create and author a constant ``Vec3fPrimvarData`` primvar on a prim from a single vector value.
+
+            This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+
+            Args:
+                prim: The prim on which to create the primvar.
+                name: The primvar name (not including the ``primvars:`` prefix).
+                value: The constant primvar value.
+                valueTypeName: Optional USD array value type for the primvar attribute. When omitted, ``Float3Array`` is used. ``Color3fArray``, ``Normal3fArray``, and ``Point3fArray`` are also supported.
+
+            Returns:
+                The authored ``PrimvarData``, or an invalid one if authoring failed.
+        )";
+    bindCreateConstantPrimvarOverloadImpl(
+        m,
+        static_cast<Vec3fPrimvarData (*)(pxr::UsdPrim, const std::string&, const pxr::GfVec3f&, const pxr::SdfValueTypeName&)>(&createConstantPrimvar
+        ),
+        doc
+    );
+}
+
 } // namespace
 
 namespace usdex::core::bindings
@@ -373,6 +541,26 @@ void bindPrimvarData(module& m)
         "Vec3fPrimvarData",
         "``PrimvarData`` that holds ``Vt.Vec3fArray`` values (e.g normals, colors, or other vectors)."
     );
+
+    bindCreateConstantPrimvarOverload(
+        m,
+        static_cast<FloatPrimvarData (*)(pxr::UsdPrim, const std::string&, float, const pxr::SdfValueTypeName&)>(&createConstantPrimvar),
+        false
+    );
+    bindCreateConstantPrimvarOverload(
+        m,
+        static_cast<IntPrimvarData (*)(pxr::UsdPrim, const std::string&, int, const pxr::SdfValueTypeName&)>(&createConstantPrimvar)
+    );
+    bindCreateConstantPrimvarOverload(
+        m,
+        static_cast<Int64PrimvarData (*)(pxr::UsdPrim, const std::string&, int64_t, const pxr::SdfValueTypeName&)>(&createConstantPrimvar)
+    );
+    bindCreateConstantStringPrimvar(m);
+    bindCreateConstantPrimvarOverload(
+        m,
+        static_cast<Vec2fPrimvarData (*)(pxr::UsdPrim, const std::string&, const pxr::GfVec2f&, const pxr::SdfValueTypeName&)>(&createConstantPrimvar)
+    );
+    bindCreateConstantVec3fPrimvar(m);
 }
 
 } // namespace usdex::core::bindings

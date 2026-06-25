@@ -4,12 +4,18 @@
 
 #pragma once
 
+#include "usdex/core/NameAlgo.h"
+
 #include <pxr/base/tf/diagnostic.h>
+#include <pxr/base/tf/stringUtils.h>
 #include <pxr/base/tf/token.h>
 #include <pxr/base/vt/array.h>
+#include <pxr/usd/sdf/types.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/tokens.h>
 
 #include <map>
+#include <string>
 
 namespace usdex::core
 {
@@ -96,6 +102,135 @@ bool PrimvarData<T>::setPrimvar(pxr::UsdGeomPrimvar& primvar, pxr::UsdTimeCode t
     }
 
     return true;
+}
+
+namespace detail
+{
+
+template <typename T>
+pxr::SdfValueTypeName getPrimvarArrayTypeName();
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<float>()
+{
+    return pxr::SdfValueTypeNames->FloatArray;
+}
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<int>()
+{
+    return pxr::SdfValueTypeNames->IntArray;
+}
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<int64_t>()
+{
+    return pxr::SdfValueTypeNames->Int64Array;
+}
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<std::string>()
+{
+    return pxr::SdfValueTypeNames->StringArray;
+}
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<pxr::TfToken>()
+{
+    return pxr::SdfValueTypeNames->TokenArray;
+}
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<pxr::GfVec2f>()
+{
+    return pxr::SdfValueTypeNames->TexCoord2fArray;
+}
+
+template <>
+inline pxr::SdfValueTypeName getPrimvarArrayTypeName<pxr::GfVec3f>()
+{
+    return pxr::SdfValueTypeNames->Float3Array;
+}
+
+template <typename T>
+inline bool isCompatiblePrimvarArrayType(const pxr::SdfValueTypeName& typeName)
+{
+    return typeName == getPrimvarArrayTypeName<T>();
+}
+
+template <>
+inline bool isCompatiblePrimvarArrayType<pxr::GfVec3f>(const pxr::SdfValueTypeName& typeName)
+{
+    return typeName == pxr::SdfValueTypeNames->Float3Array || typeName == pxr::SdfValueTypeNames->Color3fArray ||
+           typeName == pxr::SdfValueTypeNames->Normal3fArray || typeName == pxr::SdfValueTypeNames->Point3fArray;
+}
+
+template <typename T>
+PrimvarData<T> createConstantPrimvarImpl(
+    pxr::UsdPrim prim,
+    const std::string& name,
+    const T& value,
+    const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName()
+)
+{
+    PrimvarData<T> data(pxr::UsdGeomTokens->constant, pxr::VtArray<T>(1, value));
+    if (!data.createPrimvar(prim, name, valueTypeName))
+    {
+        return PrimvarData<T>(pxr::UsdGeomTokens->constant, pxr::VtArray<T>(), -1);
+    }
+    return data;
+}
+
+} // namespace detail
+
+template <typename T>
+bool PrimvarData<T>::createPrimvar(pxr::UsdPrim prim, const std::string& name, const pxr::SdfValueTypeName& valueTypeName) const
+{
+    std::string reason;
+    if (!prim)
+    {
+        reason = "the prim is invalid";
+    }
+    else if (name.empty() || name != getValidPropertyName(name).GetString())
+    {
+        reason = pxr::TfStringPrintf("on prim <%s> the name is invalid", prim.GetPath().GetText());
+    }
+    else if (!isValid())
+    {
+        reason = pxr::TfStringPrintf("on prim <%s> the primvar data is invalid", prim.GetPath().GetText());
+    }
+    else if (valueTypeName && !detail::isCompatiblePrimvarArrayType<T>(valueTypeName))
+    {
+        reason = pxr::TfStringPrintf("on prim <%s> the value type is incompatible with the primvar data", prim.GetPath().GetText());
+    }
+    else
+    {
+        const pxr::TfToken validName = getValidPropertyName(name);
+        const pxr::SdfValueTypeName typeName = valueTypeName ? valueTypeName : detail::getPrimvarArrayTypeName<T>();
+        pxr::UsdGeomPrimvar primvar = pxr::UsdGeomPrimvarsAPI(prim).CreatePrimvar(validName, typeName, m_interpolation);
+        if (!primvar)
+        {
+            reason = pxr::TfStringPrintf("on prim <%s> CreatePrimvar failed", prim.GetPath().GetText());
+        }
+        else if (!setPrimvar(primvar))
+        {
+            reason = pxr::TfStringPrintf("on prim <%s> failed to author primvar data", prim.GetPath().GetText());
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    // this is a TF_WARN, but we have expanded the code manually to inject the class namespaces
+    pxr::Tf_PostWarningHelper(
+        pxr::TfCallContext(__ARCH_FILE__, __ARCH_FUNCTION__, __LINE__, __ARCH_PRETTY_FUNCTION__),
+        pxr::TF_DIAGNOSTIC_WARNING_TYPE,
+        "Cannot create primvar <%s>: %s",
+        name.c_str(),
+        reason.c_str()
+    );
+    return false;
 }
 
 template <typename T>
