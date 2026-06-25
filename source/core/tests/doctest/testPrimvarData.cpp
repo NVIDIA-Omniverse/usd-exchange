@@ -4,8 +4,10 @@
 
 #include <usdex/test/ScopedDiagnosticChecker.h>
 
+#include <usdex/core/AssetStructure.h>
 #include <usdex/core/PrimvarData.h>
 
+#include <pxr/usd/sdf/types.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/scope.h>
 #include <pxr/usd/usdGeom/tokens.h>
@@ -590,4 +592,67 @@ TEST_CASE("PrimvarData hasUnindexedValues")
     VtIntArray vec3UnusedIndices = { 0, 2, 2 };
     Vec3fPrimvarData vec3IndexedWithUnused(UsdGeomTokens->vertex, vec3Values, vec3UnusedIndices);
     CHECK(vec3IndexedWithUnused.hasUnindexedValues());
+}
+
+TEST_CASE("PrimvarData createPrimvar scalar TfToken success")
+{
+    ScopedDiagnosticChecker check;
+
+    UsdStageRefPtr stage = UsdStage::CreateInMemory();
+    UsdGeomScope scope = usdex::core::defineScope(stage, SdfPath("/Scope"));
+    CHECK(scope);
+    UsdPrim prim = scope.GetPrim();
+
+    const TfToken value("item1");
+    TokenPrimvarData data(UsdGeomTokens->constant, VtTokenArray({ value }));
+    CHECK(data.createPrimvar(prim, "tokenAttr"));
+    CHECK(data.isValid());
+    CHECK(data.interpolation() == UsdGeomTokens->constant);
+    CHECK(data.values() == VtTokenArray({ value }));
+
+    UsdGeomPrimvarsAPI primvarsApi(prim);
+    UsdGeomPrimvar primvar = primvarsApi.GetPrimvar(TfToken("tokenAttr"));
+    CHECK(primvar);
+    CHECK(primvar.GetTypeName() == SdfValueTypeNames->TokenArray);
+    CHECK(primvar.GetInterpolation() == UsdGeomTokens->constant);
+    VtTokenArray authoredValues;
+    primvar.Get(&authoredValues);
+    CHECK(authoredValues == data.values());
+}
+
+TEST_CASE("PrimvarData createPrimvar scalar TfToken failure")
+{
+    UsdStageRefPtr stage = UsdStage::CreateInMemory();
+    UsdGeomScope scope = usdex::core::defineScope(stage, SdfPath("/Scope"));
+    CHECK(scope);
+    UsdPrim prim = scope.GetPrim();
+
+    ScopedDiagnosticChecker check({ { TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot create primvar.*name is invalid.*" } });
+    TokenPrimvarData data(UsdGeomTokens->constant, VtTokenArray({ TfToken("item1") }));
+    CHECK(!data.createPrimvar(prim, ""));
+    CHECK(data.isValid());
+}
+
+TEST_CASE("createConstantPrimvar TfToken")
+{
+    ScopedDiagnosticChecker check;
+
+    UsdStageRefPtr stage = UsdStage::CreateInMemory();
+    UsdGeomScope scope = usdex::core::defineScope(stage, SdfPath("/Scope"));
+    CHECK(scope);
+    UsdPrim prim = scope.GetPrim();
+
+    const TfToken value("item1");
+    TokenPrimvarData data = createConstantPrimvar(prim, "tokenAttr", value);
+    CHECK(data.isValid());
+    CHECK(data.interpolation() == UsdGeomTokens->constant);
+    CHECK(data.values() == VtTokenArray({ value }));
+
+    UsdGeomPrimvar primvar = UsdGeomPrimvarsAPI(prim).GetPrimvar(TfToken("tokenAttr"));
+    CHECK(primvar);
+    CHECK(primvar.GetTypeName() == SdfValueTypeNames->TokenArray);
+    CHECK(primvar.GetInterpolation() == UsdGeomTokens->constant);
+    VtTokenArray authoredValues;
+    primvar.Get(&authoredValues);
+    CHECK(authoredValues == data.values());
 }

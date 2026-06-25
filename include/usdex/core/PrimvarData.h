@@ -13,7 +13,11 @@
 #include <pxr/base/gf/vec3f.h>
 #include <pxr/base/tf/token.h>
 #include <pxr/base/vt/array.h>
+#include <pxr/usd/sdf/types.h>
+#include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usdGeom/primvar.h>
+
+#include <string>
 
 namespace usdex::core
 {
@@ -80,6 +84,20 @@ public:
     //!
     //! @returns The read-only `PrimvarData`.
     static PrimvarData getPrimvarData(const pxr::UsdGeomPrimvar& primvar, pxr::UsdTimeCode time = pxr::UsdTimeCode::Default());
+
+    //! Create and author a primvar on a prim from this data.
+    //!
+    //! Construct `PrimvarData` with the desired interpolation, values, indices, and element size, then call this method to create and
+    //! author the primvar on `prim`. To author at additional times, use `setPrimvar()`.
+    //!
+    //! @param prim The prim on which to create the primvar
+    //! @param name The primvar name (not including the `primvars:` prefix)
+    //! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, a default array type is chosen for the
+    //!     `PrimvarData` value type (e.g. `Float3Array` for `Vec3fPrimvarData`). For `Vec3fPrimvarData`, `Color3fArray`, `Normal3fArray`,
+    //!     and `Point3fArray` are also supported.
+    //!
+    //! @returns Whether the primvar was successfully created and authored from this data.
+    bool createPrimvar(pxr::UsdPrim prim, const std::string& name, const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName()) const;
 
     //! Set data on an existing `UsdGeomPrimvar` from a `PrimvarData` that has already been authored.
     //!
@@ -226,6 +244,116 @@ using TokenPrimvarData = PrimvarData<pxr::TfToken>;
 using Vec2fPrimvarData = PrimvarData<pxr::GfVec2f>;
 //! An alias for `PrimvarData` that holds `VtVec3fArray` values (e.g normals, colors, or other vectors).
 using Vec3fPrimvarData = PrimvarData<pxr::GfVec3f>;
+
+//! Create and author a constant primvar on a prim from a single scalar value.
+//!
+//! This is a convenience wrapper around constructing `PrimvarData` with `UsdGeomTokens->constant` interpolation
+//! and a single-element values array, then calling `createPrimvar()`. Use `isValid()` on the returned object to
+//! confirm success. On failure, an invalid `PrimvarData` is returned (see `PrimvarData::getPrimvarData()`).
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `FloatArray` is used.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API FloatPrimvarData
+createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, float value, const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName());
+
+//! Create and author a constant primvar on a prim from a single scalar value.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `Int64Array` is used.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API Int64PrimvarData
+createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int64_t value, const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName());
+
+//! Create and author a constant primvar on a prim from a single scalar value.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `IntArray` is used.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API IntPrimvarData
+createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int value, const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName());
+
+//! Create and author a constant primvar on a prim from a single scalar value.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `StringArray` is used.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API StringPrimvarData createConstantPrimvar(
+    pxr::UsdPrim prim,
+    const std::string& name,
+    const std::string& value,
+    const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName()
+);
+
+//! Create and author a constant primvar on a prim from a single scalar value.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `TokenArray` is used.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API TokenPrimvarData createConstantPrimvar(
+    pxr::UsdPrim prim,
+    const std::string& name,
+    const pxr::TfToken& value,
+    const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName()
+);
+
+//! Create and author a constant primvar on a prim from a single scalar value.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `TexCoord2fArray` is used.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API Vec2fPrimvarData createConstantPrimvar(
+    pxr::UsdPrim prim,
+    const std::string& name,
+    const pxr::GfVec2f& value,
+    const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName()
+);
+
+//! Create and author a constant `Vec3fPrimvarData` primvar on a prim from a single vector value.
+//!
+//! This is an overloaded member function, provided for convenience. It differs from the above function only in what arguments it accepts.
+//!
+//! @param prim The prim on which to create the primvar
+//! @param name The primvar name (not including the `primvars:` prefix)
+//! @param value The constant primvar value
+//! @param valueTypeName Optional USD array value type for the primvar attribute. When omitted, `Float3Array` is used.
+//!     `Color3fArray`, `Normal3fArray`, and `Point3fArray` are also supported.
+//!
+//! @returns The authored `PrimvarData`, or an invalid one if authoring failed.
+USDEX_API Vec3fPrimvarData createConstantPrimvar(
+    pxr::UsdPrim prim,
+    const std::string& name,
+    const pxr::GfVec3f& value,
+    const pxr::SdfValueTypeName& valueTypeName = pxr::SdfValueTypeName()
+);
 
 //! @}
 

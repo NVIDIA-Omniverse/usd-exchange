@@ -102,6 +102,7 @@ __all__ = [
     "Vec2fPrimvarData",
     "StringPrimvarData",
     "TokenPrimvarData",
+    "createConstantPrimvar",
     # lights
     "isLight",
     "getLightAttr",

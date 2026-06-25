@@ -85,6 +85,8 @@ PYBOOST11_TYPE_CASTER(pxr::GfQuatd, _("pxr.Gf.Quatd"));
 PYBOOST11_TYPE_CASTER(pxr::GfQuatf, _("pxr.Gf.Quatf"));
 //! pybind11 interoperability for `GfVec3d`
 PYBOOST11_TYPE_CASTER(pxr::GfVec3d, _("pxr.Gf.Vec3d"));
+//! pybind11 interoperability for `GfVec2f`
+PYBOOST11_TYPE_CASTER(pxr::GfVec2f, _("pxr.Gf.Vec2f"));
 //! pybind11 interoperability for `GfVec3f`
 PYBOOST11_TYPE_CASTER(pxr::GfVec3f, _("pxr.Gf.Vec3f"));
 //! pybind11 interoperability for `GfVec3i`
