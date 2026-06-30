@@ -75,6 +75,10 @@ end
 function m.shared_library(options)
     kind "SharedLib"
     m.__library(options)
+    -- Strip symbols from release shared libraries on Linux
+    filter { "system:linux", "configurations:release" }
+        linkoptions { "-Wl,-s" }
+    filter {}
 end
 
 -- Create a C++ static library project
@@ -176,6 +180,11 @@ function m.python_module(options)
         -- this causes a compiliation error in the tbb headers... its doing something for pybind11, but
         -- its not clear what we're losing by removing this, nor how to avoid the tbb issue otherwise.
         removedefines {"_DEBUG"}
+
+        -- Strip symbols from the release python binding modules on Linux
+        filter { "system:linux", "configurations:release" }
+            linkoptions { "-Wl,-s" }
+        filter {}
 
     end
 

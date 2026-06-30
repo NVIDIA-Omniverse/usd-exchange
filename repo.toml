@@ -197,6 +197,13 @@ include = [
     "pytest${shell_ext}"
 ]
 args = ["${test_root}"]
+# Isolate the wheel under test; the wheel's own libs are self-locating via auditwheel rpaths.
+# Keep only the python runtime libs so the venv interpreter can start
+python_paths = []
+library_paths = [
+    "$root/_build/target-deps/python/lib",  # for linux
+    "$root/_build/target-deps/python",  # for windows
+]
 
 [repo_format]
 license_preamble = '''

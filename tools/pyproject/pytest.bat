@@ -1,29 +1,36 @@
 @echo off
 setlocal
 
-REM Setup the build environment
+REM Run from the repo root so relative paths match the rest of the tooling
+cd /d "%~dp0..\.."
+
 set VENV=.\_build\tests\venv
-echo Building: %VENV%
+
+REM Isolate the wheel under test: ensure the native build tree is not imported over the pip-installed wheel.
+set PYTHONPATH=
+
+REM (Re)create a clean venv with repo_man's vendored uv, then install the built wheel(s) with the test extras.
 if exist "%VENV%" (
     rd /s /q "%VENV%"
 )
 
-.\_build\target-deps\python\python.exe -m venv "%VENV%"
-if %errorlevel% neq 0 ( exit /b %errorlevel% )
-
-call "%VENV%\Scripts\activate.bat"
+call .\repo.bat uv venv --python .\_build\target-deps\python\python.exe "%VENV%"
 if %errorlevel% neq 0 ( exit /b %errorlevel% )
 
 for %%f in ("_build\packages\*.whl") do (
-    python.exe -m pip install "%%f[test]"
+    call .\repo.bat uv pip install --python "%VENV%\Scripts\python.exe" "%%f[test]"
     if %errorlevel% neq 0 ( exit /b %errorlevel% )
 )
 
-REM Run the tests
-python.exe -m unittest discover -v -s source\core\tests\unittest
+REM Verify the usd-exchange modules import from the installed wheel, not a build-tree leak that could mask a broken wheel binary.
+"%VENV%\Scripts\python.exe" tools\pyproject\check_wheel_imports.py
 if %errorlevel% neq 0 ( exit /b %errorlevel% )
 
-python.exe -m unittest discover -v -s source\rtx\tests\unittest
+REM Run the tests with the venv interpreter
+"%VENV%\Scripts\python.exe" -m unittest discover -v -s source\core\tests\unittest
+if %errorlevel% neq 0 ( exit /b %errorlevel% )
+
+"%VENV%\Scripts\python.exe" -m unittest discover -v -s source\rtx\tests\unittest
 if %errorlevel% neq 0 ( exit /b %errorlevel% )
 
 endlocal
