@@ -121,3 +121,16 @@ install_dir = "$root/_build/packages"
 auditwheel_version = "6.3.0"
 patchelf_version = "0.17.2.4"
 wheel_version = "0.45.1"
+
+[repo_cmake]
+enabled = false
+command = "cmake"
+entry_point = "cmake_build:setup_repo_tool"
+fetch.packman_target_files_to_pull = [
+    "$root/deps/target-deps.packman.xml"
+]
+fetch.packman_host_files_to_pull = [
+    "$root/deps/host-deps.packman.xml"
+]
+# names excluded from the generated dev/deps/all-deps.packman.xml lock (host-only toolchain, never shipped)
+fetch.strip_deps = ["msvc", "winsdk"]

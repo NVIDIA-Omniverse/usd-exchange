@@ -107,7 +107,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         patchelfVersion = toolConfig["patchelf_version"]
         wheelVersion = toolConfig["wheel_version"]
         exclusions = toolConfig.get("exclude", [])
-        ignore_callable = shutil.ignore_patterns(*exclusions)
+        # "cmake": keep the lib/cmake find_package config out of the wheel (it's for native consumers)
+        ignore_callable = shutil.ignore_patterns(*exclusions, "cmake")
         repoVersionFile = config["repo"]["folders"]["version_file"]
         usdFlavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usdVer = omni.repo.man.resolve_tokens("${usd_ver}")

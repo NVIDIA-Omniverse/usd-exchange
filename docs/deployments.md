@@ -174,7 +174,7 @@ Once you have a USD distro assembled, you can "source link" it into a local clon
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
 ./repo.sh source link usd_release ../path/to/your/usd
-./repo.sh build
+./repo.sh cmake
 ```
 ````
 ````{tab-item} Windows
@@ -184,7 +184,7 @@ cd usd-exchange
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
 .\repo.bat source link usd_release ..\path\to\your\usd
-.\repo.bat build
+.\repo.bat cmake
 ```
 ````
 `````
@@ -194,7 +194,7 @@ If you encounter missing file errors, it likely indicates a difference between y
 
 ```{eval-rst}
 .. note::
-  The ``repo source link`` command will generate a ``deps/usd-deps.packman.xml.user`` file with the relative filesystem path to your USD distro. The ``repo build`` command will respect this. If you want to alter the path later, you can hand edit this file. If you want to revert to using the pre-built USD distros, just remove this file entirely or call ``repo source unlink usd_release``.
+  The ``repo source link`` command will generate a ``deps/usd-deps.packman.xml.user`` file with the relative filesystem path to your USD distro. The ``repo cmake`` command will respect this. If you want to alter the path later, you can hand edit this file. If you want to revert to using the pre-built USD distros, just remove this file entirely or call ``repo source unlink usd_release``.
 ```
 
 See [CONTRIBUTING.md](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building) for more information on the OpenUSD Exchange SDK build process.
