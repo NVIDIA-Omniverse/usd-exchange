@@ -31,6 +31,9 @@ target_file = "include/usdex/core/Feature.h"
 [repo_build_number]
 enabled = true
 
+[repo_fetch_deps]
+enabled = true
+
 [repo_cmake]
 enabled = true
 

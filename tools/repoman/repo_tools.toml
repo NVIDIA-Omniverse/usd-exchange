@@ -126,11 +126,16 @@ wheel_version = "0.45.1"
 enabled = false
 command = "cmake"
 entry_point = "cmake_build:setup_repo_tool"
+# names excluded from the generated dev/deps/all-deps.packman.xml lock (host-only toolchain, never shipped)
+strip_deps = ["msvc", "winsdk"]
+
+[repo_fetch_deps]
+enabled = false
+command = "fetch_deps"
+entry_point = "fetch_deps:setup_repo_tool"
 fetch.packman_target_files_to_pull = [
     "$root/deps/target-deps.packman.xml"
 ]
 fetch.packman_host_files_to_pull = [
     "$root/deps/host-deps.packman.xml"
 ]
-# names excluded from the generated dev/deps/all-deps.packman.xml lock (host-only toolchain, never shipped)
-fetch.strip_deps = ["msvc", "winsdk"]

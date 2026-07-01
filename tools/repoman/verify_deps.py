@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 import argparse
@@ -13,7 +13,7 @@ def run_verify_deps(options: argparse.Namespace, toolConfig: Dict):
         packmanapi.set_verbosity_level(packmanapi.VERBOSITY_HIGH)
 
     depsFiles = ["deps/repo-deps.packman.xml", toolConfig["repo"]["folders"]["host_deps_xml"]]
-    depsFiles.extend(toolConfig["repo_cmake"]["fetch"]["packman_target_files_to_pull"])
+    depsFiles.extend(toolConfig["repo_fetch_deps"]["fetch"]["packman_target_files_to_pull"])
     buildConfigs = ["release", "debug"]
     remotes = ["cloudfront"]
 

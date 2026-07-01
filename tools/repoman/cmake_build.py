@@ -12,28 +12,11 @@ import os
 import shutil
 from typing import Callable, Dict
 
+import fetch_deps
 import omni.repo.man
-import packmanapi
 
 # release/debug token -> CMake configuration name
 _CMAKE_CONFIG = {"release": "Release", "debug": "Debug"}
-
-
-def _fetch_dependencies(repo: str, usd_flavor: str, usd_ver: str, python_ver: str, dep_files) -> Dict:
-    # regenerate the flavor's usd-deps manifest (the one remaining repo_usd call), then pull every dep file
-    omni.repo.man.run_process(
-        [repo, "usd", "--generate-usd-deps", "--usd-flavor", usd_flavor, "--usd-ver", usd_ver, "--python-ver", python_ver],
-        exit_on_error=True,
-    )
-    tokens = omni.repo.man.get_tokens()
-    pulled: Dict = {}
-    for dep_file in dep_files:
-        path = omni.repo.man.resolve_tokens(dep_file)
-        if not os.path.exists(path):  # host deps are absent on most platforms
-            continue
-        result = packmanapi.pull(path, platform=tokens["platform"], tokens=tokens, return_extra_info=True)
-        pulled.update(result)
-    return pulled
 
 
 def _write_all_deps_manifest(dest: str, pulled: Dict, strip_deps):
@@ -92,10 +75,13 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         if options.clean:
             return
 
-        fetch_cfg = config.get("repo_cmake", {}).get("fetch", {})
-        dep_files = [*fetch_cfg.get("packman_target_files_to_pull", []), *fetch_cfg.get("packman_host_files_to_pull", [])]
-        strip_deps = fetch_cfg.get("strip_deps", [])
-        pulled = _fetch_dependencies(repo, usd_flavor, usd_ver, python_ver, dep_files)
+        # regenerate the flavor's usd-deps manifest (the one remaining repo_usd call), then fetch every dep file
+        omni.repo.man.run_process(
+            [repo, "usd", "--generate-usd-deps", "--usd-flavor", usd_flavor, "--usd-ver", usd_ver, "--python-ver", python_ver],
+            exit_on_error=True,
+        )
+        pulled = fetch_deps.fetch_dependencies(config, repo_config)
+        strip_deps = config.get("repo_cmake", {}).get("strip_deps", [])
 
         # generated headers, #included by the C++ sources
         omni.repo.man.run_process([repo, "version_header"], exit_on_error=True)
