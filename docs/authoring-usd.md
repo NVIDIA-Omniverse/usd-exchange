@@ -193,7 +193,6 @@ Some OpenUSD Exchange behaviors (such as name transcoding) are controllable via 
 
 ## Python Interoperability
 
-Many projects use `pybind11` for python bindings, but OpenUSD 24.08 and older uses `boost::python`, while OpenUSD 24.11 and newer
-uses a fork of `boost::python` called `pxr_python`.
+Many projects use `pybind11` for python bindings, but OpenUSD uses a fork of `boost::python` called `pxr_python`.
 
 We often need to pass the python objects in and out of c++ between a mix of bound functions. OpenUSD Exchange provides [`usdex/pybind` C++ headers](../api/group__pybind.rebreather_rst) to enable pybind11 to consume & to produce OpenUSD bound objects.

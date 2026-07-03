@@ -101,7 +101,7 @@ This tool can be invoked from a clone of the [GitHub repository](https://github.
 
 ### Install usdex_core
 
-By default, the tool will install the core library and module from OpenUSD Exchange SDK. For example, to download & assemble a USD 24.08 & Python 3.11 compatible binaries for OpenUSD Exchange v${repo_docs_version} call:
+By default, the tool will install the core library and module from OpenUSD Exchange SDK. For example, to download & assemble a USD 24.11 & Python 3.11 compatible binaries for OpenUSD Exchange v${repo_docs_version} call:
 
 ``````{card}
 `````{tab-set}
@@ -109,14 +109,14 @@ By default, the tool will install the core library and module from OpenUSD Excha
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --usd-version 24.08 --python-version 3.11 --version ${repo_docs_version}
+./repo.sh install_usdex --usd-version 24.11 --python-version 3.11 --version ${repo_docs_version}
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --usd-version 24.08 --python-version 3.11 --version ${repo_docs_version}
+.\repo.bat install_usdex --usd-version 24.11 --python-version 3.11 --version ${repo_docs_version}
 ```
 ````
 `````

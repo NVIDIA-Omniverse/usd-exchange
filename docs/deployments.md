@@ -201,7 +201,7 @@ If you encounter missing file errors, it likely indicates a difference between y
 
 ```{eval-rst}
 .. note::
-  NVIDIA developers building the internal flavor matrix (or source-linking a local USD via ``repo source link``) should use the ``repo cmake`` workflow described in `CONTRIBUTING.md <https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building>`_ instead.
+  NVIDIA developers building the internal flavor matrix (or source-linking a local USD via ``repo source link``) should use the ``repo build`` workflow described in `CONTRIBUTING.md <https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building>`_ instead.
 ```
 
 ### Does it use TBB or Boost?

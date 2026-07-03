@@ -37,7 +37,7 @@ def main(arguments: argparse.Namespace):
         "--set-token",
         f"python_ver:{python_ver}",
         f"--abi={abi}",
-        "cmake",
+        "build",
         "--rebuild",
         "--config",
         arguments.build_config,
@@ -94,7 +94,7 @@ def main(arguments: argparse.Namespace):
     cfg_dir = omni.repo.man.resolve_tokens(f"_build/$platform/{arguments.build_config}")
     shutil.move("_build/packages", "packages")
     shutil.move(f"{cfg_dir}/bin", "bin")
-    omni.repo.ci.launch([repo, "cmake", "--config", arguments.build_config, "--clean"])
+    omni.repo.ci.launch([repo, "build", "--config", arguments.build_config, "--clean"])
     os.makedirs(cfg_dir, exist_ok=True)
     shutil.move("bin", f"{cfg_dir}/bin")
     shutil.move("packages", "_build/packages")

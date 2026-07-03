@@ -436,9 +436,7 @@ def __install(
         if installRtxModules:
             __installPythonModule(prebuild_dict["copy"], f"{usd_exchange_path}/python", "usdex/rtx", "_usdex_rtx")
         # usd dependencies
-        if __SemVersion(usd_ver) < __SemVersion("24.11"):
-            prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}*boost_python*${lib_ext}*", libInstallDir])
-        elif monolithic:
+        if monolithic:
             pass  # monolithic builds with python support already have the python bindings embedded
         else:
             prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}" + usdLibMidfix + "python${lib_ext}", libInstallDir])
@@ -558,7 +556,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         "--usd-version",
         dest="usd_ver",
         default=usd_ver,
-        choices=["25.11", "25.08", "25.05", "25.02", "24.11", "24.08"],  # public versions only
+        choices=["25.11", "25.08", "25.05", "25.02", "24.11"],  # public versions only
         help=f"The OpenUSD version to install. Defaults to `{usd_ver}`",
     )
     parser.add_argument(

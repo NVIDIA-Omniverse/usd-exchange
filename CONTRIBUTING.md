@@ -92,7 +92,7 @@ All code changes must contain either new unittests, or updates to existing tests
 
 To build OpenUSD Exchange SDK yourself, use `repo.bat build` or `repo.sh build`, depending on your local platform.
 
-The `repo build` command accepts additional arguments (e.g. `-config release`), see `repo build --help` for more information. Internally, `repo build` is using [Premake](https://premake.github.io) to perform cross-platform builds. See the `premake5.lua` file a the root of the repository to learn how the libraries are compiled.
+The `repo build` command accepts additional arguments (e.g. `--config release`), see `repo build --help` for more information. Internally, `repo build` uses [CMake](https://cmake.org) to perform cross-platform builds. See the `CMakeLists.txt` file at the root of the repository to learn how the libraries are compiled.
 
 ### Build Flavors & Features
 
@@ -105,9 +105,9 @@ To build OpenUSD Exchange SDK for different flavors of the upstream dependencies
 
 For example, to build with USD 24.11 and Python 3.10, call `repo --set-token usd_flavor:usd --set-token usd_ver:24.11 --set-token python_ver:3.10 build`.
 
-Similarly, for a minimal monothlicic build of USD 24.08 with no python support, call `repo --set-token usd_flavor:usd-minimal --set-token usd_ver:24.08 --set-token python_ver:0 build`.
+Similarly, for a minimal monothlicic build of USD 24.11 with no python support, call `repo --set-token usd_flavor:usd-minimal --set-token usd_ver:24.11 --set-token python_ver:0 build`.
 
-> Important : When building multiple flavors using the same working directories, you need to rebuild using `-x/--clean` to force premake to re-create all artifacts.
+> Important : When building multiple flavors using the same working directories, you need to rebuild using `-x/--rebuild` to force a clean rebuild of all artifacts.
 
 If you attempt a build and it is not successful, it may be because the upstream dependencies do not exist in this particular combination on your current platform. Validate that the packages for OpenUSD and Python all exist and are able to be downloaded successfully.
 
@@ -123,7 +123,7 @@ If none of the existing flavors meet the requirements of your application, you h
 
 To run all the unittest suites, use `repo.bat test` or `repo.sh test`, depending on your local platform. We currently have 3 suites, `main`, `cpp`, and `whl`. Only the `main` suite runs by default, but a special `--suite all` argument will run them all. Any failure in any suite will fail the test process.
 
-> Note: `repo test` uses the same `$usd_flavor`, `$usd_ver`, and `$python_ver` tokens as `repo build`. If you are building for a non-default flavor it is critical to supply the same token values to `repo test`. For example, `repo --set-token usd_ver:24.08 --set-token python_ver:3.11 test -s main`
+> Note: `repo test` uses the same `$usd_flavor`, `$usd_ver`, and `$python_ver` tokens as `repo build`. If you are building for a non-default flavor it is critical to supply the same token values to `repo test`. For example, `repo --set-token usd_ver:24.11 --set-token python_ver:3.11 test -s main`
 
 ### Main Test Suite
 

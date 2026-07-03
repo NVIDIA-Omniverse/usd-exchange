@@ -124,7 +124,7 @@ wheel_version = "0.45.1"
 
 [repo_cmake]
 enabled = false
-command = "cmake"
+command = "build"
 entry_point = "cmake_build:setup_repo_tool"
 # names excluded from the generated dev/deps/all-deps.packman.xml lock (host-only toolchain, never shipped)
 strip_deps = ["msvc", "winsdk"]

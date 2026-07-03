@@ -125,9 +125,9 @@ set_target_properties(test_usdex_core PROPERTIES INSTALL_RPATH "$ORIGIN/../${CMA
 target_link_libraries(test_usdex_core PRIVATE usdex_build_options usdex_usd_headers usdex_core)
 target_include_directories(test_usdex_core SYSTEM PRIVATE "${USDEX_CXXOPTS_INCLUDE_DIR}" "${USDEX_DOCTEST_INCLUDE_DIR}")
 usdex_target_link_usd(test_usdex_core arch gf sdf tf usd usdGeom usdPhysics usdUtils vt)
-# The tests reference symbols from USD's transitive DSOs directly (TBB via TfErrorMark, and boost_python on
-# pre-24.11 flavors). On Linux let ld resolve them through USD's DT_NEEDED (covers tbb, tbb_debug, boost_python,
-# etc. without enumerating each flavor's libs). MSVC has no equivalent, so link TBB explicitly there.
+# The tests reference symbols from USD's transitive DSOs directly (e.g. TBB via TfErrorMark). On Linux let ld
+# resolve them through USD's DT_NEEDED (covers tbb, tbb_debug, etc. without enumerating each flavor's libs).
+# MSVC has no equivalent, so link TBB explicitly there.
 if(WIN32)
     if(PXR_VERSION GREATER_EQUAL 2508)
         set(_tbb_names tbb12 tbb)

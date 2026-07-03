@@ -167,11 +167,6 @@ int main(int argc, char* argv[])
 
 The build configurations below apply to the default flavor of OpenUSD Exchange SDK. Certain settings will vary for different flavors (e.g. python version).
 
-```{eval-rst}
-.. note::
-  In OpenUSD 24.11 the use of Boost was eliminated from many modules. It is still required for OpenVDB and OpenImageIO, but none of the modules used by OpenUSD Exchange SDK require Boost as of this version. If you use the 24.11 flavors (or newer) all of the Boost configuration below can be removed.
-```
-
 ### Linux
 
 For Linux, all of the build configuration settings are described in the Makefile included here:
@@ -229,9 +224,11 @@ USD_LIBS = \
  -lusd_kind \
  -lusd_pcp \
  -lusd_plug \
+ -lusd_python \
  -lusd_sdf \
  -lusd_tf \
  -lusd_trace \
+ -lusd_ts \
  -lusd_usd \
  -lusd_usdGeom \
  -lusd_usdLux \
@@ -241,20 +238,9 @@ USD_LIBS = \
  -lusd_vt \
  -lusd_work
 
-# For USD 24.11 and newer
-USD_LIBS += \
- -lusd_python \
- -lusd_ts
-
 ifeq ($(CONFIG),debug)
 	USD_LIBS += -ltbb_debug
 endif
-
-# For USD 24.08 and older, uncomment and remove the block above.
-# USDEX_INCLUDE_DIRS += \
-#  -isystem $(DEPSDIR)/usd/$(CONFIG)/include/boost-1_78
-# USD_LIBS += \
-#  -lboost_python310
 
 USDEX_LIBS = \
  -lusdex_core
@@ -360,8 +346,10 @@ usd_gf.lib
 usd_kind.lib
 usd_pcp.lib
 usd_plug.lib
+usd_python.lib
 usd_sdf.lib
 usd_tf.lib
+usd_ts.lib
 usd_usd.lib
 usd_usdGeom.lib
 usd_usdLux.lib
@@ -370,22 +358,6 @@ usd_usdShade.lib
 usd_usdUtils.lib
 usd_vt.lib
 usd_work.lib
-```
-
-For USD 24.11 and newer:
-```text
-usd_python.lib
-usd_ts.lib
-```
-
-For the release configuration of USD 24.08 and older:
-```text
-boost_python310-vc142-mt-x64-1_78.lib
-```
-
-For the debug configuration of USD 24.08 and older:
-```text
-boost_python310-vc142-mt-gd-x64-1_78.lib
 ```
 
 Each OpenUSD module must be linked by the application separately.  The list above is a subset of all of them, but actually more than what the example requires.  For instance, `usd_usdLux.lib` includes the [UsdLux : USD Lighting Schema](https://openusd.org/release/api/usd_lux_page_front.html), but the example doesn't actually use any of the UsdLux interface.  The developer can trim this library list according to the needs of their application.

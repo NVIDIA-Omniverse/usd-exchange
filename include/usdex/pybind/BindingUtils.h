@@ -32,13 +32,7 @@
 
 #include <usdex/core/Api.h>
 
-#ifdef PXR_USE_INTERNAL_BOOST_PYTHON
 #include <pxr/external/boost/python.hpp>
-#define USDEX_BOOST_PYTHON_NAMESPACE PXR_BOOST_PYTHON_NAMESPACE
-#else
-#include <boost/python.hpp>
-#define USDEX_BOOST_PYTHON_NAMESPACE boost::python
-#endif // PXR_USE_INTERNAL_BOOST_PYTHON
 
 namespace pyboost11
 {
@@ -48,7 +42,7 @@ template <typename T> struct caster
 {
 
     caster(pybind11::handle src)
-      : obj(USDEX_BOOST_PYTHON_NAMESPACE::handle<>(USDEX_BOOST_PYTHON_NAMESPACE::borrowed(src.ptr())))
+      : obj(PXR_BOOST_PYTHON_NAMESPACE::handle<>(PXR_BOOST_PYTHON_NAMESPACE::borrowed(src.ptr())))
       , ext(obj)
     {}
 
@@ -61,11 +55,11 @@ template <typename T> struct caster
     // To-Python conversion.
     static pybind11::handle to_python(T & src)
     {
-        return USDEX_BOOST_PYTHON_NAMESPACE::incref(USDEX_BOOST_PYTHON_NAMESPACE::object(src).ptr());
+        return PXR_BOOST_PYTHON_NAMESPACE::incref(PXR_BOOST_PYTHON_NAMESPACE::object(src).ptr());
     }
 
-    USDEX_BOOST_PYTHON_NAMESPACE::object obj;
-    USDEX_BOOST_PYTHON_NAMESPACE::extract<T> ext;
+    PXR_BOOST_PYTHON_NAMESPACE::object obj;
+    PXR_BOOST_PYTHON_NAMESPACE::extract<T> ext;
 
 };
 

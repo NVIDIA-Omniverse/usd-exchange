@@ -44,11 +44,6 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
     if(UNIX AND NOT APPLE)
         target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_USD_LIB_DIR}")
     endif()
-    # pre-24.11 OpenUSD uses real boost, whose MSVC auto-link pragma expects the distro's toolset-tagged import lib
-    # (built with VS2019 = vc142). Pin the toolset so the generated lib name matches whatever compiler builds usdex.
-    if(WIN32 AND PXR_VERSION LESS 2411)
-        target_compile_definitions(usdex_usd_headers INTERFACE "BOOST_LIB_TOOLSET=\"vc142\"")
-    endif()
 endif()
 
 # Link the named OpenUSD libraries into `target` (handles `usd_`-prefixed and unprefixed names). Monolithic
@@ -75,7 +70,7 @@ function(usdex_target_link_usd target)
         endforeach()
     endif()
     if(USDEX_WITH_PYTHON)
-        find_library(USDEX_USDLIB_python NAMES "usd_python" "usd_boost_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
+        find_library(USDEX_USDLIB_python NAMES "usd_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
         if(USDEX_USDLIB_python)
             target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_python}")
         endif()

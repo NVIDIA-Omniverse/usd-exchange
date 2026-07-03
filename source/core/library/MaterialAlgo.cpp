@@ -1747,7 +1747,7 @@ bool usdex::core::addPreviewMaterialInterface(pxr::UsdShadeMaterial& material)
         TF_RUNTIME_ERROR(
             "UsdShadeMaterial <%s> has %zu effective surface outputs. This function is not suitable for multi-context shader networks.",
             material.GetPath().GetAsString().c_str(),
-            size_t(effectiveSurfaceOutputs.size()) // explicit cast as the type changed from uint32_t to size_t in usd 24.08
+            effectiveSurfaceOutputs.size()
         );
         return false;
     }
@@ -2549,20 +2549,12 @@ const pxr::TfToken& usdex::core::getColorSpaceToken(ColorSpace value)
 
 GfVec3f usdex::core::sRgbToLinear(const GfVec3f& color)
 {
-#if PXR_VERSION >= 2411
     const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGBRec709);
-#else
-    const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGB);
-#endif
     return GfColorSpace(GfColorSpaceNames->LinearRec709).Convert(srgbColorSpace, color).GetRGB();
 }
 
 GfVec3f usdex::core::linearToSrgb(const GfVec3f& color)
 {
-#if PXR_VERSION >= 2411
     const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGBRec709);
-#else
-    const GfColorSpace srgbColorSpace(GfColorSpaceNames->SRGB);
-#endif
     return srgbColorSpace.Convert(GfColorSpace(GfColorSpaceNames->LinearRec709), color).GetRGB();
 }
