@@ -10,6 +10,7 @@ CMakeLists into the `_build/$platform/$config` tree. External customers build it
 import argparse
 import os
 import shutil
+import stat
 from typing import Callable, Dict
 
 import fetch_deps
@@ -91,8 +92,17 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         python_root = f"{root}/_build/target-deps/python"
         target_deps = f"{root}/_build/target-deps"
 
+        # prefer the packman-provided cmake; fall back to a system cmake otherwise
+        exe_ext = omni.repo.man.resolve_tokens("${exe_ext}")
+        cmake_exe = f"{root}/_build/host-deps/cmake/bin/cmake{exe_ext}"
+        if os.path.exists(cmake_exe):
+            # packman zip packages can drop the executable bit on extraction; restore it before invoking
+            os.chmod(cmake_exe, os.stat(cmake_exe).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        else:
+            cmake_exe = "cmake"
+
         configure = [
-            "cmake",
+            cmake_exe,
             "-S",
             root,
             "-B",
@@ -122,14 +132,14 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             # compile_commands.json + generated headers are produced at configure; skip compiling
             return
 
-        build = ["cmake", "--build", build_dir, "--config", cmake_config, "-j", str(os.cpu_count() or 1)]
+        build = [cmake_exe, "--build", build_dir, "--config", cmake_config, "-j", str(os.cpu_count() or 1)]
         omni.repo.man.logger.info(" ".join(build))
         omni.repo.man.run_process(build, exit_on_error=True)
 
         if not options.skip_post:
             # install just the find_package config into lib/cmake/usd-exchange (libs/headers are already in the tree)
             omni.repo.man.run_process(
-                ["cmake", "--install", build_dir, "--config", cmake_config, "--prefix", output_dir, "--component", "usdex_cmake_config"],
+                [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir, "--component", "usdex_cmake_config"],
                 exit_on_error=True,
             )
 
