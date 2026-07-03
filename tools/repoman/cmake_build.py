@@ -96,8 +96,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         exe_ext = omni.repo.man.resolve_tokens("${exe_ext}")
         cmake_exe = f"{root}/_build/host-deps/cmake/bin/cmake{exe_ext}"
         if os.path.exists(cmake_exe):
-            # packman zip packages can drop the executable bit on extraction; restore it before invoking
-            os.chmod(cmake_exe, os.stat(cmake_exe).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            # packman zip packages can drop the executable bit on extraction; restore owner-execute before invoking
+            # (we run cmake as the current user, so there's no need to grant group/other execute)
+            os.chmod(cmake_exe, os.stat(cmake_exe).st_mode | stat.S_IXUSR)
         else:
             cmake_exe = "cmake"
 
