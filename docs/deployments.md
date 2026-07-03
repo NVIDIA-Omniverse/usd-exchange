@@ -163,7 +163,7 @@ If it does, you will likely want to match the exact OpenUSD binaries. You _might
 
 However, the more likely outcome is that you should re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your application's USD distribution.
 
-Once you have a USD distro assembled, you can "source link" it into a local clone of OpenUSD Exchange SDK:
+Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works — point it at your USD distro via `USDEX_USD_ROOT` (or add your USD to `CMAKE_PREFIX_PATH`) and build:
 
 ``````{card}
 `````{tab-set}
@@ -173,8 +173,8 @@ Once you have a USD distro assembled, you can "source link" it into a local clon
 ```bash
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
-./repo.sh source link usd_release ../path/to/your/usd
-./repo.sh cmake
+cmake -S . -B build -DUSDEX_USD_ROOT=/path/to/your/usd
+cmake --build build --config Release
 ```
 ````
 ````{tab-item} Windows
@@ -183,21 +183,26 @@ cd usd-exchange
 ```bat
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
-.\repo.bat source link usd_release ..\path\to\your\usd
-.\repo.bat cmake
+cmake -S . -B build -DUSDEX_USD_ROOT=C:\path\to\your\usd
+cmake --build build --config Release
 ```
 ````
 `````
 ``````
 
-If you encounter missing file errors, it likely indicates a difference between your USD distro file layout and the ones NVIDIA produces internally. Inspect the two folder structures and try to align them.
+The compiled libraries, Python modules, and headers are emitted under `build/` (`lib/`, `bin/`, `python/`, `include/`). Run `cmake --install build --prefix <dir>` to assemble a relocatable tree (including the `find_package(usd-exchange)` config) that your own project can consume.
 
 ```{eval-rst}
 .. note::
-  The ``repo source link`` command will generate a ``deps/usd-deps.packman.xml.user`` file with the relative filesystem path to your USD distro. The ``repo cmake`` command will respect this. If you want to alter the path later, you can hand edit this file. If you want to revert to using the pre-built USD distros, just remove this file entirely or call ``repo source unlink usd_release``.
+  Besides your USD distro, the build needs Python, pybind11, cxxopts, and doctest to be discoverable by CMake — installed on the system, on ``CMAKE_PREFIX_PATH``, or supplied explicitly via ``-DUSDEX_PYBIND11_INCLUDE_DIR``, ``-DUSDEX_CXXOPTS_INCLUDE_DIR``, and ``-DUSDEX_DOCTEST_INCLUDE_DIR``. Set ``-DUSDEX_PYTHON_VERSION`` to match your USD distro's Python (e.g. ``3.11``), or ``-DUSDEX_PYTHON_VERSION=0`` to build without Python bindings.
 ```
 
-See [CONTRIBUTING.md](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building) for more information on the OpenUSD Exchange SDK build process.
+If you encounter missing file errors, it likely indicates a difference between your USD distro file layout and the ones NVIDIA produces internally — ``USDEX_USD_ROOT`` must contain ``include/`` (with ``pxr/``) and ``lib/``. Inspect the two folder structures and try to align them.
+
+```{eval-rst}
+.. note::
+  NVIDIA developers building the internal flavor matrix (or source-linking a local USD via ``repo source link``) should use the ``repo cmake`` workflow described in `CONTRIBUTING.md <https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building>`_ instead.
+```
 
 ### Does it use TBB or Boost?
 
