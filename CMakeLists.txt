@@ -35,9 +35,11 @@ set(USDEX_BIN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Executable output
 set(USDEX_PYTHON_OUTPUT_DIR "${CMAKE_BINARY_DIR}/python" CACHE PATH "Python package output directory")
 set(USDEX_INCLUDE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/include" CACHE PATH "Public header staging directory")
 set(USDEX_DEV_OUTPUT_DIR "${CMAKE_BINARY_DIR}/dev" CACHE PATH "dev/ tree staging directory (shipped in the package)")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${USDEX_BIN_OUTPUT_DIR}")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}")
+# the trailing $<0:> is an empty generator expression that stops multi-config generators (Visual Studio) from
+# appending a per-config subdir, keeping the flat lib/bin layout the downstream tools (install_usdex, packaging) expect
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}$<0:>")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${USDEX_BIN_OUTPUT_DIR}$<0:>")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}$<0:>")
 
 include(GNUInstallDirs)  # early: CMAKE_INSTALL_LIBDIR feeds the rpaths + install rules below
 
@@ -77,7 +79,7 @@ usdex_target_link_usd(usdex_rtx arch gf sdf tf usd usdGeom usdShade usdUtils vt)
 # Windows emits shared libraries (.dll) into the RUNTIME dir; keep them in lib/ (beside the import .lib, matching
 # the Linux .so layout that install_usdex + packaging expect). No-op on Linux where .so uses the LIBRARY dir.
 if(WIN32)
-    set_target_properties(usdex_core usdex_rtx PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}")
+    set_target_properties(usdex_core usdex_rtx PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}$<0:>")
 endif()
 
 # ---------------------------------------------------------------------------- python bindings

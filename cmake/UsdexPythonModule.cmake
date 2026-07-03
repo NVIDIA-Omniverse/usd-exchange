@@ -15,7 +15,8 @@ function(usdex_add_python_module target)
     Python3_add_library(${target} MODULE WITH_SOABI ${ARG_SOURCES})
     set(_out "${USDEX_PYTHON_OUTPUT_DIR}/usdex/${ARG_SUBDIR}")
     # binding in python/usdex/<subdir>/ -> sibling libs three dirs up ($ORIGIN keeps the package relocatable)
-    set_target_properties(${target} PROPERTIES OUTPUT_NAME "_${ARG_MODULE_NAME}" LIBRARY_OUTPUT_DIRECTORY "${_out}"
+    # $<0:> suppresses the per-config subdir multi-config generators (Visual Studio) would otherwise append
+    set_target_properties(${target} PROPERTIES OUTPUT_NAME "_${ARG_MODULE_NAME}" LIBRARY_OUTPUT_DIRECTORY "${_out}$<0:>"
         INSTALL_RPATH "$ORIGIN/../../../${CMAKE_INSTALL_LIBDIR}")
 
     target_compile_definitions(${target} PRIVATE "MODULE_NAME=${ARG_MODULE_NAME}")
