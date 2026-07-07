@@ -87,7 +87,7 @@
             :caption:
                 In all flavors the python runtime is optional, as is the `usdex_rtx` library and module.
 
-            ├── lib
+            ├── bin
             │   ├── usdex_core.dll
             │   ├── usdex_rtx.dll
             │   ├── python3.dll
@@ -118,8 +118,8 @@
             │   ├── usd_usdSemantics.dll                    <-- optional
             │   ├── usd_usdVol.dll                          <-- optional
             │   ├── usd_vt.dll
-            │   └── usd_work.dll
-            |   └── usd
+            │   ├── usd_work.dll
+            │   └── usd
             |       ├── plugInfo.json
             |       └── ...
             |           └── resources
@@ -148,7 +148,7 @@
             :caption:
                 OpenUSD is a minimal build with compact dependencies. The `usdex_rtx` library is optional.
 
-            └── lib
+            └── bin
                 ├── usdex_core.dll
                 ├── usdex_rtx.dll
                 ├── tbb.dll

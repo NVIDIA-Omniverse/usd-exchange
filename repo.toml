@@ -220,6 +220,7 @@ package_per_config = true
 remove_pycache = true
 files = [
     ["_build/$platform/$config/include", "include"],
+    ["_build/$platform/$config/bin/${lib_prefix}usdex_*", "bin"],  # windows
     ["_build/$platform/$config/lib/${lib_prefix}usdex_*", "lib"],
     ["_build/$platform/$config/lib/cmake", "lib/cmake"],
     ["_build/$platform/$config/python/usdex", "python/usdex"],

@@ -76,12 +76,6 @@ target_include_directories(usdex_rtx PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DI
 target_link_libraries(usdex_rtx PRIVATE usdex_build_options usdex_usd_headers usdex_core)
 usdex_target_link_usd(usdex_rtx arch gf sdf tf usd usdGeom usdShade usdUtils vt)
 
-# Windows emits shared libraries (.dll) into the RUNTIME dir; keep them in lib/ (beside the import .lib, matching
-# the Linux .so layout that install_usdex + packaging expect). No-op on Linux where .so uses the LIBRARY dir.
-if(WIN32)
-    set_target_properties(usdex_core usdex_rtx PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}$<0:>")
-endif()
-
 # ---------------------------------------------------------------------------- python bindings
 if(USDEX_WITH_PYTHON)
     file(GLOB USDEX_CORE_BINDINGS CONFIGURE_DEPENDS source/core/python/bindings/*.cpp)

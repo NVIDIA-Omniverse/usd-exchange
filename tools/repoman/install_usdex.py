@@ -275,10 +275,11 @@ def __install(
             exit_on_error=True,
         )
 
-    libInstallDir = "${install_dir}/lib"
+    runtimeInstallDir = "${install_dir}/bin" if os.name == "nt" else "${install_dir}/lib"
+    libInstallDir = runtimeInstallDir
     usdNativePluginSourceDir = f"{usd_path}/lib/usd"
     usdPluginSourceDir = f"{usd_path}/plugin/usd"
-    usdPluginInstallDir = "${install_dir}/lib/usd"
+    usdPluginInstallDir = f"{runtimeInstallDir}/usd"
 
     prebuild_dict = {
         "copy": [

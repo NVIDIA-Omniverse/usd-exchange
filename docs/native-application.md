@@ -369,12 +369,12 @@ If you want to launch or debug the sample from within Visual Studio, the `PATH` 
 
 `Configuration Properties > Debugging` (All configurations)
 ```
-PATH=usdex/windows-x86_64/$(CONFIGURATION)/lib
+PATH=usdex/windows-x86_64/$(CONFIGURATION)/bin
 ```
 
 ## Runtime Environment
 
-The application must be able to find the shared libraries located in `usdex/$platform/$config/lib`.  These variables should be setup from a launching script, Visual Studio debugger settings, or from within the application itself before using the OpenUSD Exchange Core module.
+The application must be able to find the shared libraries, located in `usdex/$platform/$config/lib` on Linux and `usdex/$platform/$config/bin` on Windows.  These variables should be setup from a launching script, Visual Studio debugger settings, or from within the application itself before using the OpenUSD Exchange Core module.
 
 ```{eval-rst}
 .. tab-set::
@@ -407,7 +407,7 @@ The application must be able to find the shared libraries located in `usdex/$pla
             setlocal
 
             set RUNTIME_PATH=usdex/windows-x86_64/release
-            set PATH=%RUNTIME_PATH%/lib;%PATH%
+            set PATH=%RUNTIME_PATH%/bin;%PATH%
             x64\release\UsdTraverse.exe %*
 ```
 
