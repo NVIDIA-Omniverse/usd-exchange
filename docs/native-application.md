@@ -29,8 +29,8 @@ Running these commands from either the [Samples](./try-samples.md) root folder, 
 
         .. code-block:: bash
 
-          # only fetch first when running from usd-exchange-samples
-          ./repo.sh build --fetch-only
+          # only fetch dependencies and generate build files first when running from usd-exchange-samples
+          ./repo.sh build --generate
 
           ./repo.sh install_usdex --config release --install-python-libs
           ./repo.sh install_usdex --config debug --install-python-libs
@@ -42,8 +42,8 @@ Running these commands from either the [Samples](./try-samples.md) root folder, 
 
         .. code-block:: batch
 
-          # only fetch first when running from usd-exchange-samples
-          .\repo.bat build --fetch-only
+          # only fetch dependencies and generate build files first when running from usd-exchange-samples
+          .\repo.bat build --generate
 
           .\repo.bat install_usdex --config release --install-python-libs
           .\repo.bat install_usdex --config debug --install-python-libs
