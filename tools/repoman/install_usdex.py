@@ -280,15 +280,16 @@ def __install(
     usdNativePluginSourceDir = f"{usd_path}/lib/usd"
     usdPluginSourceDir = f"{usd_path}/plugin/usd"
     usdPluginInstallDir = f"{runtimeInstallDir}/usd"
+    usdexLibSourceDir = f"{usd_exchange_path}/bin" if os.name == "nt" else f"{usd_exchange_path}/lib"
 
     prebuild_dict = {
         "copy": [
-            [usd_exchange_path + "/lib/${lib_prefix}usdex_core${lib_ext}", libInstallDir],
+            [usdexLibSourceDir + "/${lib_prefix}usdex_core${lib_ext}", libInstallDir],
         ],
     }
 
     if installRtxModules:
-        prebuild_dict["copy"].append([usd_exchange_path + "/lib/${lib_prefix}usdex_rtx${lib_ext}", libInstallDir])
+        prebuild_dict["copy"].append([usdexLibSourceDir + "/${lib_prefix}usdex_rtx${lib_ext}", libInstallDir])
 
     # usd
     usdLibMidfix, monolithic = __computeUsdMidfix(usd_path)
