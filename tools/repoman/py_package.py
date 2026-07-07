@@ -132,8 +132,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         shutil.copytree(f"{source}/python/usdex/test", f"{stagingDir}/usdex/test", ignore=ignore_callable)
         shutil.copytree(f"{source}/python/pxr", f"{stagingDir}/pxr", ignore=ignore_callable)
         if omni.repo.man.is_windows():
-            # DLLS and plugInfo
-            shutil.copytree(f"{source}/lib", f"{stagingDir}/usd_exchange.libs", ignore=ignore_callable)
+            # DLLs and plugInfo
+            shutil.copytree(f"{source}/bin", f"{stagingDir}/usd_exchange.libs", ignore=ignore_callable)
         else:
             # Only plugInfo (auditwheel will handle libs)
             shutil.copytree(f"{source}/lib/usd", f"{stagingDir}/usd_exchange.libs/usd", ignore=ignore_callable)
