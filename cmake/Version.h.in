@@ -1,0 +1,24 @@
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+//
+
+#pragma once
+
+//! @file usdex/core/Version.h
+//! @brief Version macros for this library
+//! Automatically generated file
+
+//! Major version number. This will not change unless there is a major non-backwards compatible change.
+#define USDEX_VERSION_MAJOR @USDEX_VERSION_MAJOR@
+
+//! Minor version number. This changes with every release.
+#define USDEX_VERSION_MINOR @USDEX_VERSION_MINOR@
+
+//! Patch number. This will normally be 0, but can change if a fix is back-ported to a previous release.
+#define USDEX_VERSION_PATCH @USDEX_VERSION_PATCH@
+
+//! This is the full version string
+#define USDEX_VERSION_STRING "@USDEX_VERSION_STRING@"
+
+//! This is the full build string
+#define USDEX_BUILD_STRING "@USDEX_BUILD_STRING@"

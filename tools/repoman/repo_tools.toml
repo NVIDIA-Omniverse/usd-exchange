@@ -93,19 +93,6 @@ license_text = ""
 # Only set this flag if you use a non-standard `version_file` and you use `repo_docs`.
 generate_version_stub_file = false
 
-[repo_feature_header]
-enabled = false
-command = "feature_header"
-entry_point = "feature_header:setup_repo_tool"
-
-# Path to generate the header file
-target_file = ""
-
-# Sets the python version.
-#
-# Any value other than "0" indicates that the build is "with python".
-python_ver = "0"
-
 [repo_verify_deps]
 enabled = false
 command = "verify_deps"

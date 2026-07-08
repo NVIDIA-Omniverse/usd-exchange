@@ -24,10 +24,6 @@ target_version_header_file = "include/usdex/core/Version.h"
 target_resource_file = "version.rc"
 generate_version_stub_file = true
 
-[repo_feature_header]
-enabled = true
-target_file = "include/usdex/core/Feature.h"
-
 [repo_build_number]
 enabled = true
 

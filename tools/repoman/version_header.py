@@ -124,6 +124,11 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         return None
 
     def run_repo_tool(options: Dict, config: Dict):
+        omni.repo.man.logger.warning(
+            "repo_version_header is deprecated. The OpenUSD Exchange SDK CMake build now generates Version.h and "
+            "version.rc directly (see CMakeLists.txt + cmake/Version.h.in / cmake/version.rc.in); prefer building with "
+            "CMake if you can. This tool remains for the docs pipeline and legacy (non-CMake) consumers."
+        )
         package_version = omni.repo.man.build_number.generate_build_number_from_file(config["repo"]["folders"]["version_file"])
 
         target_version_header_file = options.target_version_header_file or config["repo_version_header"]["target_version_header_file"]

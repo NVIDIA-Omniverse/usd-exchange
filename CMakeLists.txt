@@ -28,6 +28,34 @@ else()
     set(USDEX_WITH_PYTHON ON)
 endif()
 
+# ---------------------------------------------------------------------------- generated headers (Version.h / Feature.h / version.rc)
+# These are #included by the C++ sources (and the Windows VERSIONINFO resource). It is recommended to provide an
+# exact -DUSDEX_VERSION_STRING / -DUSDEX_BUILD_STRING (with build number + git sha) for local builds; If none is provided, it will be
+# derived from the top CHANGELOG.md heading.
+if(NOT USDEX_VERSION_STRING)
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md" _usdex_changelog_head LIMIT_COUNT 1)
+    string(REGEX REPLACE "^#[ \t]*" "" USDEX_VERSION_STRING "${_usdex_changelog_head}")
+endif()
+set(USDEX_VERSION_STRING "${USDEX_VERSION_STRING}" CACHE STRING "OpenUSD Exchange SDK version string (e.g. 3.0.0-dev)")
+set(USDEX_BUILD_STRING "${USDEX_VERSION_STRING}" CACHE STRING "OpenUSD Exchange SDK unique build string")
+set(USDEX_COMPANY_NAME "" CACHE STRING "Company name embedded in the Windows VERSIONINFO resource")
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _usdex_version_match "${USDEX_VERSION_STRING}")
+set(USDEX_VERSION_MAJOR "${CMAKE_MATCH_1}")
+set(USDEX_VERSION_MINOR "${CMAKE_MATCH_2}")
+set(USDEX_VERSION_PATCH "${CMAKE_MATCH_3}")
+if(USDEX_WITH_PYTHON)
+    set(USDEX_WITH_PYTHON_INT 1)
+else()
+    set(USDEX_WITH_PYTHON_INT 0)
+endif()
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Version.h.in" "${CMAKE_CURRENT_SOURCE_DIR}/include/usdex/core/Version.h" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Feature.h.in" "${CMAKE_CURRENT_SOURCE_DIR}/include/usdex/core/Feature.h" @ONLY)
+if(WIN32)
+    # generate + compile the VERSIONINFO resource so the DLLs carry file/product version, company, and copyright
+    enable_language(RC)
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in" "${CMAKE_CURRENT_SOURCE_DIR}/version.rc" @ONLY)
+endif()
+
 # Output layout. Defaults to a conventional build-dir layout for external consumers; the internal driver
 # overrides these to the `_build/$platform/$config/{lib,bin,python}` tree that the downstream tools expect.
 set(USDEX_LIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Shared library output directory")
@@ -75,6 +103,12 @@ add_library(usdex_rtx SHARED ${USDEX_RTX_SOURCES})
 target_include_directories(usdex_rtx PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:include>")
 target_link_libraries(usdex_rtx PRIVATE usdex_build_options usdex_usd_headers usdex_core)
 usdex_target_link_usd(usdex_rtx arch gf sdf tf usd usdGeom usdShade usdUtils vt)
+
+# embed the Windows VERSIONINFO resource (generated above) into both DLLs
+if(WIN32)
+    target_sources(usdex_core PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/version.rc")
+    target_sources(usdex_rtx PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/version.rc")
+endif()
 
 # ---------------------------------------------------------------------------- python bindings
 if(USDEX_WITH_PYTHON)
