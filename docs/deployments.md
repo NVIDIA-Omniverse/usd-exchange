@@ -163,7 +163,7 @@ If it does, you will likely want to match the exact OpenUSD binaries. You _might
 
 However, the more likely outcome is that you should re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your application's USD distribution.
 
-Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works — point it at your USD distro via `USDEX_USD_ROOT` (or add your USD to `CMAKE_PREFIX_PATH`) and build:
+Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works — point it at your USD distro via `USDEX_USD_ROOT` and, for the default build that includes the Python bindings, at your pybind11 headers via `USDEX_PYBIND11_INCLUDE_DIR` (or add both to `CMAKE_PREFIX_PATH`) and build:
 
 ``````{card}
 `````{tab-set}
@@ -173,7 +173,9 @@ Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it.
 ```bash
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
-cmake -S . -B build -DUSDEX_USD_ROOT=/path/to/your/usd
+cmake -S . -B build \
+  -DUSDEX_USD_ROOT=/path/to/your/usd \
+  -DUSDEX_PYBIND11_INCLUDE_DIR=/path/to/pybind11/include
 cmake --build build --config Release
 ```
 ````
@@ -183,7 +185,9 @@ cmake --build build --config Release
 ```bat
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
-cmake -S . -B build -DUSDEX_USD_ROOT=C:\path\to\your\usd
+cmake -S . -B build ^
+  -DUSDEX_USD_ROOT=C:\path\to\your\usd ^
+  -DUSDEX_PYBIND11_INCLUDE_DIR=C:\path\to\pybind11\include
 cmake --build build --config Release
 ```
 ````
@@ -203,7 +207,7 @@ target_link_libraries(my_app PRIVATE usdex::usdex_core usdex::usdex_rtx)
 
 ```{eval-rst}
 .. note::
-  Besides your USD distro, the build needs Python and pybind11 to be discoverable by CMake, on ``CMAKE_PREFIX_PATH``, or supplied explicitly via ``-DUSDEX_PYBIND11_INCLUDE_DIR``. Set ``-DUSDEX_PYTHON_VERSION`` to match your USD distro's Python (e.g. ``3.11``), or ``-DUSDEX_PYTHON_VERSION=0`` to build without Python bindings. The C++ test suite is opt-in via ``-DUSDEX_BUILD_TESTS=ON``, as it additionally requires cxxopts and doctest, supplied via ``-DUSDEX_CXXOPTS_INCLUDE_DIR`` / ``-DUSDEX_DOCTEST_INCLUDE_DIR``.
+  Besides your USD distro, the default build enables the Python bindings and so needs Python (with development headers/libs) and pybind11. Provide pybind11 the same way you point the build at OpenUSD: pass ``-DUSDEX_PYBIND11_INCLUDE_DIR`` or add it to ``CMAKE_PREFIX_PATH``. Set ``-DUSDEX_PYTHON_VERSION`` to match your USD distro's Python (e.g. ``3.11``), or ``-DUSDEX_PYTHON_VERSION=0`` to build without Python bindings. The C++ test suite is opt-in via ``-DUSDEX_BUILD_TESTS=ON``, as it additionally requires cxxopts and doctest, supplied via ``-DUSDEX_CXXOPTS_INCLUDE_DIR`` / ``-DUSDEX_DOCTEST_INCLUDE_DIR``.
 ```
 
 If you encounter missing file errors, it likely indicates a difference between your USD distro file layout and the ones NVIDIA produces internally — ``USDEX_USD_ROOT`` must contain ``include/`` (with ``pxr/``) and ``lib/``. Inspect the two folder structures and try to align them.
