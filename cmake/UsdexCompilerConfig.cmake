@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Central compiler/linker configuration for the OpenUSD Exchange SDK, exposed as the INTERFACE target
+# Usage requirements for compiling against the OpenUSD Exchange SDK and OpenUSD, exposed as the INTERFACE target
 # `usdex_build_options`. It ships with the package and find_package(usd-exchange) re-includes it, so downstream
-# consumers inherit the same settings needed to compile against OpenUSD + usdex. usdex C++ targets link it PRIVATE.
+# consumers inherit these settings; our own C++ targets link it PRIVATE too.
 #
-# Build-hygiene settings that should not be imposed on consumers (warnings-as-errors, security hardening, release
-# symbol stripping) are applied only while building the SDK itself, gated behind USDEX_BUILDING_SDK.
+# Build hygiene that should not be imposed on consumers (strict warnings, hidden visibility, hardening, release
+# stripping) is applied privately to our own targets via usdex_sdk_build_options in the top-level CMakeLists.txt.
 
 include_guard(GLOBAL)
 
@@ -18,9 +18,7 @@ target_compile_features(usdex_build_options INTERFACE cxx_std_17)
 
 set(_gnu "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
 set(_msvc "$<CXX_COMPILER_ID:MSVC>")
-set(_release "$<CONFIG:Release>")
 set(_debug "$<CONFIG:Debug>")
-set(_x86_64 "$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>")
 
 # Preprocessor defines (parity with premake): NDEBUG/DEBUG, TBB, file offsets, libstdc++ ABI, NOMINMAX.
 target_compile_definitions(usdex_build_options INTERFACE
@@ -40,34 +38,13 @@ if(WIN32)
     target_compile_definitions(usdex_build_options INTERFACE NOMINMAX)
 endif()
 
-# GCC/Clang compile flags. -Wno-deprecated must follow -Wall/-Wextra to take effect; it silences the deprecated
-# <ext/hash_set> #warning that OpenUSD's headers trigger even from SYSTEM includes.
+# GCC/Clang usage requirements consumers need to compile against usdex + OpenUSD: -pthread (OpenUSD's headers are
+# threaded) and -Wno-deprecated (OpenUSD pulls in a deprecated libstdc++ backward header whose #warning fires even
+# through SYSTEM includes, breaking consumers that build with -Werror).
 target_compile_options(usdex_build_options INTERFACE
-    "$<${_gnu}:-fvisibility=hidden;-fdiagnostics-color;-pthread>"
-    "$<${_gnu}:-Wall;-Wextra;-Wvla;-Wshadow;-Wundef;-Wconversion;-Wno-deprecated>"
-    "$<${_gnu}:-g>" # compiled with symbols On in all configs; release shared libs are stripped at link
+    "$<${_gnu}:-pthread;-Wno-deprecated>"
 )
-# MSVC compile flags (parity with repo_build's add_windows_support).
+# MSVC usage requirements: exceptions/RTTI + conformance + large-object support needed to compile OpenUSD headers.
 target_compile_options(usdex_build_options INTERFACE
-    "$<${_msvc}:/utf-8;/bigobj;/permissive-;/Zc:__cplusplus;/W4;/EHsc;/GR;/Zi>"
+    "$<${_msvc}:/utf-8;/bigobj;/permissive-;/Zc:__cplusplus;/EHsc;/GR>"
 )
-# GCC/Clang link flags: release size/section GC (safe + beneficial for consumers as well).
-target_link_options(usdex_build_options INTERFACE
-    "$<$<AND:${_gnu},${_release}>:-Wl,-O1;-Wl,--gc-sections>"
-)
-
-# SDK-build-only hygiene applied to our own compilation but NOT inherited by downstream consumers (gated behind
-# USDEX_BUILDING_SDK): warnings-as-errors, security hardening (stack protection + RELRO/BIND_NOW + CFG), and
-# release symbol stripping.
-if(USDEX_BUILDING_SDK)
-    target_compile_options(usdex_build_options INTERFACE
-        "$<${_gnu}:-Werror;-fstack-protector-strong>"
-        "$<$<AND:${_gnu},${_x86_64}>:-fstack-clash-protection>"
-        "$<${_msvc}:/WX;/guard:cf>"
-    )
-    target_link_options(usdex_build_options INTERFACE
-        "$<${_gnu}:-Wl,-z,relro;-Wl,-z,now>"
-        "$<$<AND:${_gnu},${_release}>:-Wl,-s>"
-        "$<${_msvc}:/guard:cf>"
-    )
-endif()

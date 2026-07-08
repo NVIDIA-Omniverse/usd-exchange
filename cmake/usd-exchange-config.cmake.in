@@ -6,4 +6,13 @@
 include("${CMAKE_CURRENT_LIST_DIR}/usd-exchange-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexCompilerConfig.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexUSD.cmake")
+
+# Carry the USD includes + compile settings on the imported targets so consumers only link usdex::usdex_core /
+# usdex::usdex_rtx to compile against the pxr-including public headers. usdex_usd_headers exists only once
+# UsdexUSD.cmake has located USD (USDEX_USD_ROOT / CMAKE_PREFIX_PATH).
+if(TARGET usdex_usd_headers)
+    set_property(TARGET usdex::usdex_core APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+    set_property(TARGET usdex::usdex_rtx APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+endif()
+
 check_required_components(usd-exchange)

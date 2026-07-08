@@ -192,9 +192,18 @@ cmake --build build --config Release
 
 The compiled libraries, Python modules, and headers are emitted under `build/` (`lib/`, `bin/`, `python/`, `include/`). Run `cmake --install build --prefix <dir>` to assemble a relocatable tree (including the `find_package(usd-exchange)` config) that your own project can consume.
 
+When you consume that installed tree via `find_package(usd-exchange)`, linking the imported targets is all a typical project needs:
+
+```cmake
+find_package(usd-exchange REQUIRED)
+target_link_libraries(my_app PRIVATE usdex::usdex_core usdex::usdex_rtx)
+```
+
+`usdex::usdex_core` / `usdex::usdex_rtx` propagate the OpenUSD include paths and the C++ compatibility settings (language standard, ABI, and platform defines) required to compile against the SDK's public headers. Only call `usdex_target_link_usd(my_app <modules...>)` for the OpenUSD modules your own code calls directly (e.g. `usd usdGeom sdf`). The SDK's build-time hygiene (strict warnings, hidden visibility) is *not* imposed on your project.
+
 ```{eval-rst}
 .. note::
-  Besides your USD distro, the build needs Python, pybind11, cxxopts, and doctest to be discoverable by CMake — installed on the system, on ``CMAKE_PREFIX_PATH``, or supplied explicitly via ``-DUSDEX_PYBIND11_INCLUDE_DIR``, ``-DUSDEX_CXXOPTS_INCLUDE_DIR``, and ``-DUSDEX_DOCTEST_INCLUDE_DIR``. Set ``-DUSDEX_PYTHON_VERSION`` to match your USD distro's Python (e.g. ``3.11``), or ``-DUSDEX_PYTHON_VERSION=0`` to build without Python bindings.
+  Besides your USD distro, the build needs Python and pybind11 to be discoverable by CMake, on ``CMAKE_PREFIX_PATH``, or supplied explicitly via ``-DUSDEX_PYBIND11_INCLUDE_DIR``. Set ``-DUSDEX_PYTHON_VERSION`` to match your USD distro's Python (e.g. ``3.11``), or ``-DUSDEX_PYTHON_VERSION=0`` to build without Python bindings. The C++ test suite is opt-in via ``-DUSDEX_BUILD_TESTS=ON``, as it additionally requires cxxopts and doctest, supplied via ``-DUSDEX_CXXOPTS_INCLUDE_DIR`` / ``-DUSDEX_DOCTEST_INCLUDE_DIR``.
 ```
 
 If you encounter missing file errors, it likely indicates a difference between your USD distro file layout and the ones NVIDIA produces internally — ``USDEX_USD_ROOT`` must contain ``include/`` (with ``pxr/``) and ``lib/``. Inspect the two folder structures and try to align them.

@@ -23,7 +23,7 @@ function(usdex_add_python_module target)
     target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/include")
     # pybind11 is third-party: SYSTEM so its headers don't trip our -Werror
     target_include_directories(${target} SYSTEM PRIVATE "${USDEX_PYBIND11_INCLUDE_DIR}")
-    target_link_libraries(${target} PRIVATE usdex_build_options usdex_usd_headers Python3::Python ${ARG_LINK})
+    target_link_libraries(${target} PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers Python3::Python ${ARG_LINK})
     usdex_target_link_usd(${target} ${ARG_USD_LIBS})
 
     # stage the pure-python sources alongside the compiled module

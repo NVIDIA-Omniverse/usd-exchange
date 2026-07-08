@@ -12,7 +12,6 @@ list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-# Match premake's strict `-std=c++17` (GCC defaults to gnu++17 with extensions on).
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -27,6 +26,9 @@ if(USDEX_PYTHON_VERSION STREQUAL "0")
 else()
     set(USDEX_WITH_PYTHON ON)
 endif()
+
+# OFF by default so a build doesn't require the test-only cxxopts + doctest headers.
+option(USDEX_BUILD_TESTS "Build the OpenUSD Exchange SDK C++ tests (requires cxxopts + doctest)" OFF)
 
 # ---------------------------------------------------------------------------- generated headers (Version.h / Feature.h / version.rc)
 # These are #included by the C++ sources (and the Windows VERSIONINFO resource). It is recommended to provide an
@@ -76,9 +78,28 @@ include(GNUInstallDirs)  # early: CMAKE_INSTALL_LIBDIR feeds the rpaths + instal
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
-# building the SDK itself: opt into the warnings-as-errors / hardening / strip flags that consumers don't inherit
-set(USDEX_BUILDING_SDK ON)
 include(UsdexCompilerConfig)
+
+# Compile/link hygiene, applied PRIVATELY to our own targets and never shipped to consumers: strict warnings, hidden visibility, debug symbols
+# (GCC/Clang: Debug only; MSVC: separate PDB), warnings-as-errors, security hardening (stack protection + RELRO/BIND_NOW + CFG),
+# release size/section GC, and release symbol stripping. The usage requirements consumers inherit are in usdex_build_options.
+add_library(usdex_sdk_build_options INTERFACE)
+set(_gnu "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
+set(_msvc "$<CXX_COMPILER_ID:MSVC>")
+set(_release "$<CONFIG:Release>")
+set(_debug "$<CONFIG:Debug>")
+set(_x86_64 "$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>")
+target_compile_options(usdex_sdk_build_options INTERFACE
+    "$<${_gnu}:-fdiagnostics-color;-fvisibility=hidden;-Wall;-Wextra;-Wvla;-Wshadow;-Wundef;-Wconversion;-Werror;-fstack-protector-strong>"
+    "$<$<AND:${_gnu},${_debug}>:-g>"
+    "$<$<AND:${_gnu},${_x86_64}>:-fstack-clash-protection>"
+    "$<${_msvc}:/W4;/Zi;/WX;/guard:cf>"
+)
+target_link_options(usdex_sdk_build_options INTERFACE
+    "$<${_gnu}:-Wl,-z,relro;-Wl,-z,now>"
+    "$<$<AND:${_gnu},${_release}>:-Wl,-O1;-Wl,--gc-sections;-Wl,-s>"
+    "$<${_msvc}:/guard:cf>"
+)
 
 if(USDEX_WITH_PYTHON)
     find_package(Python3 ${USDEX_PYTHON_VERSION} EXACT REQUIRED COMPONENTS Interpreter Development Development.Module)
@@ -94,14 +115,14 @@ include(UsdexPythonModule)
 file(GLOB USDEX_CORE_SOURCES CONFIGURE_DEPENDS source/core/library/*.cpp)
 add_library(usdex_core SHARED ${USDEX_CORE_SOURCES})
 target_include_directories(usdex_core PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:include>")
-target_link_libraries(usdex_core PRIVATE usdex_build_options usdex_usd_headers)
+target_link_libraries(usdex_core PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers)
 usdex_target_link_usd(usdex_core ar arch gf kind pcp plug sdf tf usd usdGeom usdLux usdPhysics usdShade usdUtils vt work)
 
 # ---------------------------------------------------------------------------- usdex_rtx
 file(GLOB USDEX_RTX_SOURCES CONFIGURE_DEPENDS source/rtx/library/*.cpp)
 add_library(usdex_rtx SHARED ${USDEX_RTX_SOURCES})
 target_include_directories(usdex_rtx PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:include>")
-target_link_libraries(usdex_rtx PRIVATE usdex_build_options usdex_usd_headers usdex_core)
+target_link_libraries(usdex_rtx PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers usdex_core)
 usdex_target_link_usd(usdex_rtx arch gf sdf tf usd usdGeom usdShade usdUtils vt)
 
 # embed the Windows VERSIONINFO resource (generated above) into both DLLs
@@ -142,32 +163,34 @@ if(USDEX_WITH_PYTHON)
 endif()
 
 # ---------------------------------------------------------------------------- test_usdex_core (doctest)
-# cxxopts/doctest are header-only third-party; discover on CMAKE_PREFIX_PATH unless explicitly provided.
-find_path(USDEX_CXXOPTS_INCLUDE_DIR cxxopts.hpp)
-find_path(USDEX_DOCTEST_INCLUDE_DIR doctest/doctest.h)
+if(USDEX_BUILD_TESTS)
+    # cxxopts/doctest are header-only third-party; discover on CMAKE_PREFIX_PATH unless explicitly provided.
+    find_path(USDEX_CXXOPTS_INCLUDE_DIR cxxopts.hpp)
+    find_path(USDEX_DOCTEST_INCLUDE_DIR doctest/doctest.h)
 
-file(GLOB USDEX_CORE_TEST_SOURCES CONFIGURE_DEPENDS source/core/tests/doctest/*.cpp)
-add_executable(test_usdex_core ${USDEX_CORE_TEST_SOURCES})
-# bin/ -> sibling libs one dir up
-set_target_properties(test_usdex_core PROPERTIES INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
-target_link_libraries(test_usdex_core PRIVATE usdex_build_options usdex_usd_headers usdex_core)
-target_include_directories(test_usdex_core SYSTEM PRIVATE "${USDEX_CXXOPTS_INCLUDE_DIR}" "${USDEX_DOCTEST_INCLUDE_DIR}")
-usdex_target_link_usd(test_usdex_core arch gf sdf tf usd usdGeom usdPhysics usdUtils vt)
-# The tests reference symbols from USD's transitive DSOs directly (e.g. TBB via TfErrorMark). On Linux let ld
-# resolve them through USD's DT_NEEDED (covers tbb, tbb_debug, etc. without enumerating each flavor's libs).
-# MSVC has no equivalent, so link TBB explicitly there.
-if(WIN32)
-    if(PXR_VERSION GREATER_EQUAL 2508)
-        set(_tbb_names tbb12 tbb)
+    file(GLOB USDEX_CORE_TEST_SOURCES CONFIGURE_DEPENDS source/core/tests/doctest/*.cpp)
+    add_executable(test_usdex_core ${USDEX_CORE_TEST_SOURCES})
+    # bin/ -> sibling libs one dir up
+    set_target_properties(test_usdex_core PROPERTIES INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+    target_link_libraries(test_usdex_core PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers usdex_core)
+    target_include_directories(test_usdex_core SYSTEM PRIVATE "${USDEX_CXXOPTS_INCLUDE_DIR}" "${USDEX_DOCTEST_INCLUDE_DIR}")
+    usdex_target_link_usd(test_usdex_core arch gf sdf tf usd usdGeom usdPhysics usdUtils vt)
+    # The tests reference symbols from USD's transitive DSOs directly (e.g. TBB via TfErrorMark). On Linux let ld
+    # resolve them through USD's DT_NEEDED (covers tbb, tbb_debug, etc. without enumerating each flavor's libs).
+    # MSVC has no equivalent, so link TBB explicitly there.
+    if(WIN32)
+        if(PXR_VERSION GREATER_EQUAL 2508)
+            set(_tbb_names tbb12 tbb)
+        else()
+            set(_tbb_names tbb)
+        endif()
+        find_library(USDEX_TBB NAMES ${_tbb_names} PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
+        if(USDEX_TBB)
+            target_link_libraries(test_usdex_core PRIVATE "${USDEX_TBB}")
+        endif()
     else()
-        set(_tbb_names tbb)
+        target_link_options(test_usdex_core PRIVATE "-Wl,--copy-dt-needed-entries")
     endif()
-    find_library(USDEX_TBB NAMES ${_tbb_names} PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
-    if(USDEX_TBB)
-        target_link_libraries(test_usdex_core PRIVATE "${USDEX_TBB}")
-    endif()
-else()
-    target_link_options(test_usdex_core PRIVATE "-Wl,--copy-dt-needed-entries")
 endif()
 
 # ---------------------------------------------------------------------------- header staging (build tree)

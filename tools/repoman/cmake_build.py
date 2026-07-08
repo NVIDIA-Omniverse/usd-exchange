@@ -115,6 +115,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             f"-DUSDEX_BUILD_STRING={build_string}",
             "-DUSDEX_COMPANY_NAME=NVIDIA",  # this is an official NVIDIA build; external builds leave CompanyName empty
             f"-DUSDEX_PYBIND11_INCLUDE_DIR={target_deps}/pybind11/include",
+            "-DUSDEX_BUILD_TESTS=ON",
             f"-DUSDEX_CXXOPTS_INCLUDE_DIR={target_deps}/cxxopts/include",
             f"-DUSDEX_DOCTEST_INCLUDE_DIR={target_deps}/doctest/include",
             # emit into the build-tree layout the downstream tools expect
