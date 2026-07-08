@@ -2,7 +2,7 @@
 
   <!-- Cross platform -->
   <dependency name="cmake" linkPath="../_build/host-deps/cmake" tags="non-redist">
-    <package name="cmake" version="4.3.2-${platform_target}" />
+    <package name="cmake" version="4.3.2-${platform_host}" />
   </dependency>
 
 </project>
