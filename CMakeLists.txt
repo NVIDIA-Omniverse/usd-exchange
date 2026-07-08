@@ -69,8 +69,9 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN")
 include(UsdexCompilerConfig)
 
 # Compile/link hygiene, applied PRIVATELY to our own targets and never shipped to consumers: strict warnings, hidden visibility, debug symbols
-# (GCC/Clang: Debug only; MSVC: separate PDB), warnings-as-errors, security hardening (stack protection + RELRO/BIND_NOW + CFG),
-# release size/section GC, and release symbol stripping. The usage requirements consumers inherit are in usdex_build_options.
+# (GCC/Clang: Debug only; MSVC: separate PDB and parallel compilation), warnings-as-errors, security hardening
+# (stack protection + RELRO/BIND_NOW + CFG), release size/section GC, and release symbol stripping. The usage requirements
+# consumers inherit are in usdex_build_options.
 add_library(usdex_sdk_build_options INTERFACE)
 set(_gnu "$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>")
 set(_msvc "$<CXX_COMPILER_ID:MSVC>")
@@ -81,7 +82,7 @@ target_compile_options(usdex_sdk_build_options INTERFACE
     "$<${_gnu}:-fdiagnostics-color;-fvisibility=hidden;-Wall;-Wextra;-Wvla;-Wshadow;-Wundef;-Wconversion;-Werror;-fstack-protector-strong>"
     "$<$<AND:${_gnu},${_debug}>:-g>"
     "$<$<AND:${_gnu},${_x86_64}>:-fstack-clash-protection>"
-    "$<${_msvc}:/W4;/Zi;/WX;/guard:cf>"
+    "$<${_msvc}:/W4;/Zi;/WX;/MP;/guard:cf>"
 )
 target_link_options(usdex_sdk_build_options INTERFACE
     "$<${_gnu}:-Wl,-z,relro;-Wl,-z,now>"
