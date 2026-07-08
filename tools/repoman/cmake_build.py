@@ -118,12 +118,6 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             "-DUSDEX_BUILD_TESTS=ON",
             f"-DUSDEX_CXXOPTS_INCLUDE_DIR={target_deps}/cxxopts/include",
             f"-DUSDEX_DOCTEST_INCLUDE_DIR={target_deps}/doctest/include",
-            # emit into the build-tree layout the downstream tools expect
-            f"-DUSDEX_LIB_OUTPUT_DIR={output_dir}/lib",
-            f"-DUSDEX_BIN_OUTPUT_DIR={output_dir}/bin",
-            f"-DUSDEX_PYTHON_OUTPUT_DIR={output_dir}/python",
-            f"-DUSDEX_INCLUDE_OUTPUT_DIR={output_dir}/include",
-            f"-DUSDEX_DEV_OUTPUT_DIR={output_dir}/dev",
         ]
         if python_ver != "0":
             # locate the target python, not a system interpreter
@@ -141,9 +135,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         omni.repo.man.run_process(build, exit_on_error=True)
 
         if not options.skip_post:
-            # install just the find_package config into lib/cmake/usd-exchange (libs/headers are already in the tree)
+            # assemble the relocatable tree (libs, headers, python, dev/, find_package config) into output_dir
             omni.repo.man.run_process(
-                [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir, "--component", "usdex_cmake_config"],
+                [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir],
                 exit_on_error=True,
             )
 

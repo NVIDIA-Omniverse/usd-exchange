@@ -3,7 +3,8 @@
 #
 # The single CMake project for the OpenUSD Exchange SDK. The same file is used by external customers
 # (building the default flavor against their own USD via CMAKE_PREFIX_PATH/USDEX_USD_ROOT) and by the
-# internal flavor-matrix driver (which only varies the inputs: USD prefix, Python version, ABI, output dirs).
+# internal flavor-matrix driver (which only varies the inputs: USD prefix, Python version, ABI).
+# Both assemble the runtime tree with `cmake --install --prefix <dir>`.
 
 cmake_minimum_required(VERSION 3.20)
 project(usd-exchange CXX)
@@ -58,20 +59,7 @@ if(WIN32)
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in" "${CMAKE_CURRENT_SOURCE_DIR}/version.rc" @ONLY)
 endif()
 
-# Output layout. Defaults to a conventional build-dir layout for external consumers; the internal driver
-# overrides these to the `_build/$platform/$config/{lib,bin,python}` tree that the downstream tools expect.
-set(USDEX_LIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/lib" CACHE PATH "Shared library output directory")
-set(USDEX_BIN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Executable output directory")
-set(USDEX_PYTHON_OUTPUT_DIR "${CMAKE_BINARY_DIR}/python" CACHE PATH "Python package output directory")
-set(USDEX_INCLUDE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/include" CACHE PATH "Public header staging directory")
-set(USDEX_DEV_OUTPUT_DIR "${CMAKE_BINARY_DIR}/dev" CACHE PATH "dev/ tree staging directory (shipped in the package)")
-# the trailing $<0:> is an empty generator expression that stops multi-config generators (Visual Studio) from
-# appending a per-config subdir, keeping the flat lib/bin layout the downstream tools (install_usdex, packaging) expect
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}$<0:>")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${USDEX_BIN_OUTPUT_DIR}$<0:>")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${USDEX_LIB_OUTPUT_DIR}$<0:>")
-
-include(GNUInstallDirs)  # early: CMAKE_INSTALL_LIBDIR feeds the rpaths + install rules below
+include(GNUInstallDirs)  # early: CMAKE_INSTALL_LIBDIR/BINDIR feed the rpaths + install rules below
 
 # bake $ORIGIN-relative rpaths (not CMake's default absolute build rpath) so the package is relocatable; the
 # default suits libs beside their USD siblings, per-target overrides below handle bin/ and the python/ bindings
@@ -153,13 +141,7 @@ if(USDEX_WITH_PYTHON)
 
     # pure-python usdex.test module (no compiled component)
     file(GLOB USDEX_TEST_PY CONFIGURE_DEPENDS source/test/python/*.py)
-    add_custom_target(usdex_test_py ALL COMMENT "Stage usdex.test python module")
-    add_custom_command(TARGET usdex_test_py POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${USDEX_PYTHON_OUTPUT_DIR}/usdex/test" VERBATIM)
-    foreach(_py ${USDEX_TEST_PY})
-        add_custom_command(TARGET usdex_test_py POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_py}" "${USDEX_PYTHON_OUTPUT_DIR}/usdex/test/" VERBATIM)
-    endforeach()
+    install(FILES ${USDEX_TEST_PY} DESTINATION python/usdex/test)
 endif()
 
 # ---------------------------------------------------------------------------- test_usdex_core (doctest)
@@ -193,32 +175,17 @@ if(USDEX_BUILD_TESTS)
     endif()
 endif()
 
-# ---------------------------------------------------------------------------- header staging (build tree)
-# downstream tools read <build>/include
-add_custom_target(usdex_stage_headers ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/include" "${USDEX_INCLUDE_OUTPUT_DIR}"
-    COMMENT "Stage public headers to ${USDEX_INCLUDE_OUTPUT_DIR}"
-    VERBATIM
-)
-
-# ---------------------------------------------------------------------------- dev/ staging (shipped in package)
-# the repoman/vscode/packman tooling consumers use to run install_usdex (find_package config is staged to lib/cmake)
+# the packman config shipped in dev/ so consumers can fetch the runtime deps install_usdex needs
 file(WRITE "${CMAKE_BINARY_DIR}/config.packman.xml" [==[<config remotes="cloudfront">
     <remote2 name="cloudfront">
         <transport actions="download" protocol="https" packageLocation="d4i3qtqj3r0z5.cloudfront.net/${name}@${version}" />
     </remote2>
 </config>
 ]==])
-add_custom_target(usdex_stage_dev ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/tools/repoman" "${USDEX_DEV_OUTPUT_DIR}/tools/repoman"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/tools/vscode" "${USDEX_DEV_OUTPUT_DIR}/tools/vscode"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/tools/packman" "${USDEX_DEV_OUTPUT_DIR}/tools/packman"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_BINARY_DIR}/config.packman.xml" "${USDEX_DEV_OUTPUT_DIR}/tools/packman/config.packman.xml"
-    COMMENT "Stage dev/ tree to ${USDEX_DEV_OUTPUT_DIR}"
-    VERBATIM
-)
 
-# ---------------------------------------------------------------------------- install rules (external find_package)
+# ---------------------------------------------------------------------------- install rules (assemble the runtime tree)
+# `cmake --install --prefix <dir>` produces the relocatable tree (libs, headers, python, dev/, find_package config).
+# The internal driver installs into `_build/$platform/$config`; external consumers pick their own prefix.
 include(CMakePackageConfigHelpers)
 
 install(TARGETS usdex_core usdex_rtx EXPORT usdex-targets
@@ -227,21 +194,20 @@ install(TARGETS usdex_core usdex_rtx EXPORT usdex-targets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(DIRECTORY include/usdex DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-# component so the driver can install just the config (libs/headers are already in the build tree)
 install(EXPORT usdex-targets NAMESPACE usdex:: FILE usd-exchange-targets.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange COMPONENT usdex_cmake_config)
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
 configure_package_config_file(cmake/usd-exchange-config.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/usd-exchange-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/usd-exchange-config.cmake"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange COMPONENT usdex_cmake_config)
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
 # shipped so consumers get usdex_target_link_usd() + usdex_usd_headers for their own OpenUSD usage
-install(FILES cmake/UsdexUSD.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange COMPONENT usdex_cmake_config)
+install(FILES cmake/UsdexUSD.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
 # shipped so consumers inherit the shared compile settings (usdex_build_options) rather than replicating them
-install(FILES cmake/UsdexCompilerConfig.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange COMPONENT usdex_cmake_config)
-if(USDEX_WITH_PYTHON)
-    # the staged python tree (compiled modules + pure-python) is produced during the build
-    install(DIRECTORY "${USDEX_PYTHON_OUTPUT_DIR}/usdex" DESTINATION python)
+install(FILES cmake/UsdexCompilerConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
+# dev/ tooling consumers use to run install_usdex (not part of the find_package contract)
+install(DIRECTORY tools/repoman tools/vscode tools/packman DESTINATION dev/tools)
+install(FILES "${CMAKE_BINARY_DIR}/config.packman.xml" DESTINATION dev/tools/packman)
+if(TARGET test_usdex_core)
+    install(TARGETS test_usdex_core RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
