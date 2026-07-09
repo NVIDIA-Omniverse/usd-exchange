@@ -194,7 +194,8 @@ cmake --build build --config Release
 `````
 ``````
 
-The compiled libraries, Python modules, and headers are emitted under `build/` (`lib/`, `bin/`, `python/`, `include/`). Run `cmake --install build --prefix <dir>` to assemble a relocatable tree (including the `find_package(usd-exchange)` config) that your own project can consume.
+The build tree contains generator-specific compiler outputs. Run `cmake --install build --prefix <dir>` to assemble
+the relocatable SDK tree that your own project should consume, including `lib/`, `bin/`, `python/`, and `include/`.
 
 When you consume that installed tree via `find_package(usd-exchange)`, linking the imported targets is all a typical project needs:
 
