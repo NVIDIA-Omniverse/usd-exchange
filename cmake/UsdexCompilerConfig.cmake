@@ -22,7 +22,7 @@ set(_debug "$<CONFIG:Debug>")
 
 # Preprocessor defines (parity with premake): NDEBUG/DEBUG, TBB, file offsets, libstdc++ ABI, NOMINMAX.
 target_compile_definitions(usdex_build_options INTERFACE
-    TBB_SUPPRESS_DEPRECATED_MESSAGES
+    TBB_SUPPRESS_DEPRECATED_MESSAGES  # can be removed for USD 25.08+ as those packages use onetbb, but leaving in place to support public BYOUSD
     "$<${_debug}:DEBUG>"
     "$<${_debug}:TBB_USE_DEBUG=1>"
     "$<$<NOT:${_debug}>:NDEBUG>"
