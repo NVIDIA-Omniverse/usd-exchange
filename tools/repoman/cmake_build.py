@@ -87,6 +87,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         build_string = omni.repo.man.build_number.generate_build_number_from_file(config["repo"]["folders"]["version_file"])
         version_string = build_string.split("+")[0]
 
+        # repo_docs reads the version from a $root/VERSION stub (it does not honor repo.folders.version_file)
+        with open(f"{root}/VERSION", "w") as f:
+            f.write(version_string)
+
         usd_root = f"{root}/_build/target-deps/usd/{repo_config}"
         python_root = f"{root}/_build/target-deps/python"
         target_deps = f"{root}/_build/target-deps"
