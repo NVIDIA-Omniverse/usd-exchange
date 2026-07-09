@@ -66,8 +66,7 @@ namespace pybind11::detail
 //!
 //! Provides pybind11 interoperability for OpenUSD's bound python objects.
 //!
-//! Many projects use `pybind11` for python bindings, but OpenUSD 24.08 and older uses `boost::python`, while OpenUSD 24.11 and newer
-//! uses a fork of `boost::python` called `pxr_python`.
+//! Many projects use `pybind11` for python bindings, but OpenUSD uses a fork of `boost::python` called `pxr_python`.
 //!
 //! We often need to pass the python objects in and out of c++ between a mix of bound functions.
 //! These casters enable pybind11 to consume & to produce OpenUSD bound objects.

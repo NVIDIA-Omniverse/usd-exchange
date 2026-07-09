@@ -10,8 +10,6 @@
             ├── lib
             │   ├── libusdex_core.so
             │   ├── libusdex_rtx.so
-            │   ├── libboost_python310.so -> libboost_python310.so.1.78.0   <-- USD 24.08 & older
-            │   ├── libboost_python310.so.1.78.0                            <-- USD 24.08 & older
             │   ├── libpython3.10.so -> libpython3.10.so.1.0
             │   ├── libpython3.10.so.1.0
             │   ├── libpython3.so
@@ -24,11 +22,11 @@
             │   ├── libusd_ndr.so
             │   ├── libusd_pcp.so
             │   ├── libusd_plug.so
-            │   ├── libusd_python.so                                        <-- USD 24.11 & newer
+            │   ├── libusd_python.so
             │   ├── libusd_sdf.so
             │   ├── libusd_sdr.so
             │   ├── libusd_tf.so
-            │   ├── libusd_ts.so                                            <-- USD 24.11 & newer
+            │   ├── libusd_ts.so
             │   ├── libusd_trace.so
             │   ├── libusd_usdGeom.so
             │   ├── libusd_usdLux.so
@@ -37,7 +35,7 @@
             │   ├── libusd_usd.so
             │   ├── libusd_usdUtils.so
             │   ├── libusd_usdUI.so
-            │   ├── libusd_usdSemantics.so                                  <-- optional, USD 24.11 & newer
+            │   ├── libusd_usdSemantics.so                                  <-- optional
             │   ├── libusd_usdVol.so                                        <-- optional
             │   ├── libusd_vt.so
             │   ├── libusd_work.so
@@ -89,10 +87,9 @@
             :caption:
                 In all flavors the python runtime is optional, as is the `usdex_rtx` library and module.
 
-            ├── lib
+            ├── bin
             │   ├── usdex_core.dll
             │   ├── usdex_rtx.dll
-            |   ├── boost_python310-vc142-mt-x64-1_78.dll   <-- USD 24.08 & older
             │   ├── python3.dll
             │   ├── python310.dll
             │   ├── tbb.dll                                 <-- USD 25.05 & older
@@ -105,11 +102,11 @@
             │   ├── usd_ndr.dll
             │   ├── usd_pcp.dll
             │   ├── usd_plug.dll
-            │   ├── usd_python.dll                          <-- USD 24.11 & newer
+            │   ├── usd_python.dll
             │   ├── usd_sdf.dll
             │   ├── usd_sdr.dll
             │   ├── usd_tf.dll
-            │   ├── usd_ts.dll                              <-- USD 24.11 & newer
+            │   ├── usd_ts.dll
             │   ├── usd_trace.dll
             │   ├── usd_usd.dll
             │   ├── usd_usdGeom.dll
@@ -118,11 +115,11 @@
             │   ├── usd_usdShade.dll
             │   ├── usd_usdUtils.dll
             │   ├── usd_usdUI.dll
-            │   ├── usd_usdSemantics.dll                    <-- optional, USD 24.11 & newer
+            │   ├── usd_usdSemantics.dll                    <-- optional
             │   ├── usd_usdVol.dll                          <-- optional
             │   ├── usd_vt.dll
-            │   └── usd_work.dll
-            |   └── usd
+            │   ├── usd_work.dll
+            │   └── usd
             |       ├── plugInfo.json
             |       └── ...
             |           └── resources
@@ -151,7 +148,7 @@
             :caption:
                 OpenUSD is a minimal build with compact dependencies. The `usdex_rtx` library is optional.
 
-            └── lib
+            └── bin
                 ├── usdex_core.dll
                 ├── usdex_rtx.dll
                 ├── tbb.dll

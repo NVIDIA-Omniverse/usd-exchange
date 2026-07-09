@@ -275,19 +275,21 @@ def __install(
             exit_on_error=True,
         )
 
-    libInstallDir = "${install_dir}/lib"
+    runtimeInstallDir = "${install_dir}/bin" if os.name == "nt" else "${install_dir}/lib"
+    libInstallDir = runtimeInstallDir
     usdNativePluginSourceDir = f"{usd_path}/lib/usd"
     usdPluginSourceDir = f"{usd_path}/plugin/usd"
-    usdPluginInstallDir = "${install_dir}/lib/usd"
+    usdPluginInstallDir = f"{runtimeInstallDir}/usd"
+    usdexLibSourceDir = f"{usd_exchange_path}/bin" if os.name == "nt" else f"{usd_exchange_path}/lib"
 
     prebuild_dict = {
         "copy": [
-            [usd_exchange_path + "/lib/${lib_prefix}usdex_core${lib_ext}", libInstallDir],
+            [usdexLibSourceDir + "/${lib_prefix}usdex_core${lib_ext}", libInstallDir],
         ],
     }
 
     if installRtxModules:
-        prebuild_dict["copy"].append([usd_exchange_path + "/lib/${lib_prefix}usdex_rtx${lib_ext}", libInstallDir])
+        prebuild_dict["copy"].append([usdexLibSourceDir + "/${lib_prefix}usdex_rtx${lib_ext}", libInstallDir])
 
     # usd
     usdLibMidfix, monolithic = __computeUsdMidfix(usd_path)
@@ -436,9 +438,7 @@ def __install(
         if installRtxModules:
             __installPythonModule(prebuild_dict["copy"], f"{usd_exchange_path}/python", "usdex/rtx", "_usdex_rtx")
         # usd dependencies
-        if __SemVersion(usd_ver) < __SemVersion("24.11"):
-            prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}*boost_python*${lib_ext}*", libInstallDir])
-        elif monolithic:
+        if monolithic:
             pass  # monolithic builds with python support already have the python bindings embedded
         else:
             prebuild_dict["copy"].append([usd_path + "/lib/${lib_prefix}" + usdLibMidfix + "python${lib_ext}", libInstallDir])
@@ -558,7 +558,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         "--usd-version",
         dest="usd_ver",
         default=usd_ver,
-        choices=["25.11", "25.08", "25.05", "25.02", "24.11", "24.08"],  # public versions only
+        choices=["25.11", "25.08", "25.05", "25.02", "24.11"],  # public versions only
         help=f"The OpenUSD version to install. Defaults to `{usd_ver}`",
     )
     parser.add_argument(

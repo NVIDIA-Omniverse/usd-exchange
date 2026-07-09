@@ -93,19 +93,6 @@ license_text = ""
 # Only set this flag if you use a non-standard `version_file` and you use `repo_docs`.
 generate_version_stub_file = false
 
-[repo_feature_header]
-enabled = false
-command = "feature_header"
-entry_point = "feature_header:setup_repo_tool"
-
-# Path to generate the header file
-target_file = ""
-
-# Sets the python version.
-#
-# Any value other than "0" indicates that the build is "with python".
-python_ver = "0"
-
 [repo_verify_deps]
 enabled = false
 command = "verify_deps"
@@ -121,3 +108,21 @@ install_dir = "$root/_build/packages"
 auditwheel_version = "6.3.0"
 patchelf_version = "0.17.2.4"
 wheel_version = "0.45.1"
+
+[repo_cmake]
+enabled = false
+command = "build"
+entry_point = "cmake_build:setup_repo_tool"
+# names excluded from the generated dev/deps/all-deps.packman.xml lock (host-only toolchain, never shipped)
+strip_deps = ["msvc", "winsdk"]
+
+[repo_fetch_deps]
+enabled = false
+command = "fetch_deps"
+entry_point = "fetch_deps:setup_repo_tool"
+fetch.packman_target_files_to_pull = [
+    "$root/deps/target-deps.packman.xml"
+]
+fetch.packman_host_files_to_pull = [
+    "$root/deps/host-deps.packman.xml"
+]

@@ -24,105 +24,14 @@ target_version_header_file = "include/usdex/core/Version.h"
 target_resource_file = "version.rc"
 generate_version_stub_file = true
 
-[repo_feature_header]
-enabled = true
-target_file = "include/usdex/core/Feature.h"
-
 [repo_build_number]
 enabled = true
 
-[repo_build]
-fetch.packman_target_files_to_pull = [
-    "$root/deps/target-deps.packman.xml"
-]
+[repo_fetch_deps]
+enabled = true
 
-# enable only for internal use
-# if enabled, requires a `docker.image_url` matching the `repo.tokens.abi` glibc version
-docker.enabled = false
-premake."token:abi==2.35".linux_x86_64_cxx_abi = true
-
-clean.folders."++" = ["$root/_conan", "$root/_deps"]
-
-# enable only for internal use
-licensing.enabled = false
-licensing.fail_on_missing = true
-
-# pip is not used currently
-fetch.pip.files_to_pull = []
-
-fetch.before_pull_commands = [
-    [
-        "$root/repo${shell_ext}",
-        "usd",
-        "--generate-usd-deps",
-        "--usd-flavor", "${usd_flavor}",
-        "--usd-ver", "${usd_ver}",
-        "--python-ver", "${python_ver}",
-    ],
-]
-
-# pre_build.commands happens after project generation, this is too late
-fetch.after_pull_commands = [
-    ["$root/repo${shell_ext}", "version_header"],
-    ["$root/repo${shell_ext}", "feature_header", "--python", "${python_ver}"],
-]
-
-post_build.commands = [
-    [
-        "$root/repo${shell_ext}",
-        "--set-token", "usd_flavor:${usd_flavor}",
-        "--set-token", "usd_ver:${usd_ver}",
-        "--set-token", "python_ver:${python_ver}",
-        "--abi=${abi}",
-        "install_usdex",
-        "-c", "$config",
-        "--use-existing-build",
-        "--install-test",
-        "--staging-dir", "_build",
-        "--install-dir", "_build/$platform/$config",
-    ],
-    ["$root/repo${shell_ext}", "--set-token", "python_ver:${python_ver}", "stubgen", "-c", "$config"],
-]
-
-msbuild.link_host_toolchain = true
-msbuild.sln_file = "${conf:repo.name}.sln"
-msbuild.vs_version = ""  # choose the latest on the system
-
-fetch.generated_packman_file = "$root/_build/$platform/$config/dev/deps/all-deps.packman.xml"
-fetch.strip_deps = ["msvc", "winsdk", "linbuild"]  # internal-only deps
-
-[[repo_build.argument]]
-name = "usd_flavor"
-help = "Set the USD flavor to build against"
-extra_premake_args = ["--usd-flavor=${usd_flavor}"]
-
-[[repo_build.argument]]
-name = "usd_version"
-help = "Set the USD version to build against"
-extra_premake_args = ["--usd-ver=${usd_ver}"]
-
-[[repo_build.argument]]
-name = "python_ver"
-help = "Set the python version to build against"
-extra_premake_args = ["--python-ver=${python_ver}"]
-
-# Setup IntelliSense in VSCode
-[repo_build.vscode]
-settings_template_file = "$root/tools/vscode/settings.template.json"
-write_python_paths_in_settings_json = true
-generate_python_env_file = false
-generate_python_setup_shell_script = false
-# note: remove this when repo_build supports the generic `repo.python_executable` settings
-python = "$root/_build/target-deps/python/python${exe_ext}"
-python_env.PATH."++" = [
-    "$root/_build/$platform/$config/lib",
-]
-python_env.PYTHONPATH."++" = [
-    "$root/_build/$platform/$config/python",
-    "$root/_repo/deps/repo_man",
-    "$root/_repo/deps/repo_test",
-    "$root/_repo/deps/repo_ci",
-]
+[repo_cmake]
+enabled = true
 
 [repo_stubgen]
 enabled = true
@@ -153,7 +62,8 @@ archive_post_unpack_cmds = [
     ],
 ]
 library_paths = [
-    "${test_root}/lib",
+    "${test_root}/lib",  # runtime .so (linux)
+    "${test_root}/bin",  # runtime .dll (windows)
     # required because the CI runners don't necessarily match the python flavor requested
     "$root/_build/target-deps/python/lib",  # for linux
     "$root/_build/target-deps/python",  # for windows
@@ -278,7 +188,8 @@ doxygen_predefined = [
 api_title = "OpenUSD Exchange C++ API"
 api_output_directory = "api"
 library_paths = [
-    "$root/_build/$platform/$config/lib",
+    "$root/_build/$platform/$config/lib",  # runtime .so (linux)
+    "$root/_build/$platform/$config/bin",  # runtime .dll (windows)
 ]
 python_paths = [
     "$root/_build/$platform/$config/python",
@@ -307,7 +218,9 @@ package_per_config = true
 remove_pycache = true
 files = [
     ["_build/$platform/$config/include", "include"],
+    ["_build/$platform/$config/bin/${lib_prefix}usdex_*", "bin"],  # windows
     ["_build/$platform/$config/lib/${lib_prefix}usdex_*", "lib"],
+    ["_build/$platform/$config/lib/cmake", "lib/cmake"],
     ["_build/$platform/$config/python/usdex", "python/usdex"],
     ["_build/$platform/$config/dev", "dev"],
     ["_build/PACKAGE-LICENSES/**", "PACKAGE-LICENSES"],
@@ -330,7 +243,7 @@ warn_if_not_exist = true
 enabled = true
 staging_dir = "$root/_build/pyproject"
 install_dir = "$root/_build/packages"
-"platform:windows-x86_64".exclude       = ["*.pdb", "*.exp", "*.lib"]
+"platform:windows-x86_64".exclude       = ["*.pdb", "*.exp", "*.lib", "*.exe"]
 "platform:linux-x86_64".exclude         = []
 "platform:linux-aarch64".exclude        = []
 

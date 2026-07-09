@@ -29,8 +29,8 @@ Running these commands from either the [Samples](./try-samples.md) root folder, 
 
         .. code-block:: bash
 
-          # only fetch first when running from usd-exchange-samples
-          ./repo.sh build --fetch-only
+          # only fetch dependencies and generate build files first when running from usd-exchange-samples
+          ./repo.sh build --generate
 
           ./repo.sh install_usdex --config release --install-python-libs
           ./repo.sh install_usdex --config debug --install-python-libs
@@ -42,8 +42,8 @@ Running these commands from either the [Samples](./try-samples.md) root folder, 
 
         .. code-block:: batch
 
-          # only fetch first when running from usd-exchange-samples
-          .\repo.bat build --fetch-only
+          # only fetch dependencies and generate build files first when running from usd-exchange-samples
+          .\repo.bat build --generate
 
           .\repo.bat install_usdex --config release --install-python-libs
           .\repo.bat install_usdex --config debug --install-python-libs
@@ -167,11 +167,6 @@ int main(int argc, char* argv[])
 
 The build configurations below apply to the default flavor of OpenUSD Exchange SDK. Certain settings will vary for different flavors (e.g. python version).
 
-```{eval-rst}
-.. note::
-  In OpenUSD 24.11 the use of Boost was eliminated from many modules. It is still required for OpenVDB and OpenImageIO, but none of the modules used by OpenUSD Exchange SDK require Boost as of this version. If you use the 24.11 flavors (or newer) all of the Boost configuration below can be removed.
-```
-
 ### Linux
 
 For Linux, all of the build configuration settings are described in the Makefile included here:
@@ -229,9 +224,11 @@ USD_LIBS = \
  -lusd_kind \
  -lusd_pcp \
  -lusd_plug \
+ -lusd_python \
  -lusd_sdf \
  -lusd_tf \
  -lusd_trace \
+ -lusd_ts \
  -lusd_usd \
  -lusd_usdGeom \
  -lusd_usdLux \
@@ -241,20 +238,9 @@ USD_LIBS = \
  -lusd_vt \
  -lusd_work
 
-# For USD 24.11 and newer
-USD_LIBS += \
- -lusd_python \
- -lusd_ts
-
 ifeq ($(CONFIG),debug)
 	USD_LIBS += -ltbb_debug
 endif
-
-# For USD 24.08 and older, uncomment and remove the block above.
-# USDEX_INCLUDE_DIRS += \
-#  -isystem $(DEPSDIR)/usd/$(CONFIG)/include/boost-1_78
-# USD_LIBS += \
-#  -lboost_python310
 
 USDEX_LIBS = \
  -lusdex_core
@@ -360,8 +346,10 @@ usd_gf.lib
 usd_kind.lib
 usd_pcp.lib
 usd_plug.lib
+usd_python.lib
 usd_sdf.lib
 usd_tf.lib
+usd_ts.lib
 usd_usd.lib
 usd_usdGeom.lib
 usd_usdLux.lib
@@ -370,22 +358,6 @@ usd_usdShade.lib
 usd_usdUtils.lib
 usd_vt.lib
 usd_work.lib
-```
-
-For USD 24.11 and newer:
-```text
-usd_python.lib
-usd_ts.lib
-```
-
-For the release configuration of USD 24.08 and older:
-```text
-boost_python310-vc142-mt-x64-1_78.lib
-```
-
-For the debug configuration of USD 24.08 and older:
-```text
-boost_python310-vc142-mt-gd-x64-1_78.lib
 ```
 
 Each OpenUSD module must be linked by the application separately.  The list above is a subset of all of them, but actually more than what the example requires.  For instance, `usd_usdLux.lib` includes the [UsdLux : USD Lighting Schema](https://openusd.org/release/api/usd_lux_page_front.html), but the example doesn't actually use any of the UsdLux interface.  The developer can trim this library list according to the needs of their application.
@@ -397,12 +369,12 @@ If you want to launch or debug the sample from within Visual Studio, the `PATH` 
 
 `Configuration Properties > Debugging` (All configurations)
 ```
-PATH=usdex/windows-x86_64/$(CONFIGURATION)/lib
+PATH=usdex/windows-x86_64/$(CONFIGURATION)/bin
 ```
 
 ## Runtime Environment
 
-The application must be able to find the shared libraries located in `usdex/$platform/$config/lib`.  These variables should be setup from a launching script, Visual Studio debugger settings, or from within the application itself before using the OpenUSD Exchange Core module.
+The application must be able to find the shared libraries, located in `usdex/$platform/$config/lib` on Linux and `usdex/$platform/$config/bin` on Windows.  These variables should be setup from a launching script, Visual Studio debugger settings, or from within the application itself before using the OpenUSD Exchange Core module.
 
 ```{eval-rst}
 .. tab-set::
@@ -435,7 +407,7 @@ The application must be able to find the shared libraries located in `usdex/$pla
             setlocal
 
             set RUNTIME_PATH=usdex/windows-x86_64/release
-            set PATH=%RUNTIME_PATH%/lib;%PATH%
+            set PATH=%RUNTIME_PATH%/bin;%PATH%
             x64\release\UsdTraverse.exe %*
 ```
 

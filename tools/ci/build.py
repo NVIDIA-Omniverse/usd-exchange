@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -27,7 +27,7 @@ def main(arguments: argparse.Namespace):
         if omni.repo.man.is_windows():
             shutil.copyfile("usd-exchange-ci/configs/host-deps.packman.xml", "deps/host-deps.packman.xml")
 
-    # clean build of the specified usd & python flavors, in docker when on linux, with licensing force enabled
+    # build the specified usd & python flavor with CMake
     build = [
         repo,
         "--set-token",
@@ -41,17 +41,7 @@ def main(arguments: argparse.Namespace):
         "--rebuild",
         "--config",
         arguments.build_config,
-        "--verbose",
-        "--/repo_build/licensing/enabled=true",
     ]
-    if omni.repo.man.is_linux():
-        build.append("--/repo_build/docker/enabled=true")
-        image = os.environ.get("REPO_BUILD_IMAGE")
-        if abi and image:
-            build.append(f"--/repo_build/docker/image_url={image}")
-    elif omni.repo.man.is_windows():
-        build.append("--/repo_build/msbuild/link_host_toolchain=")
-
     build = [omni.repo.man.resolve_tokens(x) for x in build]
     omni.repo.ci.launch(build)
 
@@ -99,10 +89,12 @@ def main(arguments: argparse.Namespace):
         ]
     )
 
-    # clean the build so it can't influence the tests,
-    # but retain the packages and the sidecar binaries
+    # clean the build tree so it can't influence the tests (which run --from-package),
+    # but retain the packages and the sidecar test binaries
+    cfg_dir = omni.repo.man.resolve_tokens(f"_build/$platform/{arguments.build_config}")
     shutil.move("_build/packages", "packages")
-    shutil.move(omni.repo.man.resolve_tokens(f"_build/$platform/{arguments.build_config}/bin"), "bin")
-    omni.repo.ci.launch([repo, "build", "--clean", "--config", arguments.build_config])
-    shutil.move("bin", omni.repo.man.resolve_tokens(f"_build/$platform/{arguments.build_config}/bin"))
+    shutil.move(f"{cfg_dir}/bin", "bin")
+    omni.repo.ci.launch([repo, "build", "--config", arguments.build_config, "--clean"])
+    os.makedirs(cfg_dir, exist_ok=True)
+    shutil.move("bin", f"{cfg_dir}/bin")
     shutil.move("packages", "_build/packages")

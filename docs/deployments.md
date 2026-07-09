@@ -163,7 +163,7 @@ If it does, you will likely want to match the exact OpenUSD binaries. You _might
 
 However, the more likely outcome is that you should re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your application's USD distribution.
 
-Once you have a USD distro assembled, you can "source link" it into a local clone of OpenUSD Exchange SDK:
+Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works — point it at your USD distro via `USDEX_USD_ROOT` and, for the default build that includes the Python bindings, at your pybind11 headers via `USDEX_PYBIND11_INCLUDE_DIR` (or add both to `CMAKE_PREFIX_PATH`) and build:
 
 ``````{card}
 `````{tab-set}
@@ -173,8 +173,10 @@ Once you have a USD distro assembled, you can "source link" it into a local clon
 ```bash
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
-./repo.sh source link usd_release ../path/to/your/usd
-./repo.sh build
+cmake -S . -B build \
+  -DUSDEX_USD_ROOT=/path/to/your/usd \
+  -DUSDEX_PYBIND11_INCLUDE_DIR=/path/to/pybind11/include
+cmake --build build --config Release
 ```
 ````
 ````{tab-item} Windows
@@ -183,21 +185,38 @@ cd usd-exchange
 ```bat
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
-.\repo.bat source link usd_release ..\path\to\your\usd
-.\repo.bat build
+cmake -S . -B build ^
+  -DUSDEX_USD_ROOT=C:\path\to\your\usd ^
+  -DUSDEX_PYBIND11_INCLUDE_DIR=C:\path\to\pybind11\include
+cmake --build build --config Release
 ```
 ````
 `````
 ``````
 
-If you encounter missing file errors, it likely indicates a difference between your USD distro file layout and the ones NVIDIA produces internally. Inspect the two folder structures and try to align them.
+The build tree contains generator-specific compiler outputs. Run `cmake --install build --prefix <dir>` to assemble
+the relocatable SDK tree that your own project should consume, including `lib/`, `bin/`, `python/`, and `include/`.
+
+When you consume that installed tree via `find_package(usd-exchange)`, linking the imported targets is all a typical project needs:
+
+```cmake
+find_package(usd-exchange REQUIRED)
+target_link_libraries(my_app PRIVATE usdex::usdex_core usdex::usdex_rtx)
+```
+
+`usdex::usdex_core` / `usdex::usdex_rtx` propagate the OpenUSD include paths and the C++ compatibility settings (language standard, ABI, and platform defines) required to compile against the SDK's public headers. Only call `usdex_target_link_usd(my_app <modules...>)` for the OpenUSD modules your own code calls directly (e.g. `usd usdGeom sdf`). The SDK's build-time hygiene (strict warnings, hidden visibility) is *not* imposed on your project.
 
 ```{eval-rst}
 .. note::
-  The ``repo source link`` command will generate a ``deps/usd-deps.packman.xml.user`` file with the relative filesystem path to your USD distro. The ``repo build`` command will respect this. If you want to alter the path later, you can hand edit this file. If you want to revert to using the pre-built USD distros, just remove this file entirely or call ``repo source unlink usd_release``.
+  Besides your USD distro, the default build enables the Python bindings and so needs Python (with development headers/libs) and pybind11. Provide pybind11 the same way you point the build at OpenUSD: pass ``-DUSDEX_PYBIND11_INCLUDE_DIR`` or add it to ``CMAKE_PREFIX_PATH``. Set ``-DUSDEX_PYTHON_VERSION`` to match your USD distro's Python (e.g. ``3.11``), or ``-DUSDEX_PYTHON_VERSION=0`` to build without Python bindings. The C++ test suite is opt-in via ``-DUSDEX_BUILD_TESTS=ON``, as it additionally requires cxxopts and doctest, supplied via ``-DUSDEX_CXXOPTS_INCLUDE_DIR`` / ``-DUSDEX_DOCTEST_INCLUDE_DIR``.
 ```
 
-See [CONTRIBUTING.md](https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building) for more information on the OpenUSD Exchange SDK build process.
+If you encounter missing file errors, it likely indicates a difference between your USD distro file layout and the ones NVIDIA produces internally — ``USDEX_USD_ROOT`` must contain ``include/`` (with ``pxr/``) and ``lib/``. Inspect the two folder structures and try to align them.
+
+```{eval-rst}
+.. note::
+  NVIDIA developers building the internal flavor matrix (or source-linking a local USD via ``repo source link``) should use the ``repo build`` workflow described in `CONTRIBUTING.md <https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building>`_ instead.
+```
 
 ### Does it use TBB or Boost?
 

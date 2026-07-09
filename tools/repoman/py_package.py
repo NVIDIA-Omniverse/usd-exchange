@@ -107,7 +107,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         patchelfVersion = toolConfig["patchelf_version"]
         wheelVersion = toolConfig["wheel_version"]
         exclusions = toolConfig.get("exclude", [])
-        ignore_callable = shutil.ignore_patterns(*exclusions)
+        # "cmake": keep the lib/cmake find_package config out of the wheel (it's for native consumers)
+        ignore_callable = shutil.ignore_patterns(*exclusions, "cmake")
         repoVersionFile = config["repo"]["folders"]["version_file"]
         usdFlavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usdVer = omni.repo.man.resolve_tokens("${usd_ver}")
@@ -131,8 +132,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         shutil.copytree(f"{source}/python/usdex/test", f"{stagingDir}/usdex/test", ignore=ignore_callable)
         shutil.copytree(f"{source}/python/pxr", f"{stagingDir}/pxr", ignore=ignore_callable)
         if omni.repo.man.is_windows():
-            # DLLS and plugInfo
-            shutil.copytree(f"{source}/lib", f"{stagingDir}/usd_exchange.libs", ignore=ignore_callable)
+            # DLLs and plugInfo
+            shutil.copytree(f"{source}/bin", f"{stagingDir}/usd_exchange.libs", ignore=ignore_callable)
         else:
             # Only plugInfo (auditwheel will handle libs)
             shutil.copytree(f"{source}/lib/usd", f"{stagingDir}/usd_exchange.libs/usd", ignore=ignore_callable)
