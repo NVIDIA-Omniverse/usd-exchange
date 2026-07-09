@@ -7,12 +7,15 @@ include("${CMAKE_CURRENT_LIST_DIR}/usd-exchange-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexCompilerConfig.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexUSD.cmake")
 
-# Carry the USD includes + compile settings on the imported targets so consumers only link usdex::usdex_core /
-# usdex::usdex_rtx to compile against the pxr-including public headers. usdex_usd_headers exists only once
-# UsdexUSD.cmake has located USD (USDEX_USD_ROOT / CMAKE_PREFIX_PATH).
-if(TARGET usdex_usd_headers)
-    set_property(TARGET usdex::usdex_core APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
-    set_property(TARGET usdex::usdex_rtx APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+# consumers require OpenUSD (public headers include pxr); usdex_usd_headers exists only when UsdexUSD.cmake located it
+if(NOT TARGET usdex_usd_headers)
+    set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)
+    set(${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE "OpenUSD was not found. The usd-exchange public headers include pxr headers, so set USDEX_USD_ROOT=<usd-install> or add the OpenUSD install prefix to CMAKE_PREFIX_PATH.")
+    return()
 endif()
+
+# propagate the USD includes + compile settings so consumers only need to link usdex::usdex_core / usdex::usdex_rtx
+set_property(TARGET usdex::usdex_core APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+set_property(TARGET usdex::usdex_rtx APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
 
 check_required_components(usd-exchange)
