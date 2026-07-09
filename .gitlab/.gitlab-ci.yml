@@ -1,7 +1,7 @@
 include:
   - project: 'omniverse/usd-exchange/usd-exchange-ci'
     file: '/modules/complete-pipeline.yml'
-    ref: cmake-build
+    ref: 3x-2.0.0
 
 variables:
-  USDEX_CI_REF: cmake-build
+  USDEX_CI_REF: 3x-2.0.0
