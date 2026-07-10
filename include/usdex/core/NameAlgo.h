@@ -373,58 +373,6 @@ private:
     NameCacheImpl* m_impl;
 };
 
-//! A caching mechanism for valid and unique child prim names.
-//!
-//! For best performance, this object should be reused for multiple name requests.
-//!
-//! It is not valid to request child names from prims from multiple stages as only the prim path is used as the cache key.
-//!
-//! @warning This class does not automatically invalidate cached values based on changes to the stage from which values were cached.
-//! Additionally, a separate instance of this class should be used per-thread, calling methods from multiple threads is not safe.
-//! \deprecated Use the NameCache class instead
-class USDEX_API ValidChildNameCache
-{
-
-public:
-
-    USDEX_DEPRECATED("1.1", "Use the NameCache class instead")
-    ValidChildNameCache();
-    ~ValidChildNameCache();
-
-    //! Take a prim and a vector of the preferred names. Return a matching vector of valid and unique names as the child names of the given prim.
-    //!
-    //! @param prim The USD prim where the given prim names should live under.
-    //! @param names A vector of preferred prim names.
-    //! @returns A vector of valid and unique names.
-    pxr::TfTokenVector getValidChildNames(const pxr::UsdPrim& prim, const std::vector<std::string>& names);
-
-    //! Take a prim and a preferred name. Return a valid and unique name for use as the child name of the given prim.
-    //!
-    //! @param prim The prim that the child name should be valid for.
-    //! @param name Preferred prim name.
-    //! @returns Valid and unique name.
-    pxr::TfToken getValidChildName(const pxr::UsdPrim& prim, const std::string& name);
-
-    //! Update the name cache for a Prim to include all existing children.
-    //!
-    //! This does not clear the cache, so any names that have been previously returned will still be reserved.
-    //!
-    //! @param prim The prim that child names should be updated for.
-    //! @returns `void`
-    void update(const pxr::UsdPrim& prim);
-
-    //! Clear the name cache for a Prim.
-    //!
-    //! @param prim The prim that child names should be cleared for.
-    //! @returns `void`
-    void clear(const pxr::UsdPrim& prim);
-
-private:
-
-    class CacheImpl;
-    CacheImpl* m_impl;
-};
-
 //! Produce a valid property name using the Bootstring algorithm.
 //!
 //! @param name The input name

@@ -31,8 +31,6 @@ Use one cache per conversion (per thread). Parent it to whichever stable type fi
 | `update(parent)` / `updatePrimNames(parent)` / `updatePropertyNames(parent)` | Refresh after authoring outside the cache. |
 | `clear(parent)` / `clearPrimNames(parent)` / `clearPropertyNames(parent)` | Drop reservations for one parent. |
 
-`ValidChildNameCache` is deprecated since 1.1; do not use it.
-
 ## Picking the right helper
 
 | Situation | Pick |
