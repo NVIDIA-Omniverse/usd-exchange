@@ -1,14 +1,10 @@
 <project toolsVersion="5.0">
 
-  <!-- OpenUSD Dependencies are generated at build time using repo_usd -->
-  <import path="../deps/usd-deps.packman.xml">
-    <filter include="usd-${config}" />
-    <filter include="python" />
-  </import>
+  <import path="../deps/usd-deps.packman.xml" />
+
   <dependency name="usd-${config}" linkPath="../_build/target-deps/usd/${config}" tags="non-redist" />
   <dependency name="python" linkPath="../_build/target-deps/python" tags="non-redist" />
 
-  <!-- General OSS -->
   <dependency name="pybind11" linkPath="../_build/target-deps/pybind11">
     <package name="pybind11" version="2.11.1-0" />
   </dependency>

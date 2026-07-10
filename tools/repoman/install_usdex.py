@@ -223,6 +223,9 @@ def __install(
     runtimeDeps = [f"usd-{buildConfig}"]
     if python_ver != "0":
         runtimeDeps.append("python")
+    # 26.xx no longer bundles TBB/MaterialX inside the USD package; they arrive as separate packman deps
+    if __SemVersion(usd_ver) >= __SemVersion("26.00"):
+        runtimeDeps.extend([f"onetbb-{buildConfig}", f"materialx-{buildConfig}"])
 
     print("Download usd-exchange dependencies...")
     depsFile = f"{usd_exchange_path}/dev/deps/all-deps.packman.xml"
@@ -231,6 +234,10 @@ def __install(
         if dep in runtimeDeps:
             if dep == f"usd-{buildConfig}":
                 linkPath = f"{targetDepsDir}/usd/{buildConfig}"
+            elif dep == f"onetbb-{buildConfig}":
+                linkPath = f"{targetDepsDir}/tbb/{buildConfig}"
+            elif dep == f"materialx-{buildConfig}":
+                linkPath = f"{targetDepsDir}/materialx/{buildConfig}"
             elif "package_name" in info and buildConfig in info["package_name"]:  # dep uses omniflow v2 naming with separate release/debug packages
                 linkPath = f"{targetDepsDir}/{dep}/{buildConfig}"
             elif "local_path" in info and buildConfig in info["local_path"]:  # dep is source linked locally
@@ -250,6 +257,13 @@ def __install(
 
     python_path = f"{targetDepsDir}/python"
     usd_path = f"{targetDepsDir}/usd/{buildConfig}"
+    # 26.xx sources TBB/MaterialX from their own packages; earlier versions bundle them inside the USD package
+    if __SemVersion(usd_ver) >= __SemVersion("26.00"):
+        tbb_path = f"{targetDepsDir}/tbb/{buildConfig}"
+        materialx_path = f"{targetDepsDir}/materialx/{buildConfig}"
+    else:
+        tbb_path = usd_path
+        materialx_path = usd_path
 
     # Acquire the asset validator from PyPI. It is a pure-python wheel, so a single install into the staging dir
     # provides the module that is assembled into the install tree below (covers both in-repo and standalone installs).
@@ -397,35 +411,34 @@ def __install(
     else:
         tbb_windows_name = "tbb12"
 
+    # tbb_path is the standalone oneTBB package (26.xx) or the USD package (older); named differently in release/debug
     if buildConfig == "debug":
         prebuild_dict["copy"].extend(
             [
-                # tbb ships with usd, but is named differently in release/debug
-                [usd_path + "/lib/${lib_prefix}" + "tbb" + "_debug${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "_debug${lib_ext}*", libInstallDir],  # windows
+                [tbb_path + "/lib/${lib_prefix}" + "tbb" + "_debug${lib_ext}*", libInstallDir],
+                [tbb_path + "/bin/${lib_prefix}" + tbb_windows_name + "_debug${lib_ext}*", libInstallDir],  # windows
             ]
         )
     else:
         prebuild_dict["copy"].extend(
             [
-                # tbb ships with usd, but is named differently in release/debug
-                [usd_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "${lib_ext}*", libInstallDir],  # windows
+                [tbb_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
+                [tbb_path + "/bin/${lib_prefix}" + tbb_windows_name + "${lib_ext}*", libInstallDir],  # windows
             ]
         )
 
-    # usdMtlx requires MaterialX libraries
+    # usdMtlx requires MaterialX libraries; materialx_path is the standalone package (26.xx) or the USD package (older)
     if installTestModules and python_ver != "0":
         mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
         prebuild_dict["copy"].extend(
             [
-                [usd_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
-                [usd_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
-                [usd_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
-                [f"{usd_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
-                [f"{usd_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
-                [f"{usd_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
+                [materialx_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
+                [materialx_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
+                [materialx_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
+                [materialx_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
+                [f"{materialx_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
+                [f"{materialx_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
+                [f"{materialx_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
             ]
         )
 
@@ -554,13 +567,13 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         "--usd-version",
         dest="usd_ver",
         default=usd_ver,
-        choices=["25.11", "25.08", "25.05"],  # public versions only
+        choices=["26.08", "25.11", "25.08", "25.05"],  # public versions only
         help=f"The OpenUSD version to install. Defaults to `{usd_ver}`",
     )
     parser.add_argument(
         "--python-version",
         dest="python_ver",
-        choices=["3.12", "3.11", "3.10", "0"],
+        choices=["3.13", "3.12", "3.11", "3.10", "0"],
         help=f"The Python flavor to install. Use `0` to disable Python features. Defaults to `{python_ver}`",
     )
     parser.add_argument(

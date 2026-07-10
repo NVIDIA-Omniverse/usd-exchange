@@ -182,7 +182,7 @@ For Linux, all of the build configuration settings are described in the Makefile
 
 # The expectation is that OpenUSD, the OpenUSD Exchange SDK, and other dependencies are present in the `$project_root/usdex/target-deps` directory
 DEPSDIR = $(CURDIR)/usdex/target-deps
-PYTHONVER = python3.10
+PYTHONVER = python3.12
 PROGRAMNAME = UsdTraverse
 
 ifndef CONFIG

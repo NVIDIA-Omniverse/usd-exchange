@@ -1,0 +1,15 @@
+<!-- ${usd_variant}, ${materialx_variant} and ${python_pkg} are resolved per usd_flavor + python_ver by tools/repoman/usd_deps.py -->
+<project toolsVersion="5.6">
+  <dependency name="usd-${config}" linkPath="../_build/usd-deps/usd/${config}">
+    <package name="openusd" version="0.26.08-1-${platform_target_abi}-dynamic-${config}-${usd_variant}" />
+  </dependency>
+  <dependency name="onetbb-${config}" linkPath="../_build/target-deps/tbb/${config}" tags="non-redist">
+    <package name="onetbb" version="2021.13.0-2-${platform_target_abi}-${config}" />
+  </dependency>
+  <dependency name="materialx-${config}" linkPath="../_build/target-deps/materialx/${config}" tags="non-redist">
+    <package name="materialx" version="1.39.3-9-${platform_target_abi}-${config}-${materialx_variant}" />
+  </dependency>
+  <dependency name="python" linkPath="../_build/usd-deps/python">
+    <package name="python" version="${python_pkg}-${platform_target_abi}" />
+  </dependency>
+</project>

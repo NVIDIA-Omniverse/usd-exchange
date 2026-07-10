@@ -7,12 +7,12 @@ extra_tool_paths."++" = [
 ]
 
 # keep in-sync with the tokens below
-default_flavor = "usd_25.05_py_3.10"
+default_flavor = "usd_26.08_py_3.12"
 
 [repo.tokens]
 usd_flavor = "usd"
-usd_ver = "25.05"
-python_ver = "3.10"
+usd_ver = "26.08"
+python_ver = "3.12"
 abi = "2.35"
 
 [repo_version_header]
@@ -28,6 +28,9 @@ generate_version_stub_file = true
 enabled = true
 
 [repo_fetch_deps]
+enabled = true
+
+[repo_usd_deps]
 enabled = true
 
 [repo_cmake]

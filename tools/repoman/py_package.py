@@ -167,11 +167,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             ("$root/LICENSE.md", f"{stagingDir}/usd-exchange-LICENSE.md"),
             ("$root/_build/target-deps/pybind11/PACKAGE-LICENSES/pybind11-LICENSE.txt", None),
             ("$root/tools/internal-licenses/pyboost11-LICENSE.txt", None),
-            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/*tbb-LICENSE*", None),
-            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/usd-license.txt", None),
-            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/zlib-LICENSE*", None),
-            # Workaround for hwloc as the license file only applies to oneTBB packages, some wheels build with older TBB
-            ("$root/tools/extra-licenses/hwloc-COPYING.txt*", None),
+            ("$root/_build/target-deps/tbb/release/PACKAGE-LICENSES/onetbb-LICENSE.txt", None),
+            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/openusd-LICENSE.txt", None),
+            ("$root/_build/target-deps/materialx/release/PACKAGE-LICENSES/materialx-LICENSE", f"{stagingDir}/materialx-LICENSE.txt"),
         ]
         for src, target in license_files:
             resolved_src = omni.repo.man.resolve_tokens(src)

@@ -101,7 +101,7 @@ OpenUSD Exchange SDK can be compiled for many flavors of OpenUSD and Python. It 
 To build OpenUSD Exchange SDK for different flavors of the upstream dependencies, we provide the following tokens that can be overridden on the commandline:
 - `$usd_flavor`: either 'usd' or 'usd-minimal'
 - `$usd_ver`: many options, see details below
-- `$python_ver`: 3.12, 3.11, 3.10, 0 (disable python)
+- `$python_ver`: 3.13, 3.12, 3.11, 3.10, 0 (disable python)
 
 For example, to build with USD 25.05 and Python 3.10, call `repo --set-token usd_flavor:usd --set-token usd_ver:25.05 --set-token python_ver:3.10 build`.
 

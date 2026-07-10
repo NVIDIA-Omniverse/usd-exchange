@@ -126,3 +126,8 @@ fetch.packman_target_files_to_pull = [
 fetch.packman_host_files_to_pull = [
     "$root/deps/host-deps.packman.xml"
 ]
+
+[repo_usd_deps]
+enabled = false
+command = "usd_deps"
+entry_point = "usd_deps:setup_repo_tool"

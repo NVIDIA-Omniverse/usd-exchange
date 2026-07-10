@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -27,8 +27,7 @@ def main(arguments: argparse.Namespace):
     omni.repo.ci.launch(
         [
             repo,
-            "usd",
-            "--generate-usd-deps",
+            "usd_deps",
             "--usd-flavor",
             usd_flavor,
             "--usd-ver",

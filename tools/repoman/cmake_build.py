@@ -15,6 +15,7 @@ from typing import Callable, Dict
 
 import fetch_deps
 import omni.repo.man
+import usd_deps
 
 # release/debug token -> CMake configuration name
 _CMAKE_CONFIG = {"release": "Release", "debug": "Debug"}
@@ -76,11 +77,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         if options.clean:
             return
 
-        # regenerate the flavor's usd-deps manifest (the one remaining repo_usd call), then fetch every dep file
-        omni.repo.man.run_process(
-            [repo, "usd", "--generate-usd-deps", "--usd-flavor", usd_flavor, "--usd-ver", usd_ver, "--python-ver", python_ver],
-            exit_on_error=True,
-        )
+        # regenerate the flavor's usd-deps manifest and fetch the packages
+        usd_deps.generate_usd_deps(usd_flavor, usd_ver, python_ver, config["repo"]["default_flavor"])
         pulled = fetch_deps.fetch_dependencies(config, repo_config)
         strip_deps = config.get("repo_cmake", {}).get("strip_deps", [])
 
@@ -114,6 +112,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             f"-DCMAKE_BUILD_TYPE={cmake_config}",
             "-DCMAKE_INSTALL_LIBDIR=lib",  # our package layout uses lib/, not lib64
             f"-DUSDEX_USD_ROOT={usd_root}",
+            # USD 26+ ships TBB/MaterialX as sibling packages; older distros bundle them under USDEX_USD_ROOT, so these
+            # roots won't exist there and UsdexUSD.cmake skips them
+            f"-DUSDEX_TBB_ROOT={target_deps}/tbb/{repo_config}",
+            f"-DUSDEX_MATERIALX_ROOT={target_deps}/materialx/{repo_config}",
             f"-DUSDEX_PYTHON_VERSION={python_ver}",
             f"-DUSDEX_VERSION_STRING={version_string}",
             f"-DUSDEX_BUILD_STRING={build_string}",
