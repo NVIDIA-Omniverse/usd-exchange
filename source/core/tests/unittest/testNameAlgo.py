@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -423,49 +423,6 @@ class ValidPrimNamesTestCase(usdex.test.TestCase):
 
         # Assert the expected collection names
         self.assertEqual(set(getAllCollectionNames(prim)), set(["foo", "bar", "foo_1", "bar_1", "tn__foobar_f6", "tn__Bcker_ah0", "tn__k0zfn7c3"]))
-
-
-class ValidChildNameCacheTestCase(usdex.test.TestCase):
-    """Assert the expected behavior of the ValidNameCache class"""
-
-    def testGetValidChildNames(self):
-        # Define a prim for which we will get valid child names
-        stage = Usd.Stage.CreateInMemory()
-        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
-        prim = usdex.core.defineXform(stage, "/Root").GetPrim()
-        self.assertIsValidUsd(stage)
-
-        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".* Use the NameCache class instead")]):
-            validChildNameCache = usdex.core.ValidChildNameCache()
-
-        # When there are no child prims the names preferred names are returned
-        names = validChildNameCache.getValidChildNames(prim, ["foo", "bar"])
-        self.assertEqual(names, ["foo", "bar"])
-
-        # When called a second time the names will have a suffix to make them unique
-        # This is true even if the previous names were not used to define children
-        names = validChildNameCache.getValidChildNames(prim, ["foo", "bar"])
-        self.assertEqual(names, ["foo_1", "bar_1"])
-
-        # If a child is defined after a name cache has been constructed then they are not in the cache and may be returned
-        # It is the callers responsibility to decide when to update or clear the cache
-        usdex.core.defineXform(stage, "/Root/foo")
-        usdex.core.defineXform(stage, "/Root/foo_1")
-        usdex.core.defineXform(stage, "/Root/foo_2")
-        names = validChildNameCache.getValidChildNames(prim, ["foo", "bar"])
-        self.assertEqual(names, ["foo_2", "bar_2"])
-
-        # The cache can be updated to include existing child names without clearing the reserved names
-        usdex.core.defineXform(stage, "/Root/foo_3")
-        usdex.core.defineXform(stage, "/Root/foo_4")
-        validChildNameCache.update(prim)
-        names = validChildNameCache.getValidChildNames(prim, ["foo", "bar"])
-        self.assertEqual(names, ["foo_5", "bar_3"])
-
-        # The cache can be cleared. This clears all reserved names and the next request for names will initialize with the existing child names
-        validChildNameCache.clear(prim)
-        names = validChildNameCache.getValidChildNames(prim, ["foo", "bar"])
-        self.assertEqual(names, ["foo_5", "bar"])
 
 
 class NameCacheTestCase(usdex.test.TestCase):

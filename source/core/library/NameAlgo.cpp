@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -627,83 +627,6 @@ void usdex::core::NameCache::clear(const UsdPrim& parent)
 void usdex::core::NameCache::clear(const SdfPrimSpecHandle parent)
 {
     return m_impl->clear(parent);
-}
-
-class usdex::core::ValidChildNameCache::CacheImpl
-{
-public:
-
-    CacheImpl()
-    {
-    }
-
-    ~CacheImpl()
-    {
-    }
-
-    TfTokenVector getValidChildNames(const UsdPrim& prim, const std::vector<std::string>& names)
-    {
-        auto insertIt = m_cache.insert(std::make_pair(prim.GetPath(), ValidNameCache()));
-
-        // If the insert succeeded it is a new cache entry so we need to reserve the existing child names
-        if (insertIt.second)
-        {
-            reserveChildNames(insertIt.first->second, prim);
-        }
-
-        return getValidNames(names, usdex::core::getValidPrimName, insertIt.first->second);
-    }
-
-    TfToken getValidChildName(const UsdPrim& prim, const std::string& name)
-    {
-        const std::vector<std::string> names = { name };
-        const TfTokenVector validNames = getValidChildNames(prim, names);
-        return validNames.size() > 0 ? validNames[0] : _tokens->error;
-    }
-
-    void update(const UsdPrim& prim)
-    {
-        auto insertIt = m_cache.insert(std::make_pair(prim.GetPath(), ValidNameCache()));
-        reserveChildNames(insertIt.first->second, prim);
-    }
-
-    void clear(const UsdPrim& prim)
-    {
-        m_cache.erase(prim.GetPath());
-    }
-
-private:
-
-    std::map<SdfPath, ValidNameCache> m_cache;
-};
-
-usdex::core::ValidChildNameCache::ValidChildNameCache() : m_impl(new CacheImpl)
-{
-}
-
-usdex::core::ValidChildNameCache::~ValidChildNameCache()
-{
-    delete m_impl;
-}
-
-TfTokenVector usdex::core::ValidChildNameCache::getValidChildNames(const UsdPrim& prim, const std::vector<std::string>& names)
-{
-    return m_impl->getValidChildNames(prim, names);
-}
-
-TfToken usdex::core::ValidChildNameCache::getValidChildName(const UsdPrim& prim, const std::string& name)
-{
-    return m_impl->getValidChildName(prim, name);
-}
-
-void usdex::core::ValidChildNameCache::update(const UsdPrim& prim)
-{
-    m_impl->update(prim);
-}
-
-void usdex::core::ValidChildNameCache::clear(const UsdPrim& prim)
-{
-    m_impl->clear(prim);
 }
 
 TfToken usdex::core::getValidPropertyName(const std::string& name)
