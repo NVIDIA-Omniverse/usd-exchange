@@ -643,16 +643,37 @@ TEST_CASE("createConstantPrimvar TfToken")
     UsdPrim prim = scope.GetPrim();
 
     const TfToken value("item1");
-    TokenPrimvarData data = createConstantPrimvar(prim, "tokenAttr", value);
-    CHECK(data.isValid());
-    CHECK(data.interpolation() == UsdGeomTokens->constant);
-    CHECK(data.values() == VtTokenArray({ value }));
-
-    UsdGeomPrimvar primvar = UsdGeomPrimvarsAPI(prim).GetPrimvar(TfToken("tokenAttr"));
+    UsdGeomPrimvar primvar = createConstantPrimvar(prim, "tokenAttr", value);
     CHECK(primvar);
     CHECK(primvar.GetTypeName() == SdfValueTypeNames->TokenArray);
     CHECK(primvar.GetInterpolation() == UsdGeomTokens->constant);
     VtTokenArray authoredValues;
     primvar.Get(&authoredValues);
-    CHECK(authoredValues == data.values());
+    CHECK(authoredValues == VtTokenArray({ value }));
+}
+
+TEST_CASE("setConstantPrimvar TfToken")
+{
+    ScopedDiagnosticChecker check;
+
+    UsdStageRefPtr stage = UsdStage::CreateInMemory();
+    UsdGeomScope scope = usdex::core::defineScope(stage, SdfPath("/Scope"));
+    CHECK(scope);
+    UsdPrim prim = scope.GetPrim();
+
+    // Create a constant primvar with an initial value
+    const TfToken initial("item1");
+    UsdGeomPrimvar primvar = createConstantPrimvar(prim, "tokenAttr", initial);
+    CHECK(primvar);
+    CHECK(primvar.GetTypeName() == SdfValueTypeNames->TokenArray);
+
+    // Update the primvar with a new value
+    const TfToken updated("item2");
+    CHECK(setConstantPrimvar(prim, "tokenAttr", updated));
+
+    // Verify the updated value
+    VtTokenArray authoredValues;
+    primvar.Get(&authoredValues);
+    CHECK(authoredValues == VtTokenArray({ updated }));
+    CHECK(primvar.GetInterpolation() == UsdGeomTokens->constant);
 }

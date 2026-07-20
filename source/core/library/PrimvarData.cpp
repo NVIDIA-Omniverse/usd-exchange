@@ -16,22 +16,22 @@ template class PrimvarData<pxr::TfToken>;
 template class PrimvarData<pxr::GfVec2f>;
 template class PrimvarData<pxr::GfVec3f>;
 
-FloatPrimvarData createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, float value, const pxr::SdfValueTypeName& valueTypeName)
+pxr::UsdGeomPrimvar createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, float value, const pxr::SdfValueTypeName& valueTypeName)
 {
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
 }
 
-Int64PrimvarData createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int64_t value, const pxr::SdfValueTypeName& valueTypeName)
+pxr::UsdGeomPrimvar createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int64_t value, const pxr::SdfValueTypeName& valueTypeName)
 {
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
 }
 
-IntPrimvarData createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int value, const pxr::SdfValueTypeName& valueTypeName)
+pxr::UsdGeomPrimvar createConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int value, const pxr::SdfValueTypeName& valueTypeName)
 {
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
 }
 
-StringPrimvarData createConstantPrimvar(
+pxr::UsdGeomPrimvar createConstantPrimvar(
     pxr::UsdPrim prim,
     const std::string& name,
     const std::string& value,
@@ -41,7 +41,7 @@ StringPrimvarData createConstantPrimvar(
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
 }
 
-TokenPrimvarData createConstantPrimvar(
+pxr::UsdGeomPrimvar createConstantPrimvar(
     pxr::UsdPrim prim,
     const std::string& name,
     const pxr::TfToken& value,
@@ -51,7 +51,7 @@ TokenPrimvarData createConstantPrimvar(
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
 }
 
-Vec2fPrimvarData createConstantPrimvar(
+pxr::UsdGeomPrimvar createConstantPrimvar(
     pxr::UsdPrim prim,
     const std::string& name,
     const pxr::GfVec2f& value,
@@ -61,7 +61,7 @@ Vec2fPrimvarData createConstantPrimvar(
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
 }
 
-Vec3fPrimvarData createConstantPrimvar(
+pxr::UsdGeomPrimvar createConstantPrimvar(
     pxr::UsdPrim prim,
     const std::string& name,
     const pxr::GfVec3f& value,
@@ -69,6 +69,41 @@ Vec3fPrimvarData createConstantPrimvar(
 )
 {
     return detail::createConstantPrimvarImpl(prim, name, value, valueTypeName);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, float value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int64_t value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, int value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, const std::string& value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, const pxr::TfToken& value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, const pxr::GfVec2f& value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
+}
+
+bool setConstantPrimvar(pxr::UsdPrim prim, const std::string& name, const pxr::GfVec3f& value, pxr::UsdTimeCode time)
+{
+    return detail::setConstantPrimvarImpl(prim, name, value, time);
 }
 
 } // namespace usdex::core

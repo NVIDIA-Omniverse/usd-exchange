@@ -102,6 +102,7 @@ __all__ = [
     "StringPrimvarData",
     "TokenPrimvarData",
     "createConstantPrimvar",
+    "setConstantPrimvar",
     # lights
     "isLight",
     "getLightAttr",
