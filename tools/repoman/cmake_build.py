@@ -140,10 +140,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
 
         if not options.skip_post:
             # assemble the relocatable tree (libs, headers, python, dev/, find_package config) into output_dir
-            omni.repo.man.run_process(
-                [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir],
-                exit_on_error=True,
-            )
+            install = [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir]
+            omni.repo.man.logger.info(" ".join(install))
+            omni.repo.man.run_process(install, exit_on_error=True)
 
             # gather third-party licenses into _build/PACKAGE-LICENSES (shipped by the package)
             omni.repo.man.run_process(
