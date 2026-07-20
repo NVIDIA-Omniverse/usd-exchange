@@ -162,11 +162,36 @@ template <>
 inline bool isCompatiblePrimvarArrayType<pxr::GfVec3f>(const pxr::SdfValueTypeName& typeName)
 {
     return typeName == pxr::SdfValueTypeNames->Float3Array || typeName == pxr::SdfValueTypeNames->Color3fArray ||
-           typeName == pxr::SdfValueTypeNames->Normal3fArray || typeName == pxr::SdfValueTypeNames->Point3fArray;
+           typeName == pxr::SdfValueTypeNames->Normal3fArray || typeName == pxr::SdfValueTypeNames->Point3fArray ||
+           typeName == pxr::SdfValueTypeNames->Color3f || typeName == pxr::SdfValueTypeNames->Normal3f || typeName == pxr::SdfValueTypeNames->Point3f;
 }
 
 template <typename T>
-PrimvarData<T> createConstantPrimvarImpl(
+inline pxr::SdfValueTypeName resolvePrimvarArrayTypeName(const pxr::SdfValueTypeName& typeName)
+{
+    return typeName;
+}
+
+template <>
+inline pxr::SdfValueTypeName resolvePrimvarArrayTypeName<pxr::GfVec3f>(const pxr::SdfValueTypeName& typeName)
+{
+    if (typeName == pxr::SdfValueTypeNames->Color3f)
+    {
+        return pxr::SdfValueTypeNames->Color3fArray;
+    }
+    if (typeName == pxr::SdfValueTypeNames->Normal3f)
+    {
+        return pxr::SdfValueTypeNames->Normal3fArray;
+    }
+    if (typeName == pxr::SdfValueTypeNames->Point3f)
+    {
+        return pxr::SdfValueTypeNames->Point3fArray;
+    }
+    return typeName;
+}
+
+template <typename T>
+pxr::UsdGeomPrimvar createConstantPrimvarImpl(
     pxr::UsdPrim prim,
     const std::string& name,
     const T& value,
@@ -176,9 +201,46 @@ PrimvarData<T> createConstantPrimvarImpl(
     PrimvarData<T> data(pxr::UsdGeomTokens->constant, pxr::VtArray<T>(1, value));
     if (!data.createPrimvar(prim, name, valueTypeName))
     {
-        return PrimvarData<T>(pxr::UsdGeomTokens->constant, pxr::VtArray<T>(), -1);
+        return pxr::UsdGeomPrimvar();
     }
-    return data;
+    return pxr::UsdGeomPrimvarsAPI(prim).GetPrimvar(pxr::TfToken(name));
+}
+
+template <typename T>
+bool setConstantPrimvarImpl(pxr::UsdPrim prim, const std::string& name, const T& value, pxr::UsdTimeCode time)
+{
+    std::string reason;
+    if (!prim)
+    {
+        reason = "the prim is invalid";
+    }
+    else
+    {
+        pxr::UsdGeomPrimvar primvar = pxr::UsdGeomPrimvarsAPI(prim).GetPrimvar(pxr::TfToken(name));
+        if (!primvar)
+        {
+            reason = pxr::TfStringPrintf("on prim <%s> the primvar does not exist", prim.GetPath().GetText());
+        }
+        else
+        {
+            PrimvarData<T> data(pxr::UsdGeomTokens->constant, pxr::VtArray<T>(1, value));
+            if (data.setPrimvar(primvar, time))
+            {
+                return true;
+            }
+            reason = pxr::TfStringPrintf("on prim <%s> failed to set primvar data", prim.GetPath().GetText());
+        }
+    }
+
+    // this is a TF_WARN, but we have expanded the code manually to inject the class namespaces
+    pxr::Tf_PostWarningHelper(
+        pxr::TfCallContext(__ARCH_FILE__, __ARCH_FUNCTION__, __LINE__, __ARCH_PRETTY_FUNCTION__),
+        pxr::TF_DIAGNOSTIC_WARNING_TYPE,
+        "Cannot set primvar <%s>: %s",
+        name.c_str(),
+        reason.c_str()
+    );
+    return false;
 }
 
 } // namespace detail
@@ -206,7 +268,8 @@ bool PrimvarData<T>::createPrimvar(pxr::UsdPrim prim, const std::string& name, c
     else
     {
         const pxr::TfToken validName = getValidPropertyName(name);
-        const pxr::SdfValueTypeName typeName = valueTypeName ? valueTypeName : detail::getPrimvarArrayTypeName<T>();
+        const pxr::SdfValueTypeName typeName = valueTypeName ? detail::resolvePrimvarArrayTypeName<T>(valueTypeName) :
+                                                               detail::getPrimvarArrayTypeName<T>();
         pxr::UsdGeomPrimvar primvar = pxr::UsdGeomPrimvarsAPI(prim).CreatePrimvar(validName, typeName, m_interpolation);
         if (!primvar)
         {

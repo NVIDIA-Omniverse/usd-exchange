@@ -453,7 +453,15 @@ class PrimvarDataCreateTestCase(usdex.test.TestCase):
             (Vt.Vec3fArray([Gf.Vec3f(0.1, 0.2, 0.3)]), usdex.core.Vec3fPrimvarData, Sdf.ValueTypeNames.Color3fArray),
             (Vt.Vec3fArray([Gf.Vec3f(0, 1, 0)]), usdex.core.Vec3fPrimvarData, Sdf.ValueTypeNames.Normal3fArray),
             (Vt.Vec3fArray([Gf.Vec3f(1, 2, 3)]), usdex.core.Vec3fPrimvarData, Sdf.ValueTypeNames.Point3fArray),
+            (Vt.Vec3fArray([Gf.Vec3f(0.2, 0.3, 0.4)]), usdex.core.Vec3fPrimvarData, Sdf.ValueTypeNames.Color3f),
+            (Vt.Vec3fArray([Gf.Vec3f(0, 0, 1)]), usdex.core.Vec3fPrimvarData, Sdf.ValueTypeNames.Normal3f),
+            (Vt.Vec3fArray([Gf.Vec3f(4, 5, 6)]), usdex.core.Vec3fPrimvarData, Sdf.ValueTypeNames.Point3f),
         )
+        scalarToArrayTypeNames = {
+            Sdf.ValueTypeNames.Color3f: Sdf.ValueTypeNames.Color3fArray,
+            Sdf.ValueTypeNames.Normal3f: Sdf.ValueTypeNames.Normal3fArray,
+            Sdf.ValueTypeNames.Point3f: Sdf.ValueTypeNames.Point3fArray,
+        }
         for index, (expectedValues, cls, valueTypeName) in enumerate(cases):
             data = cls(UsdGeom.Tokens.constant, expectedValues)
             if valueTypeName is None:
@@ -467,7 +475,8 @@ class PrimvarDataCreateTestCase(usdex.test.TestCase):
 
             if valueTypeName is not None:
                 primvar = UsdGeom.PrimvarsAPI(self.prim).GetPrimvar(f"attr{index}")
-                self.assertEqual(primvar.GetTypeName(), valueTypeName)
+                expectedTypeName = scalarToArrayTypeNames.get(valueTypeName, valueTypeName)
+                self.assertEqual(primvar.GetTypeName(), expectedTypeName)
                 self.assertEqual(primvar.Get(), expectedValues)
 
         self.assertIsValidUsd(self.stage)
@@ -496,7 +505,27 @@ class PrimvarDataCreateTestCase(usdex.test.TestCase):
                 usdex.core.Vec3fPrimvarData,
                 Sdf.ValueTypeNames.Point3fArray,
             ),
+            (
+                Vt.Vec3fArray([Gf.Vec3f(0.2, 0.3, 0.4), Gf.Vec3f(0.5, 0.6, 0.7)]),
+                usdex.core.Vec3fPrimvarData,
+                Sdf.ValueTypeNames.Color3f,
+            ),
+            (
+                Vt.Vec3fArray([Gf.Vec3f(0, 0, 1), Gf.Vec3f(1, 0, 0)]),
+                usdex.core.Vec3fPrimvarData,
+                Sdf.ValueTypeNames.Normal3f,
+            ),
+            (
+                Vt.Vec3fArray([Gf.Vec3f(7, 8, 9), Gf.Vec3f(10, 11, 12)]),
+                usdex.core.Vec3fPrimvarData,
+                Sdf.ValueTypeNames.Point3f,
+            ),
         )
+        scalarToArrayTypeNames = {
+            Sdf.ValueTypeNames.Color3f: Sdf.ValueTypeNames.Color3fArray,
+            Sdf.ValueTypeNames.Normal3f: Sdf.ValueTypeNames.Normal3fArray,
+            Sdf.ValueTypeNames.Point3f: Sdf.ValueTypeNames.Point3fArray,
+        }
         for index, (values, cls, valueTypeName) in enumerate(cases):
             data = cls(UsdGeom.Tokens.vertex, values)
             if valueTypeName is None:
@@ -510,7 +539,8 @@ class PrimvarDataCreateTestCase(usdex.test.TestCase):
 
             if valueTypeName is not None:
                 primvar = UsdGeom.PrimvarsAPI(self.prim).GetPrimvar(f"attr{index}")
-                self.assertEqual(primvar.GetTypeName(), valueTypeName)
+                expectedTypeName = scalarToArrayTypeNames.get(valueTypeName, valueTypeName)
+                self.assertEqual(primvar.GetTypeName(), expectedTypeName)
                 self.assertEqual(primvar.Get(), values)
 
         self.assertIsValidUsd(self.stage)
@@ -766,44 +796,39 @@ class CreateConstantPrimvarTestCase(usdex.test.TestCase):
 
     def testScalarTypesWithValueTypeName(self):
         cases = (
-            (1.5, usdex.core.FloatPrimvarData, Vt.FloatArray, Sdf.ValueTypeNames.FloatArray),
-            (2, usdex.core.IntPrimvarData, Vt.IntArray, Sdf.ValueTypeNames.IntArray),
-            (2**40, usdex.core.Int64PrimvarData, Vt.Int64Array, Sdf.ValueTypeNames.Int64Array),
-            ("descriptor", usdex.core.StringPrimvarData, Vt.StringArray, Sdf.ValueTypeNames.StringArray),
-            (Gf.Vec2f(0.1, 0.2), usdex.core.Vec2fPrimvarData, Vt.Vec2fArray, Sdf.ValueTypeNames.TexCoord2fArray),
+            (1.5, Vt.FloatArray, Sdf.ValueTypeNames.FloatArray),
+            (2, Vt.IntArray, Sdf.ValueTypeNames.IntArray),
+            (2**40, Vt.Int64Array, Sdf.ValueTypeNames.Int64Array),
+            ("descriptor", Vt.StringArray, Sdf.ValueTypeNames.StringArray),
+            (Gf.Vec2f(0.1, 0.2), Vt.Vec2fArray, Sdf.ValueTypeNames.TexCoord2fArray),
         )
-        for index, (value, cls, arrayType, valueTypeName) in enumerate(cases):
-            data = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", value, valueTypeName)
-            self.assertTrue(data.isValid(), msg=f"{cls.__name__} at index {index}")
-            self.assertIsInstance(data, cls)
-            self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(data.values(), arrayType([value]))
-
-            primvar = UsdGeom.PrimvarsAPI(self.prim).GetPrimvar(f"attr{index}")
+        for index, (value, arrayType, valueTypeName) in enumerate(cases):
+            primvar = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", value, valueTypeName)
+            self.assertTrue(primvar, msg=f"{valueTypeName} at index {index}")
+            self.assertIsInstance(primvar, UsdGeom.Primvar)
             self.assertEqual(primvar.GetTypeName(), valueTypeName)
             self.assertEqual(primvar.GetInterpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(primvar.Get(), data.values())
+            self.assertEqual(primvar.Get(), arrayType([value]))
 
         self.assertIsValidUsd(self.stage)
 
     def testVec3fWithValueTypeName(self):
         value = Gf.Vec3f(0.5, 0.7, 0.9)
         cases = (
-            ("displayColor", Sdf.ValueTypeNames.Color3fArray),
-            ("normal", Sdf.ValueTypeNames.Normal3fArray),
-            ("point", Sdf.ValueTypeNames.Point3fArray),
+            ("displayColor", Sdf.ValueTypeNames.Color3fArray, Sdf.ValueTypeNames.Color3fArray),
+            ("normal", Sdf.ValueTypeNames.Normal3fArray, Sdf.ValueTypeNames.Normal3fArray),
+            ("point", Sdf.ValueTypeNames.Point3fArray, Sdf.ValueTypeNames.Point3fArray),
+            ("displayColorScalar", Sdf.ValueTypeNames.Color3f, Sdf.ValueTypeNames.Color3fArray),
+            ("normalScalar", Sdf.ValueTypeNames.Normal3f, Sdf.ValueTypeNames.Normal3fArray),
+            ("pointScalar", Sdf.ValueTypeNames.Point3f, Sdf.ValueTypeNames.Point3fArray),
         )
-        for name, valueTypeName in cases:
-            data = usdex.core.createConstantPrimvar(self.prim, name, value, valueTypeName)
-            self.assertTrue(data.isValid(), msg=f"{valueTypeName} at {name}")
-            self.assertIsInstance(data, usdex.core.Vec3fPrimvarData)
-            self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(data.values(), Vt.Vec3fArray([value]))
-
-            primvar = UsdGeom.PrimvarsAPI(self.prim).GetPrimvar(name)
-            self.assertEqual(primvar.GetTypeName(), valueTypeName)
+        for name, valueTypeName, expectedTypeName in cases:
+            primvar = usdex.core.createConstantPrimvar(self.prim, name, value, valueTypeName)
+            self.assertTrue(primvar, msg=f"{valueTypeName} at {name}")
+            self.assertIsInstance(primvar, UsdGeom.Primvar)
+            self.assertEqual(primvar.GetTypeName(), expectedTypeName)
             self.assertEqual(primvar.GetInterpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(primvar.Get(), data.values())
+            self.assertEqual(primvar.Get(), Vt.Vec3fArray([value]))
 
         self.assertIsValidUsd(self.stage)
 
@@ -811,58 +836,46 @@ class CreateConstantPrimvarTestCase(usdex.test.TestCase):
         # In Python, str values author StringArray primvars by default. To author a TokenArray primvar, pass
         # Sdf.ValueTypeNames.TokenArray as valueTypeName.
         value = "item1"
-        data = usdex.core.createConstantPrimvar(self.prim, "tokenAttr", value, Sdf.ValueTypeNames.TokenArray)
-        self.assertTrue(data.isValid())
-        self.assertIsInstance(data, usdex.core.TokenPrimvarData)
-        self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-        self.assertEqual(data.values(), Vt.TokenArray([value]))
-
-        primvar = UsdGeom.PrimvarsAPI(self.prim).GetPrimvar("tokenAttr")
+        primvar = usdex.core.createConstantPrimvar(self.prim, "tokenAttr", value, Sdf.ValueTypeNames.TokenArray)
+        self.assertTrue(primvar)
+        self.assertIsInstance(primvar, UsdGeom.Primvar)
         self.assertEqual(primvar.GetTypeName(), Sdf.ValueTypeNames.TokenArray)
         self.assertEqual(primvar.GetInterpolation(), UsdGeom.Tokens.constant)
-        self.assertEqual(primvar.Get(), data.values())
+        self.assertEqual(primvar.Get(), Vt.TokenArray([value]))
 
         self.assertIsValidUsd(self.stage)
 
     def testSupportedScalarTypes(self):
         cases = (
-            (1.5, usdex.core.FloatPrimvarData, Vt.FloatArray, Sdf.ValueTypeNames.FloatArray),
-            (2, usdex.core.IntPrimvarData, Vt.IntArray, Sdf.ValueTypeNames.IntArray),
-            (2**40, usdex.core.Int64PrimvarData, Vt.Int64Array, Sdf.ValueTypeNames.Int64Array),
-            ("descriptor", usdex.core.StringPrimvarData, Vt.StringArray, Sdf.ValueTypeNames.StringArray),
-            (Gf.Vec2f(0.1, 0.2), usdex.core.Vec2fPrimvarData, Vt.Vec2fArray, Sdf.ValueTypeNames.TexCoord2fArray),
-            (Gf.Vec3f(0.0, 1.0, 2.0), usdex.core.Vec3fPrimvarData, Vt.Vec3fArray, Sdf.ValueTypeNames.Float3Array),
+            (1.5, Vt.FloatArray, Sdf.ValueTypeNames.FloatArray),
+            (2, Vt.IntArray, Sdf.ValueTypeNames.IntArray),
+            (2**40, Vt.Int64Array, Sdf.ValueTypeNames.Int64Array),
+            ("descriptor", Vt.StringArray, Sdf.ValueTypeNames.StringArray),
+            (Gf.Vec2f(0.1, 0.2), Vt.Vec2fArray, Sdf.ValueTypeNames.TexCoord2fArray),
+            (Gf.Vec3f(0.0, 1.0, 2.0), Vt.Vec3fArray, Sdf.ValueTypeNames.Float3Array),
         )
-        for index, (value, cls, arrayType, valueTypeName) in enumerate(cases):
-            data = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", value)
-            self.assertTrue(data.isValid(), msg=f"{cls.__name__} at index {index}")
-            self.assertIsInstance(data, cls)
-            self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(data.values(), arrayType([value]))
-
-            primvar = UsdGeom.PrimvarsAPI(self.prim).GetPrimvar(f"attr{index}")
+        for index, (value, arrayType, valueTypeName) in enumerate(cases):
+            primvar = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", value)
+            self.assertTrue(primvar, msg=f"{valueTypeName} at index {index}")
+            self.assertIsInstance(primvar, UsdGeom.Primvar)
             self.assertEqual(primvar.GetTypeName(), valueTypeName)
             self.assertEqual(primvar.GetInterpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(primvar.Get(), data.values())
+            self.assertEqual(primvar.Get(), arrayType([value]))
 
         self.assertIsValidUsd(self.stage)
 
-    def testFailureReturnsInvalidData(self):
+    def testFailureReturnsInvalidPrimvar(self):
         invalidPrim = self.stage.GetPrimAtPath("/Missing")
         with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot create primvar.*prim is invalid.*")]):
-            data = usdex.core.createConstantPrimvar(invalidPrim, "foo", 2)
-        self.assertFalse(data.isValid())
-        self.assertIsInstance(data, usdex.core.IntPrimvarData)
-        self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-        self.assertEqual(data.values(), Vt.IntArray())
+            primvar = usdex.core.createConstantPrimvar(invalidPrim, "foo", 2)
+        self.assertFalse(primvar)
+        self.assertIsInstance(primvar, UsdGeom.Primvar)
 
     def testFailureInvalidName(self):
         with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot create primvar.*name is invalid.*")]):
-            data = usdex.core.createConstantPrimvar(self.prim, "", 1.5)
-        self.assertFalse(data.isValid())
-        self.assertIsInstance(data, usdex.core.FloatPrimvarData)
-        self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-        self.assertEqual(data.values(), Vt.FloatArray())
+            primvar = usdex.core.createConstantPrimvar(self.prim, "", 1.5)
+        self.assertFalse(primvar)
+        self.assertIsInstance(primvar, UsdGeom.Primvar)
 
         self.assertIsValidUsd(self.stage)
 
@@ -875,29 +888,130 @@ class CreateConstantPrimvarTestCase(usdex.test.TestCase):
                 (Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot create primvar.*CreatePrimvar failed.*"),
             ],
         ):
-            data = usdex.core.createConstantPrimvar(self.prim, "widths:indices", 1.0)
-        self.assertFalse(data.isValid())
-        self.assertIsInstance(data, usdex.core.FloatPrimvarData)
-        self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-        self.assertEqual(data.values(), Vt.FloatArray())
+            primvar = usdex.core.createConstantPrimvar(self.prim, "widths:indices", 1.0)
+        self.assertFalse(primvar)
+        self.assertIsInstance(primvar, UsdGeom.Primvar)
 
         self.assertIsValidUsd(self.stage)
 
     def testIncompatibleValueTypeName(self):
         cases = (
-            (1.5, usdex.core.FloatPrimvarData, Vt.FloatArray, Sdf.ValueTypeNames.IntArray),
-            (2, usdex.core.IntPrimvarData, Vt.IntArray, Sdf.ValueTypeNames.FloatArray),
-            (2**40, usdex.core.Int64PrimvarData, Vt.Int64Array, Sdf.ValueTypeNames.IntArray),
-            ("descriptor", usdex.core.StringPrimvarData, Vt.StringArray, Sdf.ValueTypeNames.FloatArray),
-            (Gf.Vec2f(0.1, 0.2), usdex.core.Vec2fPrimvarData, Vt.Vec2fArray, Sdf.ValueTypeNames.Float3Array),
-            (Gf.Vec3f(1.0, 0.0, 0.0), usdex.core.Vec3fPrimvarData, Vt.Vec3fArray, Sdf.ValueTypeNames.FloatArray),
+            (1.5, Sdf.ValueTypeNames.IntArray),
+            (2, Sdf.ValueTypeNames.FloatArray),
+            (2**40, Sdf.ValueTypeNames.IntArray),
+            ("descriptor", Sdf.ValueTypeNames.FloatArray),
+            (Gf.Vec2f(0.1, 0.2), Sdf.ValueTypeNames.Float3Array),
+            (Gf.Vec3f(1.0, 0.0, 0.0), Sdf.ValueTypeNames.FloatArray),
         )
-        for index, (value, cls, arrayType, valueTypeName) in enumerate(cases):
+        for index, (value, valueTypeName) in enumerate(cases):
             with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot create primvar.*value type is incompatible.*")]):
-                data = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", value, valueTypeName)
-            self.assertFalse(data.isValid(), msg=f"{cls.__name__} at index {index}")
-            self.assertIsInstance(data, cls)
-            self.assertEqual(data.interpolation(), UsdGeom.Tokens.constant)
-            self.assertEqual(data.values(), arrayType())
+                primvar = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", value, valueTypeName)
+            self.assertFalse(primvar, msg=f"index {index}")
+            self.assertIsInstance(primvar, UsdGeom.Primvar)
+
+        self.assertIsValidUsd(self.stage)
+
+
+class SetConstantPrimvarTestCase(usdex.test.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(self.stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        defaultPrim = self.stage.GetDefaultPrim()
+        self.scope = usdex.core.defineScope(defaultPrim, "foo")
+        self.prim = self.scope.GetPrim()
+
+    def testSupportedScalarTypes(self):
+        cases = (
+            (1.5, 9.9, Vt.FloatArray, Sdf.ValueTypeNames.FloatArray),
+            (2, 99, Vt.IntArray, Sdf.ValueTypeNames.IntArray),
+            (2**40, 2**41, Vt.Int64Array, Sdf.ValueTypeNames.Int64Array),
+            ("descriptor", "updated", Vt.StringArray, Sdf.ValueTypeNames.StringArray),
+            (Gf.Vec2f(0.1, 0.2), Gf.Vec2f(0.9, 0.8), Vt.Vec2fArray, Sdf.ValueTypeNames.TexCoord2fArray),
+            (Gf.Vec3f(0.0, 1.0, 2.0), Gf.Vec3f(3.0, 4.0, 5.0), Vt.Vec3fArray, Sdf.ValueTypeNames.Float3Array),
+        )
+        for index, (initialValue, updatedValue, arrayType, valueTypeName) in enumerate(cases):
+            # First create the primvar with createConstantPrimvar, then update its value with setConstantPrimvar
+            primvar = usdex.core.createConstantPrimvar(self.prim, f"attr{index}", initialValue)
+            self.assertTrue(primvar)
+            self.assertEqual(primvar.Get(), arrayType([initialValue]))
+
+            self.assertTrue(usdex.core.setConstantPrimvar(self.prim, f"attr{index}", updatedValue))
+
+            self.assertEqual(primvar.GetTypeName(), valueTypeName)
+            self.assertEqual(primvar.GetInterpolation(), UsdGeom.Tokens.constant)
+            self.assertEqual(primvar.Get(), arrayType([updatedValue]))
+
+        self.assertIsValidUsd(self.stage)
+
+    def testVec3fRoleArrayTypes(self):
+        initialValue = Gf.Vec3f(0.0, 1.0, 2.0)
+        updatedValue = Gf.Vec3f(3.0, 4.0, 5.0)
+        cases = (
+            ("colorAttr", Sdf.ValueTypeNames.Color3fArray),
+            ("normalAttr", Sdf.ValueTypeNames.Normal3fArray),
+            ("pointAttr", Sdf.ValueTypeNames.Point3fArray),
+        )
+        for name, valueTypeName in cases:
+            primvar = usdex.core.createConstantPrimvar(self.prim, name, initialValue, valueTypeName)
+            self.assertTrue(primvar)
+            self.assertEqual(primvar.GetTypeName(), valueTypeName)
+            self.assertEqual(primvar.Get(), Vt.Vec3fArray([initialValue]))
+
+            self.assertTrue(usdex.core.setConstantPrimvar(self.prim, name, updatedValue))
+
+            self.assertEqual(primvar.GetTypeName(), valueTypeName)
+            self.assertEqual(primvar.GetInterpolation(), UsdGeom.Tokens.constant)
+            self.assertEqual(primvar.Get(), Vt.Vec3fArray([updatedValue]))
+
+        self.assertIsValidUsd(self.stage)
+
+    def testTokenWithStringValue(self):
+        # A Python str passed to a TokenArray primvar is automatically treated as a TfToken
+        value = "item1"
+        primvar = usdex.core.createConstantPrimvar(self.prim, "tokenAttr", value, Sdf.ValueTypeNames.TokenArray)
+        self.assertTrue(primvar)
+
+        newValue = "item2"
+        self.assertTrue(usdex.core.setConstantPrimvar(self.prim, "tokenAttr", newValue))
+        self.assertEqual(primvar.GetTypeName(), Sdf.ValueTypeNames.TokenArray)
+        self.assertEqual(primvar.Get(), Vt.TokenArray([newValue]))
+
+        self.assertIsValidUsd(self.stage)
+
+    def testTimeSample(self):
+        primvar = usdex.core.createConstantPrimvar(self.prim, "sampled", 1.0)
+        self.assertTrue(primvar)
+
+        self.assertTrue(usdex.core.setConstantPrimvar(self.prim, "sampled", 2.0, 10.0))
+        self.assertEqual(primvar.Get(10.0), Vt.FloatArray([2.0]))
+
+        self.assertIsValidUsd(self.stage)
+
+    def testFailureInvalidPrim(self):
+        invalidPrim = self.stage.GetPrimAtPath("/Missing")
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot set primvar.*prim is invalid.*")]):
+            self.assertFalse(usdex.core.setConstantPrimvar(invalidPrim, "foo", 1.0))
+
+    def testFailurePrimvarDoesNotExist(self):
+        with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot set primvar.*primvar does not exist.*")]):
+            self.assertFalse(usdex.core.setConstantPrimvar(self.prim, "nonExistent", 1.0))
+
+        self.assertIsValidUsd(self.stage)
+
+    def testFailureIncompatibleValueType(self):
+        # Create a FloatArray primvar, then attempt to set a Vec3f value on it.
+        # USD emits a coding error for the type mismatch, followed by the setConstantPrimvar warning.
+        primvar = usdex.core.createConstantPrimvar(self.prim, "floatAttr", 1.0)
+        self.assertTrue(primvar)
+
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [
+                (Tf.TF_DIAGNOSTIC_CODING_ERROR_TYPE, ".*Type mismatch.*primvars:floatAttr.*"),
+                (Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*Cannot set primvar.*failed to set primvar data.*"),
+            ],
+        ):
+            self.assertFalse(usdex.core.setConstantPrimvar(self.prim, "floatAttr", Gf.Vec3f(1.0, 0.0, 0.0)))
 
         self.assertIsValidUsd(self.stage)
