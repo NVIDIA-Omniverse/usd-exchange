@@ -103,9 +103,9 @@ To build OpenUSD Exchange SDK for different flavors of the upstream dependencies
 - `$usd_ver`: many options, see details below
 - `$python_ver`: 3.12, 3.11, 3.10, 0 (disable python)
 
-For example, to build with USD 24.11 and Python 3.10, call `repo --set-token usd_flavor:usd --set-token usd_ver:24.11 --set-token python_ver:3.10 build`.
+For example, to build with USD 25.05 and Python 3.10, call `repo --set-token usd_flavor:usd --set-token usd_ver:25.05 --set-token python_ver:3.10 build`.
 
-Similarly, for a minimal monothlicic build of USD 24.11 with no python support, call `repo --set-token usd_flavor:usd-minimal --set-token usd_ver:24.11 --set-token python_ver:0 build`.
+Similarly, for a minimal monothlicic build of USD 25.05 with no python support, call `repo --set-token usd_flavor:usd-minimal --set-token usd_ver:25.05 --set-token python_ver:0 build`.
 
 > Important : When building multiple flavors using the same working directories, you need to rebuild using `-x/--rebuild` to force a clean rebuild of all artifacts.
 
@@ -123,7 +123,7 @@ If none of the existing flavors meet the requirements of your application, you h
 
 To run all the unittest suites, use `repo.bat test` or `repo.sh test`, depending on your local platform. We currently have 3 suites, `main`, `cpp`, and `whl`. Only the `main` suite runs by default, but a special `--suite all` argument will run them all. Any failure in any suite will fail the test process.
 
-> Note: `repo test` uses the same `$usd_flavor`, `$usd_ver`, and `$python_ver` tokens as `repo build`. If you are building for a non-default flavor it is critical to supply the same token values to `repo test`. For example, `repo --set-token usd_ver:24.11 --set-token python_ver:3.11 test -s main`
+> Note: `repo test` uses the same `$usd_flavor`, `$usd_ver`, and `$python_ver` tokens as `repo build`. If you are building for a non-default flavor it is critical to supply the same token values to `repo test`. For example, `repo --set-token usd_ver:25.05 --set-token python_ver:3.11 test -s main`
 
 ### Main Test Suite
 

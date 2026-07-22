@@ -305,16 +305,14 @@ def __install(
             "usdPhysics",
             "usdProc",
             "usdRender",
+            "usdSemantics",
             "usdShade",
+            "usdShaders",
             "usdSkel",
             "usdUI",
             "usdVol",
         ]
         usdPluginLibs = []
-        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
-            usdPlugins.append("usdSemantics")
-        if __SemVersion(usd_ver) >= __SemVersion("25.05"):
-            usdPlugins.append("usdShaders")
         if __SemVersion(usd_ver) < __SemVersion("25.08"):
             usdPlugins.append("ndr")
     else:
@@ -330,10 +328,12 @@ def __install(
             "sdr",
             "tf",
             "trace",
+            "ts",
             "usd",
             "usdGeom",
             "usdLux",
             "usdPhysics",
+            "usdSemantics",
             "usdShade",
             "usdUtils",
             "usdUI",
@@ -348,6 +348,7 @@ def __install(
             "usdGeom",
             "usdLux",
             "usdPhysics",
+            "usdSemantics",
             "usdShade",
             "usdShaders",
             "usdUI",
@@ -356,10 +357,6 @@ def __install(
         usdPluginLibs = [
             "usdShaders",
         ]
-        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
-            usdLibs.append("ts")
-            usdLibs.append("usdSemantics")
-            usdPlugins.append("usdSemantics")
 
         if __SemVersion(usd_ver) < __SemVersion("25.08"):
             usdLibs.append("ndr")
@@ -461,10 +458,12 @@ def __install(
             ("pxr/Sdr", "_sdr"),
             ("pxr/Tf", "_tf"),
             ("pxr/Trace", "_trace"),
+            ("pxr/Ts", "_ts"),
             ("pxr/Usd", "_usd"),
             ("pxr/UsdGeom", "_usdGeom"),
             ("pxr/UsdLux", "_usdLux"),
             ("pxr/UsdPhysics", "_usdPhysics"),
+            ("pxr/UsdSemantics", "_usdSemantics"),
             ("pxr/UsdShade", "_usdShade"),
             ("pxr/UsdUtils", "_usdUtils"),
             ("pxr/UsdUI", "_usdUI"),
@@ -472,9 +471,6 @@ def __install(
             ("pxr/Vt", "_vt"),
             ("pxr/Work", "_work"),
         ]
-        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
-            usdModules.append(("pxr/Ts", "_ts"))
-            usdModules.append(("pxr/UsdSemantics", "_usdSemantics"))
 
         # usdex.test
         if installTestModules:
@@ -558,7 +554,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         "--usd-version",
         dest="usd_ver",
         default=usd_ver,
-        choices=["25.11", "25.08", "25.05", "25.02", "24.11"],  # public versions only
+        choices=["25.11", "25.08", "25.05"],  # public versions only
         help=f"The OpenUSD version to install. Defaults to `{usd_ver}`",
     )
     parser.add_argument(
