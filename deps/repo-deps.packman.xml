@@ -2,9 +2,6 @@
   <dependency name="repo_man" linkPath="../_repo/deps/repo_man">
     <package name="repo_man" version="2.0.6" />
   </dependency>
-  <dependency name="repo_usd" linkPath="../_repo/deps/repo_usd">
-    <package name="repo_usd" version="5.0.26" />
-  </dependency>
   <dependency name="repo_test" linkPath="../_repo/deps/repo_test">
     <package name="repo_test" version="2.43.2" />
   </dependency>

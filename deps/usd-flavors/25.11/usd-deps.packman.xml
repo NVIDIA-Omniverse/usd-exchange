@@ -1,0 +1,9 @@
+<!-- ${usd_prefix}, ${usd_buildtype} and ${python_pkg} are resolved per usd_flavor + python_ver by tools/repoman/usd_deps.py -->
+<project toolsVersion="5.6">
+  <dependency name="usd-${config}" linkPath="../_build/usd-deps/usd/${config}">
+    <package name="${usd_prefix}.${platform_target_abi}.${usd_buildtype}.${config}" version="0.25.11.post.1-gl.20561" />
+  </dependency>
+  <dependency name="python" linkPath="../_build/usd-deps/python">
+    <package name="python" version="${python_pkg}-${platform_target_abi}" />
+  </dependency>
+</project>

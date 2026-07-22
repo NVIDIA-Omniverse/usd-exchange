@@ -3,10 +3,14 @@
 #
 """Generate deps/usd-deps.packman.xml for the active USD flavor.
 
-USD >= 26 is vendored from one usd-exchange-local template per version under deps/usd-flavors/<ver>/ (OpenUSD plus the
-now-separate onetbb/materialx). The flavor/python-specific bits are resolved here and substituted into the template:
-`${usd_variant}` (OpenUSD package variant), `${materialx_variant}` (MaterialX's python-tagged flavor) and
-`${python_pkg}` (python runtime package). Older flavors fall back to `repo usd --generate-usd-deps`.
+Every supported USD version has one usd-exchange-local template under deps/usd-flavors/<ver>/, and this tool resolves the
+flavor/python-specific bits into it. Two dialects exist:
+- USD >= 26 (unbundled OpenUSD + separate onetbb/materialx): `${usd_variant}` (OpenUSD package variant) and
+  `${materialx_variant}` (MaterialX's python-tagged flavor).
+- USD < 26 (OpenUSD bundles onetbb/materialx): `${usd_prefix}` (e.g. usd.py312 / usd-minimal.nopy) and
+  `${usd_buildtype}` (exchange / stock).
+Both dialects share `${python_pkg}` (the python runtime package): the `usd` flavor tracks its own python, while
+`usd-minimal` (no python bindings) tracks the repo's default python for the repo_test harness.
 """
 
 import argparse
@@ -26,7 +30,7 @@ _PYTHON_PACKAGES = {
 
 
 def _default_python_ver(default_flavor: str) -> str:
-    # default_flavor is "<usd_flavor>_<usd_ver>_py_<python_ver>", e.g. usd_26.05_py_3.12
+    # default_flavor is "<usd_flavor>_<usd_ver>_py_<python_ver>"
     return default_flavor.split("_py_")[-1]
 
 
@@ -36,38 +40,28 @@ def generate_usd_deps(usd_flavor: str, usd_ver: str, python_ver: str, default_fl
     target = f"{root}/deps/usd-deps.packman.xml"
 
     if not os.path.exists(template):
-        # older flavors remain vendored by repo_usd's pinned templates
-        repo = omni.repo.man.resolve_tokens("$root/repo${shell_ext}")
-        omni.repo.man.run_process(
-            [repo, "usd", "--generate-usd-deps", "--usd-flavor", usd_flavor, "--usd-ver", usd_ver, "--python-ver", python_ver],
-            exit_on_error=True,
-        )
-        return
+        raise omni.repo.man.exceptions.ConfigurationError(f"Unsupported USD version {usd_ver}: no template at {template}")
 
-    if usd_flavor == "usd-minimal":
-        # minimal has no python bindings; it still needs a python for the repo_test harness and MaterialX's
-        # (python-tagged) non-python libs, so track the repo's default python for both
-        default_py = _default_python_ver(default_flavor)
-        usd_variant = "minimal"
-        materialx_variant = f"py{default_py.replace('.', '')}"
-        pkg_python_ver = default_py
-    else:
-        py_abi = f"py{python_ver.replace('.', '')}"
-        usd_variant = f"{py_abi}.no_imaging"
-        materialx_variant = py_abi
-        pkg_python_ver = python_ver
-
+    is_minimal = usd_flavor == "usd-minimal"
+    # minimal has no python bindings, so it tracks the repo default python; the usd flavor tracks its requested python
+    pkg_python_ver = _default_python_ver(default_flavor) if is_minimal else python_ver
     python_pkg = _PYTHON_PACKAGES.get(pkg_python_ver, "")
     if not python_pkg:
         raise omni.repo.man.exceptions.ConfigurationError(
             f"No python package pinned for python {pkg_python_ver}; add it to usd_deps._PYTHON_PACKAGES"
         )
+    py_tag = pkg_python_ver.replace(".", "")
 
     with open(template, "r") as f:
         content = f.read()
-    content = content.replace("${usd_variant}", usd_variant)
-    content = content.replace("${materialx_variant}", materialx_variant)
     content = content.replace("${python_pkg}", python_pkg)
+
+    if int(usd_ver.split(".", 1)[0]) >= 26:
+        content = content.replace("${usd_variant}", "minimal" if is_minimal else f"py{py_tag}.no_imaging")
+        content = content.replace("${materialx_variant}", f"py{py_tag}")
+    else:
+        content = content.replace("${usd_prefix}", "usd-minimal.nopy" if is_minimal else f"usd.py{py_tag}")
+        content = content.replace("${usd_buildtype}", "stock" if is_minimal else "exchange")
 
     with open(target, "w") as f:
         f.write(content)
@@ -78,7 +72,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
     if not toolConfig.get("enabled", True):
         return None
 
-    parser.description = "Generate deps/usd-deps.packman.xml (local templates for USD >= 26, repo_usd for older)."
+    parser.description = "Generate deps/usd-deps.packman.xml from the local per-version template in deps/usd-flavors/."
     parser.add_argument("--usd-flavor", dest="usd_flavor", required=True)
     parser.add_argument("--usd-ver", dest="usd_ver", required=True)
     parser.add_argument("--python-ver", dest="python_ver", required=True)
