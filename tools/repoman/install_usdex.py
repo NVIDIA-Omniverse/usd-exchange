@@ -219,13 +219,9 @@ def __install(
         tokens,
     )
 
-    # determine the required runtime dependencies
-    runtimeDeps = [f"usd-{buildConfig}"]
+    runtimeDeps = [f"usd-{buildConfig}", f"tbb-{buildConfig}", f"materialx-{buildConfig}"]
     if python_ver != "0":
         runtimeDeps.append("python")
-    # 26.xx no longer bundles TBB/MaterialX inside the USD package; they arrive as separate packman deps
-    if __SemVersion(usd_ver) >= __SemVersion("26.00"):
-        runtimeDeps.extend([f"onetbb-{buildConfig}", f"materialx-{buildConfig}"])
 
     print("Download usd-exchange dependencies...")
     depsFile = f"{usd_exchange_path}/dev/deps/all-deps.packman.xml"
@@ -234,7 +230,7 @@ def __install(
         if dep in runtimeDeps:
             if dep == f"usd-{buildConfig}":
                 linkPath = f"{targetDepsDir}/usd/{buildConfig}"
-            elif dep == f"onetbb-{buildConfig}":
+            elif dep == f"tbb-{buildConfig}":
                 linkPath = f"{targetDepsDir}/tbb/{buildConfig}"
             elif dep == f"materialx-{buildConfig}":
                 linkPath = f"{targetDepsDir}/materialx/{buildConfig}"
@@ -257,13 +253,8 @@ def __install(
 
     python_path = f"{targetDepsDir}/python"
     usd_path = f"{targetDepsDir}/usd/{buildConfig}"
-    # 26.xx sources TBB/MaterialX from their own packages; earlier versions bundle them inside the USD package
-    if __SemVersion(usd_ver) >= __SemVersion("26.00"):
-        tbb_path = f"{targetDepsDir}/tbb/{buildConfig}"
-        materialx_path = f"{targetDepsDir}/materialx/{buildConfig}"
-    else:
-        tbb_path = usd_path
-        materialx_path = usd_path
+    tbb_path = f"{targetDepsDir}/tbb/{buildConfig}"
+    materialx_path = f"{targetDepsDir}/materialx/{buildConfig}"
 
     # Acquire the asset validator from PyPI. It is a pure-python wheel, so a single install into the staging dir
     # provides the module that is assembled into the install tree below (covers both in-repo and standalone installs).
@@ -411,7 +402,7 @@ def __install(
     else:
         tbb_windows_name = "tbb12"
 
-    # tbb_path is the standalone oneTBB package (26.xx) or the USD package (older); named differently in release/debug
+    # tbb comes from the standalone oneTBB package; the lib name differs by config (debug) and platform (windows tbb12)
     if buildConfig == "debug":
         prebuild_dict["copy"].extend(
             [
@@ -427,7 +418,7 @@ def __install(
             ]
         )
 
-    # usdMtlx requires MaterialX libraries; materialx_path is the standalone package (26.xx) or the USD package (older)
+    # usdMtlx requires MaterialX libraries from the standalone MaterialX package
     if installTestModules and python_ver != "0":
         mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
         prebuild_dict["copy"].extend(

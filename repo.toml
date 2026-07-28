@@ -15,6 +15,13 @@ usd_ver = "26.08"
 python_ver = "3.12"
 abi = "2.35"
 
+# python runtime package resolved from python_ver; py 0 (usd-minimal, no bindings) tracks the default python
+"token:python_ver==3.10".python_pkg = "3.10.20+nv6"
+"token:python_ver==3.11".python_pkg = "3.11.15+nv6"
+"token:python_ver==3.12".python_pkg = "3.12.13+nv6"
+"token:python_ver==3.13".python_pkg = "3.13.14+nv1"
+"token:python_ver==0".python_pkg = "3.12.13+nv6"
+
 [repo_version_header]
 enabled = true
 company = "NVIDIA"

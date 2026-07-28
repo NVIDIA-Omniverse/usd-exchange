@@ -112,8 +112,6 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             f"-DCMAKE_BUILD_TYPE={cmake_config}",
             "-DCMAKE_INSTALL_LIBDIR=lib",  # our package layout uses lib/, not lib64
             f"-DUSDEX_USD_ROOT={usd_root}",
-            # USD 26+ ships TBB/MaterialX as sibling packages; older distros bundle them under USDEX_USD_ROOT, so these
-            # roots won't exist there and UsdexUSD.cmake skips them
             f"-DUSDEX_TBB_ROOT={target_deps}/tbb/{repo_config}",
             f"-DUSDEX_MATERIALX_ROOT={target_deps}/materialx/{repo_config}",
             f"-DUSDEX_PYTHON_VERSION={python_ver}",

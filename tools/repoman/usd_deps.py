@@ -3,14 +3,9 @@
 #
 """Generate deps/usd-deps.packman.xml for the active USD flavor.
 
-Every supported USD version has one usd-exchange-local template under deps/usd-flavors/<ver>/, and this tool resolves the
-flavor/python-specific bits into it. Two dialects exist:
-- USD >= 26 (unbundled OpenUSD + separate onetbb/materialx): `${usd_variant}` (OpenUSD package variant) and
-  `${materialx_variant}` (MaterialX's python-tagged flavor).
-- USD < 26 (OpenUSD bundles onetbb/materialx): `${usd_prefix}` (e.g. usd.py312 / usd-minimal.nopy) and
-  `${usd_buildtype}` (exchange / stock).
-Both dialects share `${python_pkg}` (the python runtime package): the `usd` flavor tracks its own python, while
-`usd-minimal` (no python bindings) tracks the repo's default python for the repo_test harness.
+Each supported USD version has a template under deps/usd-flavors/<ver>/. This tool resolves the flavor-specific package
+variants: ${usd_variant} selects the OpenUSD build (py<tag>.no_imaging for the usd flavor, minimal for usd-minimal) and
+${materialx_variant} selects MaterialX's python-tagged build.
 """
 
 import argparse
@@ -18,15 +13,6 @@ import os
 from typing import Callable, Dict
 
 import omni.repo.man
-
-# the python runtime packages keyed by python minor version; the ${platform_target_abi} suffix is applied in the
-# template. These do not vary by USD flavor or version.
-_PYTHON_PACKAGES = {
-    "3.10": "3.10.20+nv6",
-    "3.11": "3.11.15+nv6",
-    "3.12": "3.12.13+nv6",
-    "3.13": "3.13.14+nv1",
-}
 
 
 def _default_python_ver(default_flavor: str) -> str:
@@ -43,25 +29,13 @@ def generate_usd_deps(usd_flavor: str, usd_ver: str, python_ver: str, default_fl
         raise omni.repo.man.exceptions.ConfigurationError(f"Unsupported USD version {usd_ver}: no template at {template}")
 
     is_minimal = usd_flavor == "usd-minimal"
-    # minimal has no python bindings, so it tracks the repo default python; the usd flavor tracks its requested python
-    pkg_python_ver = _default_python_ver(default_flavor) if is_minimal else python_ver
-    python_pkg = _PYTHON_PACKAGES.get(pkg_python_ver, "")
-    if not python_pkg:
-        raise omni.repo.man.exceptions.ConfigurationError(
-            f"No python package pinned for python {pkg_python_ver}; add it to usd_deps._PYTHON_PACKAGES"
-        )
-    py_tag = pkg_python_ver.replace(".", "")
+    # minimal has no python bindings, so its py-tagged variants track the repo default python
+    py_tag = (_default_python_ver(default_flavor) if is_minimal else python_ver).replace(".", "")
 
     with open(template, "r") as f:
         content = f.read()
-    content = content.replace("${python_pkg}", python_pkg)
-
-    if int(usd_ver.split(".", 1)[0]) >= 26:
-        content = content.replace("${usd_variant}", "minimal" if is_minimal else f"py{py_tag}.no_imaging")
-        content = content.replace("${materialx_variant}", f"py{py_tag}")
-    else:
-        content = content.replace("${usd_prefix}", "usd-minimal.nopy" if is_minimal else f"usd.py{py_tag}")
-        content = content.replace("${usd_buildtype}", "stock" if is_minimal else "exchange")
+    content = content.replace("${usd_variant}", "minimal" if is_minimal else f"py{py_tag}.no_imaging")
+    content = content.replace("${materialx_variant}", f"py{py_tag}")
 
     with open(target, "w") as f:
         f.write(content)

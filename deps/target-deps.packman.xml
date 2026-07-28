@@ -1,13 +1,21 @@
 <project toolsVersion="5.0">
 
-  <import path="../deps/usd-deps.packman.xml" />
+  <!-- runtime dependencies -->
+  <import path="../deps/usd-deps.packman.xml">
+    <filter include="usd-${config}" />
+    <filter include="tbb-${config}" />
+    <filter include="materialx-${config}" />
+  </import>
 
-  <dependency name="usd-${config}" linkPath="../_build/target-deps/usd/${config}" tags="non-redist" />
-  <dependency name="python" linkPath="../_build/target-deps/python" tags="non-redist" />
-
+  <!-- unused for usd-minimal flavors -->
+  <dependency name="python" linkPath="../_build/target-deps/python" tags="non-redist">
+    <package name="python" version="${python_pkg}-${platform_target_abi}" />
+  </dependency>
   <dependency name="pybind11" linkPath="../_build/target-deps/pybind11">
     <package name="pybind11" version="2.11.1-0" />
   </dependency>
+
+  <!-- testing only -->
   <dependency name="cxxopts" linkPath="../_build/target-deps/cxxopts">
     <package name="cxxopts" version="2.2.0-1" />
   </dependency>
