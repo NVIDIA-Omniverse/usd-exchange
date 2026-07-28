@@ -606,6 +606,9 @@ void bindNameAlgo(module& m)
         R"(
             Return this prim's display name (metadata).
 
+            The ``uiHints:displayName`` value is preferred when authored. The original ``displayName`` field is used as a fallback for compatibility
+            with files authored by OpenUSD versions before 25.11. An authored empty value is returned as-is and blocks values from weaker layers.
+
             Args:
                 prim: The prim to get the display name from
 
@@ -625,6 +628,9 @@ void bindNameAlgo(module& m)
             DisplayName is meant to be a descriptive label, not necessarily an alternate identifier; therefore there is no restriction on which
             characters can appear in it
 
+            The value is authored to both ``uiHints:displayName`` and the original ``displayName`` field in the current edit target so the resulting
+            file behaves consistently in every supported OpenUSD runtime.
+
             Args:
                 prim: The prim to set the display name for
                 name: The value to set
@@ -641,6 +647,8 @@ void bindNameAlgo(module& m)
         R"(
             Clears this prim's display name (metadata) in the current EditTarget (only)
 
+            Both ``uiHints:displayName`` and the original ``displayName`` field are cleared. Other members of the ``uiHints`` dictionary are preserved.
+
             Args:
                 prim: The prim to clear the display name for
 
@@ -656,7 +664,8 @@ void bindNameAlgo(module& m)
         R"(
             Block this prim's display name (metadata)
 
-            The fallback value will be explicitly authored to cause the value to resolve as if there were no authored value opinions in weaker layers
+            The fallback value will be explicitly authored to both ``uiHints:displayName`` and the original ``displayName`` field to cause the value
+            to resolve as if there were no authored value opinions in weaker layers.
 
             Args:
                 prim: The prim to block the display name for
