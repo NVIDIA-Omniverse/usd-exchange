@@ -16,9 +16,9 @@ OpenUSD identifiers must be non-empty, start with `[A-Za-z_]`, and continue with
 | `getValidPrimName(name)` / `getValidPrimNames(names, [reservedNames])` | No parent context (e.g. `defaultPrimName` for a brand-new stage). |
 | `getValidChildName(parent, name)` / `getValidChildNames(parent, names)` | Author one or many prims under an existing parent without remembering names later. |
 | `getValidPropertyName(name)` / `getValidPropertyNames(names, [reservedNames])` | Property names; preserves `:` namespaces. |
-| `setDisplayName(prim, name)` / `getDisplayName(prim)` / `clearDisplayName(prim)` / `blockDisplayName(prim)` / `computeEffectiveDisplayName(prim)` | Read/write/clear/block the `displayName` metadata, or compute the effective value (falls back to prim name). |
+| `setDisplayName(prim, name)` / `getDisplayName(prim)` / `clearDisplayName(prim)` / `blockDisplayName(prim)` / `computeEffectiveDisplayName(prim)` | Read/write/clear/block interoperable display-name metadata, or compute the effective value (falls back to prim name). |
 
-USD 25.11 deprecated `displayName` in favor of `uiHints` via `UsdUIObjectHints`; the SDK helpers still operate on the original `displayName` metadata only.
+USD 25.11 deprecated the original `displayName` field in favor of `uiHints:displayName`. The SDK helpers handle both locations for cross-version compatibility; use them instead of authoring either location directly.
 
 ### `NameCache` — preferred for any non-trivial converter
 
@@ -51,4 +51,4 @@ When the source name had to be transcoded or made unique, set `displayName` to t
 | `Tf.MakeValidIdentifier(name)` | `usdex.core.getValidPrimName(name)` (preserves the original via display name) |
 | Re-allocate names from `getValidChildNames` repeatedly per parent | one `NameCache` for the whole conversion |
 | Hard-coded literal `defaultPrimName` | `defaultPrimName=usdex.core.getValidPrimName(asset.name)` |
-| `prim.SetDisplayName(...)` directly | `usdex.core.setDisplayName(prim, source.name)` after the prim is defined |
+| Author either display-name location directly | `usdex.core.setDisplayName(prim, source.name)` after the prim is defined |
