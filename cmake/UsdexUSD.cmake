@@ -45,17 +45,22 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
         target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_USD_LIB_DIR}")
     endif()
 
-    # USD 26+ distros ship TBB and MaterialX as sibling packages instead of bundling them, but the pxr headers still
-    # #include <tbb/...> and the USD libs link them; add each root's include/lib so usdex (and consumers) compile +
-    # link against such a distro. Older bundled distros leave these unset (their headers/libs come from USDEX_USD_ROOT).
-    if(USDEX_TBB_ROOT AND EXISTS "${USDEX_TBB_ROOT}/include")
+    # TBB/MaterialX are sibling packages in USD 26+ (the pxr headers still #include <tbb/...>); older distros bundle them
+    # under USDEX_USD_ROOT. A provided root must be valid: set-but-missing means the dependency was never fetched.
+    if(USDEX_TBB_ROOT)
+        if(NOT EXISTS "${USDEX_TBB_ROOT}/include")
+            message(FATAL_ERROR "USDEX_TBB_ROOT='${USDEX_TBB_ROOT}' has no include/ directory; ensure the dependency was fetched.")
+        endif()
         target_include_directories(usdex_usd_headers SYSTEM INTERFACE "${USDEX_TBB_ROOT}/include")
         target_link_directories(usdex_usd_headers INTERFACE "${USDEX_TBB_ROOT}/lib")
         if(UNIX AND NOT APPLE)
             target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_TBB_ROOT}/lib")
         endif()
     endif()
-    if(USDEX_MATERIALX_ROOT AND EXISTS "${USDEX_MATERIALX_ROOT}/include")
+    if(USDEX_MATERIALX_ROOT)
+        if(NOT EXISTS "${USDEX_MATERIALX_ROOT}/include")
+            message(FATAL_ERROR "USDEX_MATERIALX_ROOT='${USDEX_MATERIALX_ROOT}' has no include/ directory; ensure the dependency was fetched.")
+        endif()
         target_include_directories(usdex_usd_headers SYSTEM INTERFACE "${USDEX_MATERIALX_ROOT}/include")
         target_link_directories(usdex_usd_headers INTERFACE "${USDEX_MATERIALX_ROOT}/lib")
         if(UNIX AND NOT APPLE)
