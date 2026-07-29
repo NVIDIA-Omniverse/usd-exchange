@@ -92,6 +92,9 @@ class MaterialAlgoTest(usdex.test.TestCase):
     @staticmethod
     def getExpectedResolveDiagMsgs(failCount, mdlName):
         expected = []
+        # OpenUSD 26.08+ de-duplicates the repeated identical reference-resolution warnings emitted during composition
+        if not MaterialAlgoTest.isUsdOlderThan("0.26.08"):
+            failCount = min(failCount, 1)
         msg = f".*Failed to resolve reference @{mdlName}@"
         for i in range(failCount):
             expected.append((Tf.TF_DIAGNOSTIC_WARNING_TYPE, msg))
@@ -1098,7 +1101,9 @@ class MaterialAlgoTest(usdex.test.TestCase):
 
         expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniPBR.mdl")
         expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniGlass.mdl")
-        expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
+        # older USD re-warns per composition arc; 26.08+ caches the resolve failure so OmniPBR only warns once
+        if self.isUsdOlderThan("0.26.08"):
+            expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             self.assertIsValidUsd(stage, issuePredicates=self.allowedIssuePredicates())
 
