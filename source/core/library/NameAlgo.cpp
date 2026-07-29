@@ -7,9 +7,15 @@
 #include "TfUtils.h"
 
 #include <pxr/base/tf/stringUtils.h>
+#include <pxr/base/vt/dictionary.h>
 #include <pxr/usd/sdf/childrenView.h>
 #include <pxr/usd/sdf/schema.h>
 #include <pxr/usd/sdf/spec.h>
+#include <pxr/usd/sdf/types.h>
+#include <pxr/usd/usd/editTarget.h>
+#if PXR_VERSION >= 2511
+#include <pxr/usd/usdUI/objectHints.h>
+#endif
 
 #include <functional>
 
@@ -18,7 +24,13 @@ using namespace pxr;
 namespace
 {
 
-TF_DEFINE_PRIVATE_TOKENS(_tokens, (error));
+TF_DEFINE_PRIVATE_TOKENS(
+    _tokens,
+    (error)
+    // UI hints metadata
+    (uiHints)
+    (displayName)
+);
 
 struct ValidNameCache
 {
@@ -77,6 +89,162 @@ void reserveChildPropertyNames(ValidNameCache& cache, const SdfPrimSpecHandle pa
     }
     reserveNames(cache, names);
 }
+
+#if PXR_VERSION < 2511
+// OpenUSD versions before 25.11 do not always register the uiHints metadatum.
+// UsdObject dictionary metadata functions only operate on registered metadata, while unregistered uiHints values are preserved as
+// SdfUnregisteredValue. This block provides an alternate implementation of the UsdUIObjectHints display name logic that supports both registered and
+// unregistered uiHints:displayName.
+
+bool isUiHintsRegistered()
+{
+    // Metadata registration is fixed when the runtime launches, so the schema only needs to be queried once
+    static const bool isRegistered = SdfSchema::GetInstance().IsRegistered(_tokens->uiHints);
+    return isRegistered;
+}
+
+bool getUnregisteredUiHintsDictionary(const SdfPrimSpecHandle primSpec, VtDictionary* dictionary)
+{
+    VtValue value = primSpec->GetField(_tokens->uiHints);
+
+    // Treat an unauthored uiHints field as an empty dictionary
+    if (value.IsEmpty())
+    {
+        dictionary->clear();
+        return true;
+    }
+
+    // Unregistered metadata is wrapped in SdfUnregisteredValue, so unwrap it before accessing the uiHints dictionary
+    if (!value.IsHolding<SdfUnregisteredValue>())
+    {
+        return false;
+    }
+    value = value.UncheckedGet<SdfUnregisteredValue>().GetValue();
+
+    // Populate the dictionary with the unregistered uiHints value if it is a VtDictionary
+    if (!value.IsHolding<VtDictionary>())
+    {
+        return false;
+    }
+    *dictionary = value.UncheckedGet<VtDictionary>();
+
+    return true;
+}
+
+bool setUnregisteredUiHintsDictionary(const SdfPrimSpecHandle primSpec, const VtDictionary& dictionary)
+{
+    // Remove the uiHints field when no dictionary members remain
+    if (dictionary.empty())
+    {
+        return primSpec->ClearField(_tokens->uiHints);
+    }
+
+    // Preserve uiHints as unregistered metadata so newer OpenUSD runtimes can read the dictionary
+    return primSpec->SetField(_tokens->uiHints, SdfUnregisteredValue(dictionary));
+}
+
+bool getUiHintsDisplayName(const UsdPrim& prim, std::string* displayName)
+{
+    // Use the built-in dictionary metadata function when uiHints is registered
+    if (isUiHintsRegistered())
+    {
+        VtValue value;
+        if (!prim.GetMetadataByDictKey(_tokens->uiHints, _tokens->displayName, &value) || !value.IsHolding<std::string>())
+        {
+            return false;
+        }
+        *displayName = value.UncheckedGet<std::string>();
+        return true;
+    }
+
+    // Compose uiHints dictionaries from weak to strong to match the built-in metadata behavior
+    VtDictionary composedDictionary;
+    const SdfPrimSpecHandleVector primStack = prim.GetPrimStack();
+    for (auto primSpecIt = primStack.rbegin(); primSpecIt != primStack.rend(); ++primSpecIt)
+    {
+        VtDictionary dictionary;
+        if (!getUnregisteredUiHintsDictionary(*primSpecIt, &dictionary))
+        {
+            return false;
+        }
+        VtDictionaryOverRecursive(dictionary, &composedDictionary);
+    }
+
+    // Return the composed displayName value only when it has the expected type
+    const auto valueIt = composedDictionary.find(_tokens->displayName.GetString());
+    if (valueIt == composedDictionary.end() || !valueIt->second.IsHolding<std::string>())
+    {
+        return false;
+    }
+    *displayName = valueIt->second.UncheckedGet<std::string>();
+    return true;
+}
+
+bool setUiHintsDisplayName(const UsdPrim& prim, const std::string& displayName)
+{
+    const VtValue value(displayName);
+
+    // Use the built-in dictionary metadata function when uiHints is registered
+    if (isUiHintsRegistered())
+    {
+        return prim.SetMetadataByDictKey(_tokens->uiHints, _tokens->displayName, value);
+    }
+
+    // Author uiHints in the current edit target, creating a prim spec when necessary
+    const UsdEditTarget& editTarget = prim.GetStage()->GetEditTarget();
+    SdfPrimSpecHandle primSpec = editTarget.GetPrimSpecForScenePath(prim.GetPath());
+    if (!primSpec)
+    {
+        const SdfPath specPath = editTarget.MapToSpecPath(prim.GetPath());
+        if (!editTarget.GetLayer() || specPath.IsEmpty())
+        {
+            return false;
+        }
+        primSpec = SdfCreatePrimInLayer(editTarget.GetLayer(), specPath);
+    }
+
+    // Preserve any other uiHints members authored on the prim spec
+    VtDictionary dictionary;
+    if (!getUnregisteredUiHintsDictionary(primSpec, &dictionary))
+    {
+        return false;
+    }
+    dictionary[_tokens->displayName.GetString()] = value;
+    return setUnregisteredUiHintsDictionary(primSpec, dictionary);
+}
+
+bool clearUiHintsDisplayName(const UsdPrim& prim)
+{
+    // Use the built-in dictionary metadata function when uiHints is registered
+    if (isUiHintsRegistered())
+    {
+        return prim.ClearMetadataByDictKey(_tokens->uiHints, _tokens->displayName);
+    }
+
+    // Only clear uiHints:displayName in the current edit target
+    const UsdEditTarget& editTarget = prim.GetStage()->GetEditTarget();
+    const SdfPrimSpecHandle primSpec = editTarget.GetPrimSpecForScenePath(prim.GetPath());
+    if (!primSpec)
+    {
+        return true;
+    }
+
+    // Preserve any other uiHints members authored on the prim spec
+    VtDictionary dictionary;
+    if (!getUnregisteredUiHintsDictionary(primSpec, &dictionary))
+    {
+        return false;
+    }
+
+    // Report success when there is no authored displayName left to clear
+    if (dictionary.erase(_tokens->displayName.GetString()) == 0)
+    {
+        return true;
+    }
+    return setUnregisteredUiHintsDictionary(primSpec, dictionary);
+}
+
+#endif // PXR_VERSION < 2511: uiHints:displayName compatibility
 
 TfTokenVector getValidNames(
     const std::vector<std::string>& names,
@@ -668,24 +836,21 @@ std::string usdex::core::getDisplayName(const UsdPrim& prim)
         return "";
     }
 
-#if PXR_VERSION >= 2302
-    return prim.GetDisplayName();
+#if PXR_VERSION >= 2511
+    // Use the UI hints helper, which falls back to the original displayName field when no UI hint is present
+    return UsdUIObjectHints(prim).GetDisplayName();
 #else
-    // This function acts as a shim as "UsdObject::GetDisplayName" is not available before OpenUsd version 23.02
-    for (const auto& primSpec : prim.GetPrimStack())
+    // Unlike older OpenUSD runtimes, prefer the UI hint when it is present
+    std::string displayName;
+    if (getUiHintsDisplayName(prim, &displayName))
     {
-        const VtValue displayName = primSpec->GetField(SdfFieldKeys->DisplayName);
-        if (!displayName.IsEmpty())
-        {
-            if (displayName.IsHolding<std::string>())
-            {
-                return displayName.UncheckedGet<std::string>();
-            }
-            return "";
-        }
+        return displayName;
     }
-    return "";
-#endif // PXR_VERSION >= 2302
+
+    // Otherwise fall back to the original displayName field
+    prim.GetMetadata(SdfFieldKeys->DisplayName, &displayName);
+    return displayName;
+#endif
 }
 
 bool usdex::core::setDisplayName(UsdPrim prim, const std::string& name)
@@ -696,16 +861,19 @@ bool usdex::core::setDisplayName(UsdPrim prim, const std::string& name)
         return false;
     }
 
-#if PXR_VERSION >= 2302
-    return prim.SetDisplayName(name);
+    bool uiHintResult;
+#if PXR_VERSION >= 2511
+    // The UI hints helper only authors uiHints:displayName
+    uiHintResult = UsdUIObjectHints(prim).SetDisplayName(name);
 #else
-    // This function acts as a shim as "UsdObject::SetDisplayName" is not available before OpenUsd version 23.02
-    if (SdfPrimSpecHandle primSpec = SdfCreatePrimInLayer(prim.GetStage()->GetEditTarget().GetLayer(), prim.GetPath()))
-    {
-        return primSpec->SetField(SdfFieldKeys->DisplayName, name);
-    }
-    return false;
-#endif // PXR_VERSION >= 2302
+    // Older OpenUSD runtimes require compatibility handling to author uiHints:displayName
+    uiHintResult = setUiHintsDisplayName(prim, name);
+#endif
+
+    // Also author the original displayName field so older OpenUSD runtimes read the same value
+    const bool legacyResult = prim.SetMetadata(SdfFieldKeys->DisplayName, name);
+
+    return uiHintResult && legacyResult;
 }
 
 bool usdex::core::clearDisplayName(UsdPrim prim)
@@ -716,16 +884,19 @@ bool usdex::core::clearDisplayName(UsdPrim prim)
         return false;
     }
 
-#if PXR_VERSION >= 2302
-    return prim.ClearDisplayName();
+    bool uiHintResult;
+#if PXR_VERSION >= 2511
+    // UsdUIObjectHints has no matching clear function, so clear uiHints:displayName directly
+    uiHintResult = prim.ClearMetadataByDictKey(_tokens->uiHints, _tokens->displayName);
 #else
-    // This function acts as a shim as "UsdObject::ClearDisplayName" is not available before OpenUsd version 23.02
-    if (SdfPrimSpecHandle primSpec = prim.GetStage()->GetEditTarget().GetLayer()->GetPrimAtPath(prim.GetPath()))
-    {
-        return primSpec->ClearField(SdfFieldKeys->DisplayName);
-    }
-    return false;
-#endif // PXR_VERSION >= 2302
+    // Older OpenUSD runtimes require compatibility handling to clear uiHints:displayName
+    uiHintResult = clearUiHintsDisplayName(prim);
+#endif
+
+    // Clear the original displayName field so both metadata locations have the same authored state
+    const bool legacyResult = prim.ClearMetadata(SdfFieldKeys->DisplayName);
+
+    return legacyResult && uiHintResult;
 }
 
 bool usdex::core::blockDisplayName(UsdPrim prim)
@@ -736,8 +907,7 @@ bool usdex::core::blockDisplayName(UsdPrim prim)
         return false;
     }
 
-    // Setting the value to the fallback value of "" will essentially block the display name.
-    // Subsequent calls to `computeEffectiveDisplayName` will return the Prim name as they would in the absence of any authored display name.
+    // Author an empty value in both metadata locations so all supported OpenUSD runtimes block weaker display names
     return usdex::core::setDisplayName(prim, "");
 }
 

@@ -108,7 +108,7 @@ file(GLOB USDEX_CORE_SOURCES CONFIGURE_DEPENDS source/core/library/*.cpp)
 add_library(usdex_core SHARED ${USDEX_CORE_SOURCES})
 target_include_directories(usdex_core PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>" "$<INSTALL_INTERFACE:include>")
 target_link_libraries(usdex_core PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers)
-usdex_target_link_usd(usdex_core ar arch gf kind pcp plug sdf tf usd usdGeom usdLux usdPhysics usdShade usdUtils vt work)
+usdex_target_link_usd(usdex_core ar arch gf kind pcp plug sdf tf usd usdGeom usdLux usdPhysics usdShade usdUI usdUtils vt work)
 
 # ---------------------------------------------------------------------------- usdex_rtx
 file(GLOB USDEX_RTX_SOURCES CONFIGURE_DEPENDS source/rtx/library/*.cpp)
