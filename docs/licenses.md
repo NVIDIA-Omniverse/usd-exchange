@@ -106,15 +106,6 @@ These licenses pertain to the `usdex.test` python module, which is based on pyth
 - pyboost11 `(jump to license) <pyboost11 LICENSE_>`_
 ```
 
-### Source Code Inspiration
-
-Some design patterns used in OpenUSD Exchange SDK source code may resemble those found in the following products. These licenses are relevant as inspiration only. There is no common implementation nor shipping binary that is relevant, neither at compile, link, nor runtime.
-
-```{eval-rst}
-- Cortex `(jump to license) <cortex LICENSE_>`_
-- Gaffer `(jump to license) <gaffer LICENSE_>`_
-```
-
 ## Individual Licenses
 
 ```{eval-rst}
@@ -163,8 +154,4 @@ usd-validation-nvidia License
 .. include-licenses:: /_build/target-deps/pybind11/PACKAGE-LICENSES/pybind11-LICENSE.txt
 
 .. include-licenses:: /tools/internal-licenses/pyboost11-LICENSE.txt
-
-.. include-licenses:: /tools/internal-licenses/cortex-LICENSE.txt
-
-.. include-licenses:: /tools/internal-licenses/gaffer-LICENSE.txt
 ```

@@ -83,10 +83,6 @@ class CoreTest(unittest.TestCase):
             licenseDir = pathlib.Path(packageInfoDir) / "licenses"
         elif is_running_on_ci():
             expectedLicenses = [
-                "cortex-LICENSE.txt",
-                "cxxopts-LICENSE.txt",
-                "doctest-LICENSE.txt",
-                "gaffer-LICENSE.txt",
                 "pybind11-LICENSE.txt",
                 "pybind11-stubgen-LICENSE.txt",
                 "pyboost11-LICENSE.txt",

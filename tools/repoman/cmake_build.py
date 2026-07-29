@@ -65,6 +65,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usd_flavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usd_ver = omni.repo.man.resolve_tokens("${usd_ver}")
         python_ver = omni.repo.man.resolve_tokens("${python_ver}")
+        python_pkg = omni.repo.man.resolve_tokens("${python_pkg}")
         abi = omni.repo.man.resolve_tokens("${abi}")
         cmake_config = _CMAKE_CONFIG.get(repo_config, "Release")
 
@@ -150,6 +151,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                     repo,
                     "--set-token",
                     f"platform_host:{platform}",  # usd-deps.packman.xml references it
+                    "--set-token",
+                    f"python_pkg:{python_pkg}",  # the python side-car imported by target-deps.packman.xml references it
                     "licensing",
                     "gather",
                     "--dir",

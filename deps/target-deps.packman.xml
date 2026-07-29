@@ -16,10 +16,10 @@
   </dependency>
 
   <!-- testing only -->
-  <dependency name="cxxopts" linkPath="../_build/target-deps/cxxopts">
+  <dependency name="cxxopts" linkPath="../_build/target-deps/cxxopts" tags="non-redist">
     <package name="cxxopts" version="2.2.0-1" />
   </dependency>
-  <dependency name="doctest" linkPath="../_build/target-deps/doctest">
+  <dependency name="doctest" linkPath="../_build/target-deps/doctest" tags="non-redist">
     <package name="doctest" version="2.4.5+nv1-3" />
   </dependency>
 
