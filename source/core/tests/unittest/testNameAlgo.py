@@ -1001,87 +1001,108 @@ class NameCacheTestCase(usdex.test.TestCase):
 
 class DisplayNameTestCase(usdex.test.TestCase):
 
-    def testDisplayName(self):
+    def setUp(self):
+        super().setUp()
+
         # Build a layered stage that allows us to change the edit target
-        weakerLayer = self.tmpLayer(name="Weaker")
-        strongerLayer = self.tmpLayer(name="Stronger")
+        self.weakerLayer = self.tmpLayer(name="Weaker")
+        self.strongerLayer = self.tmpLayer(name="Stronger")
 
         layer = Sdf.Layer.CreateAnonymous()
-        layer.subLayerPaths.append(strongerLayer.identifier)
-        layer.subLayerPaths.append(weakerLayer.identifier)
+        layer.subLayerPaths.append(self.strongerLayer.identifier)
+        layer.subLayerPaths.append(self.weakerLayer.identifier)
 
-        stage = Usd.Stage.Open(layer)
-        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        self.stage = Usd.Stage.Open(layer)
+        usdex.core.configureStage(
+            self.stage,
+            self.defaultPrimName,
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
 
         # Define the prim in the weaker layer
-        stage.SetEditTarget(Usd.EditTarget(weakerLayer))
-        prim = stage.DefinePrim("/Root")
+        self.stage.SetEditTarget(Usd.EditTarget(self.weakerLayer))
+        primName = usdex.core.getValidPrimName(self.defaultPrimName)
+        self.prim = self.stage.DefinePrim(Sdf.Path.absoluteRootPath.AppendChild(primName))
 
-        # The newly created prim will have an empty display name and the computed value will match the prim name
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, "")
-
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, prim.GetName())
-
-        # Setting the display name in the weaker layer will produce a success result
-        stage.SetEditTarget(Usd.EditTarget(weakerLayer))
+    def testGetDisplayName(self):
+        # The newly created prim will have an empty display name
+        self.assertEqual(usdex.core.getDisplayName(self.prim), "")
 
         weakerValue = "Weaker Display Name"
-        self.assertTrue(usdex.core.setDisplayName(prim, weakerValue))
+        self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
+        self.assertEqual(usdex.core.getDisplayName(self.prim), weakerValue)
 
-        # The new value will be reflected in the get and compute functions
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, weakerValue)
-
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, weakerValue)
-
-        # Setting the display name in the stronger layer will produce a success result
-        stage.SetEditTarget(Usd.EditTarget(strongerLayer))
-
+        self.stage.SetEditTarget(Usd.EditTarget(self.strongerLayer))
         strongerValue = "Stronger Display Name"
-        self.assertTrue(usdex.core.setDisplayName(prim, strongerValue))
+        self.assertTrue(usdex.core.setDisplayName(self.prim, strongerValue))
+        self.assertEqual(usdex.core.getDisplayName(self.prim), strongerValue)
 
-        # The new value will be reflected in the get and compute functions
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, strongerValue)
+        self.assertIsValidUsd(self.stage)
 
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, strongerValue)
+    def testSetDisplayName(self):
+        # Setting the display name will produce a success result
+        weakerValue = "Weaker Display Name"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
+        self.assertEqual(usdex.core.getDisplayName(self.prim), weakerValue)
+
+        # Setting a bytes string as the display name will convert it to a string
+        rocketEmoji = "🚀"
+        rocketBytesString = b"\xf0\x9f\x9a\x80"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, rocketBytesString))
+        self.assertEqual(usdex.core.getDisplayName(self.prim), rocketEmoji)
+
+        # Setting the corresponding string will produce the same display name
+        self.assertTrue(usdex.core.setDisplayName(self.prim, rocketEmoji))
+        self.assertEqual(usdex.core.getDisplayName(self.prim), rocketEmoji)
+
+        self.assertIsValidUsd(self.stage)
+
+    def testClearDisplayName(self):
+        weakerValue = "Weaker Display Name"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
+
+        self.stage.SetEditTarget(Usd.EditTarget(self.strongerLayer))
+        strongerValue = "Stronger Display Name"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, strongerValue))
 
         # Clearing the display name in the stronger layer will produce a success result
-        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertTrue(usdex.core.clearDisplayName(self.prim))
 
-        # The weaker value will now be reflected in the get and compute functions
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, weakerValue)
+        # The weaker value will now be reflected in the get function
+        self.assertEqual(usdex.core.getDisplayName(self.prim), weakerValue)
 
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, weakerValue)
+        self.assertIsValidUsd(self.stage)
+
+    def testBlockDisplayName(self):
+        weakerValue = "Weaker Display Name"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
+
+        self.stage.SetEditTarget(Usd.EditTarget(self.strongerLayer))
 
         # Blocking the display name in the stronger layer will produce a success result
-        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertTrue(usdex.core.blockDisplayName(self.prim))
 
-        # The prim will now have an empty display name and the computed value will match the prim name
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, "")
+        # The prim will now have an empty display name
+        self.assertEqual(usdex.core.getDisplayName(self.prim), "")
 
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, prim.GetName())
+        self.assertIsValidUsd(self.stage)
 
-        # Setting the bytes string as the display name
-        rocket_emoji = "🚀"
-        rocket_bytes_string = b"\xf0\x9f\x9a\x80"
-        self.assertTrue(usdex.core.setDisplayName(prim, rocket_bytes_string))
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, rocket_emoji)
+    def testComputeEffectiveDisplayName(self):
+        # The prim name will be returned when no display name is authored
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(self.prim), self.prim.GetName())
 
-        # Clear display name and setting rocket emoji character as the display name
-        self.assertTrue(usdex.core.clearDisplayName(prim))
-        self.assertEqual(weakerValue, usdex.core.getDisplayName(prim))
-        self.assertTrue(usdex.core.setDisplayName(prim, rocket_emoji))
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, rocket_emoji)
+        weakerValue = "Weaker Display Name"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(self.prim), weakerValue)
 
-        self.assertIsValidUsd(stage)
+        self.stage.SetEditTarget(Usd.EditTarget(self.strongerLayer))
+        strongerValue = "Stronger Display Name"
+        self.assertTrue(usdex.core.setDisplayName(self.prim, strongerValue))
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(self.prim), strongerValue)
+
+        self.assertTrue(usdex.core.blockDisplayName(self.prim))
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(self.prim), self.prim.GetName())
+
+        self.assertIsValidUsd(self.stage)
