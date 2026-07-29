@@ -34,7 +34,7 @@ def run_verify_deps(options: argparse.Namespace, toolConfig: Dict):
                 omni.repo.man.print_log(f"Verifying deps `{depsFile}` for platform={platform} config={config}")
                 (_, missing) = packmanapi.verify(
                     depsFile,
-                    platform=platform_target_abi,
+                    platform=platform,
                     tokens=tokens,
                     exclude_local=True,
                     remotes=remotes,
