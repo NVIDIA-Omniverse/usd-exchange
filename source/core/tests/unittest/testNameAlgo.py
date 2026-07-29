@@ -1041,6 +1041,13 @@ class DisplayNameTestCase(usdex.test.TestCase):
 
         self.assertIsValidUsd(self.stage)
 
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to get display name from an invalid prim")],
+        ):
+            self.assertEqual(usdex.core.getDisplayName(Usd.Prim()), "")
+
     def testSetDisplayName(self):
         # Setting the display name will produce a success result
         weakerValue = "Weaker Display Name"
@@ -1059,6 +1066,13 @@ class DisplayNameTestCase(usdex.test.TestCase):
 
         self.assertIsValidUsd(self.stage)
 
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to set display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.setDisplayName(Usd.Prim(), "foo"))
+
     def testClearDisplayName(self):
         weakerValue = "Weaker Display Name"
         self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
@@ -1075,6 +1089,13 @@ class DisplayNameTestCase(usdex.test.TestCase):
 
         self.assertIsValidUsd(self.stage)
 
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to clear display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.clearDisplayName(Usd.Prim()))
+
     def testBlockDisplayName(self):
         weakerValue = "Weaker Display Name"
         self.assertTrue(usdex.core.setDisplayName(self.prim, weakerValue))
@@ -1088,6 +1109,13 @@ class DisplayNameTestCase(usdex.test.TestCase):
         self.assertEqual(usdex.core.getDisplayName(self.prim), "")
 
         self.assertIsValidUsd(self.stage)
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to block display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.blockDisplayName(Usd.Prim()))
 
     def testComputeEffectiveDisplayName(self):
         # The prim name will be returned when no display name is authored
@@ -1106,3 +1134,10 @@ class DisplayNameTestCase(usdex.test.TestCase):
         self.assertEqual(usdex.core.computeEffectiveDisplayName(self.prim), self.prim.GetName())
 
         self.assertIsValidUsd(self.stage)
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to compute effective display name for an invalid prim")],
+        ):
+            self.assertEqual(usdex.core.computeEffectiveDisplayName(Usd.Prim()), "")

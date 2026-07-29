@@ -662,6 +662,12 @@ TfTokenVector usdex::core::getValidPropertyNames(const std::vector<std::string>&
 
 std::string usdex::core::getDisplayName(const UsdPrim& prim)
 {
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to get display name from an invalid prim");
+        return "";
+    }
+
 #if PXR_VERSION >= 2302
     return prim.GetDisplayName();
 #else
@@ -684,6 +690,12 @@ std::string usdex::core::getDisplayName(const UsdPrim& prim)
 
 bool usdex::core::setDisplayName(UsdPrim prim, const std::string& name)
 {
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to set display name on an invalid prim");
+        return false;
+    }
+
 #if PXR_VERSION >= 2302
     return prim.SetDisplayName(name);
 #else
@@ -698,6 +710,12 @@ bool usdex::core::setDisplayName(UsdPrim prim, const std::string& name)
 
 bool usdex::core::clearDisplayName(UsdPrim prim)
 {
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to clear display name on an invalid prim");
+        return false;
+    }
+
 #if PXR_VERSION >= 2302
     return prim.ClearDisplayName();
 #else
@@ -712,6 +730,12 @@ bool usdex::core::clearDisplayName(UsdPrim prim)
 
 bool usdex::core::blockDisplayName(UsdPrim prim)
 {
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to block display name on an invalid prim");
+        return false;
+    }
+
     // Setting the value to the fallback value of "" will essentially block the display name.
     // Subsequent calls to `computeEffectiveDisplayName` will return the Prim name as they would in the absence of any authored display name.
     return usdex::core::setDisplayName(prim, "");
@@ -719,6 +743,12 @@ bool usdex::core::blockDisplayName(UsdPrim prim)
 
 std::string usdex::core::computeEffectiveDisplayName(const UsdPrim& prim)
 {
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to compute effective display name for an invalid prim");
+        return "";
+    }
+
     // Return the display name metadata if it has a value other than an empty string
     std::string displayName = usdex::core::getDisplayName(prim);
     if (!displayName.empty())
