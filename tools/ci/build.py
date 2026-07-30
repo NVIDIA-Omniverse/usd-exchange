@@ -24,8 +24,6 @@ def main(arguments: argparse.Namespace):
     # copy internal configs into place
     if omni.repo.ci.is_running_on_ci():
         shutil.copyfile("usd-exchange-ci/configs/config.packman.xml", "tools/packman/config.packman.xml")
-        if omni.repo.man.is_windows():
-            shutil.copyfile("usd-exchange-ci/configs/host-deps.packman.xml", "deps/host-deps.packman.xml")
 
     # build the specified usd & python flavor with CMake
     build = [

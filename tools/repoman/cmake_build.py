@@ -127,6 +127,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         if python_ver != "0":
             # locate the target python, not a system interpreter
             configure += [f"-DPython3_ROOT_DIR={python_root}", "-DPython3_FIND_STRATEGY=LOCATION"]
+        if platform.startswith("windows"):
+            # on windows the abi is the MSVC toolset (e.g. v143); pin it so our binaries match the toolset of the openusd packages we link
+            configure += ["-T", abi]
 
         omni.repo.man.logger.info(" ".join(configure))
         omni.repo.man.run_process(configure, exit_on_error=True)

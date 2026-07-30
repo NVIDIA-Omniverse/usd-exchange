@@ -16,6 +16,8 @@ def run_verify_deps(options: argparse.Namespace, toolConfig: Dict):
     depsFiles.extend(toolConfig["repo_fetch_deps"]["fetch"]["packman_target_files_to_pull"])
     buildConfigs = ["release", "debug"]
     remotes = ["cloudfront"]
+    root = omni.repo.man.resolve_tokens("${root}")
+    repo_toml = omni.repo.man.resolve_tokens("${root}/repo.toml")
 
     usd_flavor = omni.repo.man.resolve_tokens("${usd_flavor}")
     usd_ver = omni.repo.man.resolve_tokens("${usd_ver}")
@@ -24,7 +26,9 @@ def run_verify_deps(options: argparse.Namespace, toolConfig: Dict):
 
     csv = []
     for platform in platforms:
-        platform_target_abi = omni.repo.man.get_abi_platform_translation(platform, abi_version=omni.repo.man.resolve_tokens("$abi"))
+        # abi is platform-specific ([repo.tokens] in repo.toml), so re-filter the config per target platform.
+        abi = omni.repo.man.load_toml_config_with_tokens(root, repo_toml, platform)["repo"]["tokens"]["abi"]
+        platform_target_abi = omni.repo.man.get_abi_platform_translation(platform, abi_version=abi)
         tokens = omni.repo.man.get_tokens(platform=platform)
         tokens["platform_host"] = platform
         tokens["platform_target_abi"] = platform_target_abi
