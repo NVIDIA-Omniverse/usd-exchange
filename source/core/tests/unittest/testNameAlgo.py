@@ -1678,6 +1678,109 @@ def Xform "{instanceName}"
         self.assertOtherUiHintsInStage(prim)
         self.assertIsValidUsd(stage)
 
+    def testSetEffectiveDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # A value matching the prim name is already effective when no display name exists, so the function succeeds without authoring either field.
+        prim = samples.GetChild("None")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A value that differs from the prim name is useful display metadata, so it is authored to both locations.
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
+        self.assertIsValidUsd(stage)
+
+        # A value matching the prim name is redundant, so the previous display name is replaced with empty values that make the prim name effective.
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A legacy-only display name must be blocked in both locations so old and new runtimes agree that the prim name is effective.
+        prim = samples.GetChild("LegacyOnly")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A UI-hint-only display name must also be blocked in both locations to mask that authored value in every runtime.
+        prim = samples.GetChild("UiHintOnly")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # An empty UI hint masks a non-empty legacy display name in newer runtimes, but the legacy value must still be blocked for older runtimes.
+        prim = samples.GetChild("EmptyUiHint")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # Display names authored in both locations are blocked rather than cleared so weaker opinions cannot become effective.
+        prim = samples.GetChild("Both")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # Invalid input is rejected by usdex before the set or block helpers are called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to set effective display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.setEffectiveDisplayName(Usd.Prim(), "foo"))
+
+    def testSetEffectiveDisplayNameLayered(self):
+        stage, strongerLayer = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
+        stage.SetEditTarget(Usd.EditTarget(strongerLayer))
+
+        # Matching the prim name when no display name exists is a no-op and must not create a prim spec in the stronger edit target.
+        prim = samples.GetChild("NoneWithEmptyEditLayer")
+        primName = str(prim.GetName())
+        self.assertIsNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertIsNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # Matching the prim name in a stronger edit target must block both weaker display-name representations.
+        prim = samples.GetChild("BothWithEmptyStrongerPrimSpec")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A subsequent differing value in the stronger edit target replaces the block and becomes the effective display name.
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, "bar"))
+        self.assertDisplayNameInStage(prim, "bar")
+        self.assertLegacyDisplayNameInStage(prim, "bar")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "bar")
+        self.assertIsValidUsd(stage)
+
     def testComputeEffectiveDisplayName(self):
         stage = self.getSampleStage()
         samples = stage.GetDefaultPrim()
