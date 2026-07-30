@@ -435,6 +435,17 @@ USDEX_API bool clearDisplayName(pxr::UsdPrim prim);
 //! @returns True on success, otherwise false
 USDEX_API bool blockDisplayName(pxr::UsdPrim prim);
 
+//! Sets the effective display name of this prim
+//!
+//! If `name` matches the prim's name and a non-empty display name is present, the display name is blocked so `computeEffectiveDisplayName()` returns
+//! the prim name and display-name opinions from weaker layers cannot contribute. If neither location contains a non-empty display name, no
+//! display-name opinion is authored. Otherwise `name` is authored as the display name.
+//!
+//! @param prim The prim to set the effective display name for
+//! @param name The effective display name
+//! @returns True on success, otherwise false
+USDEX_API bool setEffectiveDisplayName(pxr::UsdPrim prim, const std::string& name);
+
 //! Calculate the effective display name of this prim
 //!
 //! If the display name is un-authored or empty then the prim's name is returned

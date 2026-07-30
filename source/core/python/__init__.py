@@ -67,6 +67,7 @@ __all__ = [
     "setDisplayName",
     "clearDisplayName",
     "blockDisplayName",
+    "setEffectiveDisplayName",
     "computeEffectiveDisplayName",
     # xform
     "defineXform",

@@ -676,6 +676,27 @@ void bindNameAlgo(module& m)
         )"
     );
     m.def(
+        "setEffectiveDisplayName",
+        &setEffectiveDisplayName,
+        arg("prim"),
+        arg("name"),
+        R"(
+            Sets the effective display name of this prim
+
+            If ``name`` matches the prim's name and a non-empty display name is present, the display name is blocked so
+            ``computeEffectiveDisplayName()`` returns the prim name and display-name opinions from weaker layers cannot contribute. If neither
+            location contains a non-empty display name, no display-name opinion is authored. Otherwise ``name`` is authored as the display name.
+
+            Args:
+                prim: The prim to set the effective display name for
+                name: The effective display name
+
+            Returns:
+                True on success, otherwise false
+
+        )"
+    );
+    m.def(
         "computeEffectiveDisplayName",
         &computeEffectiveDisplayName,
         arg("prim"),

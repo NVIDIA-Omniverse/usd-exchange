@@ -246,6 +246,30 @@ bool clearUiHintsDisplayName(const UsdPrim& prim)
 
 #endif // PXR_VERSION < 2511: uiHints:displayName compatibility
 
+bool hasNonEmptyDisplayName(const UsdPrim& prim)
+{
+    // Check both representations independently. An empty uiHints:displayName can mask a non-empty legacy displayName in newer runtimes, while older
+    // runtimes still see the legacy value and therefore require it to be blocked.
+#if PXR_VERSION >= 2511
+    // UsdUIObjectHints::GetDisplayName() can fall back to the legacy field, so query the UI hint directly to keep the two checks independent
+    VtValue uiHintValue;
+    if (prim.GetMetadataByDictKey(_tokens->uiHints, _tokens->displayName, &uiHintValue) && uiHintValue.IsHolding<std::string>() &&
+        !uiHintValue.UncheckedGet<std::string>().empty())
+    {
+        return true;
+    }
+#else
+    std::string uiHintDisplayName;
+    if (getUiHintsDisplayName(prim, &uiHintDisplayName) && !uiHintDisplayName.empty())
+    {
+        return true;
+    }
+#endif
+
+    std::string legacyDisplayName;
+    return prim.GetMetadata(SdfFieldKeys->DisplayName, &legacyDisplayName) && !legacyDisplayName.empty();
+}
+
 TfTokenVector getValidNames(
     const std::vector<std::string>& names,
     std::function<const std::string(const std::string&)> getValidNameFunc,
@@ -909,6 +933,27 @@ bool usdex::core::blockDisplayName(UsdPrim prim)
 
     // Author an empty value in both metadata locations so all supported OpenUSD runtimes block weaker display names
     return usdex::core::setDisplayName(prim, "");
+}
+
+bool usdex::core::setEffectiveDisplayName(UsdPrim prim, const std::string& name)
+{
+    if (!prim)
+    {
+        TF_RUNTIME_ERROR("Unable to set effective display name on an invalid prim");
+        return false;
+    }
+
+    // Block existing display names so weaker values cannot override the prim name fallback
+    if (name == prim.GetName().GetString())
+    {
+        if (!hasNonEmptyDisplayName(prim))
+        {
+            return true;
+        }
+        return usdex::core::blockDisplayName(prim);
+    }
+
+    return usdex::core::setDisplayName(prim, name);
 }
 
 std::string usdex::core::computeEffectiveDisplayName(const UsdPrim& prim)
