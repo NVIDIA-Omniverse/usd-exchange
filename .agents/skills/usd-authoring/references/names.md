@@ -16,9 +16,11 @@ OpenUSD identifiers must be non-empty, start with `[A-Za-z_]`, and continue with
 | `getValidPrimName(name)` / `getValidPrimNames(names, [reservedNames])` | No parent context (e.g. `defaultPrimName` for a brand-new stage). |
 | `getValidChildName(parent, name)` / `getValidChildNames(parent, names)` | Author one or many prims under an existing parent without remembering names later. |
 | `getValidPropertyName(name)` / `getValidPropertyNames(names, [reservedNames])` | Property names; preserves `:` namespaces. |
-| `setDisplayName(prim, name)` / `getDisplayName(prim)` / `clearDisplayName(prim)` / `blockDisplayName(prim)` / `computeEffectiveDisplayName(prim)` | Read/write/clear/block interoperable display-name metadata, or compute the effective value (falls back to prim name). |
+| `setDisplayName(prim, name)` / `setEffectiveDisplayName(prim, name)` / `getDisplayName(prim)` / `clearDisplayName(prim)` / `blockDisplayName(prim)` / `computeEffectiveDisplayName(prim)` | Read/write/clear/block interoperable display-name metadata, or compute the effective value (falls back to prim name). |
 
 USD 25.11 deprecated the original `displayName` field in favor of `uiHints:displayName`. The SDK helpers handle both locations for cross-version compatibility; use them instead of authoring either location directly.
+
+Prefer `setEffectiveDisplayName` when the desired label may equal the prim name. It authors display-name metadata when the values differ, blocks an existing non-empty display name when they match, and otherwise leaves display-name metadata unauthored.
 
 ### `NameCache` — preferred for any non-trivial converter
 
@@ -41,7 +43,7 @@ Use one cache per conversion (per thread). Parent it to whichever stable type fi
 | Stage default prim | `getValidPrimName(asset.name)` |
 | Property name (including `:` namespaces) | `getValidPropertyName(source.property_name)` or `cache.getPropertyName(parent, source.property_name)` |
 
-When the source name had to be transcoded or made unique, set `displayName` to the original via `usdex.core.setDisplayName(prim, source.name)` after the prim is defined.
+When the source name had to be transcoded or made unique, set the effective display name to the original via `usdex.core.setEffectiveDisplayName(prim, source.name)` after the prim is defined.
 
 ## Anti-patterns
 
@@ -51,4 +53,4 @@ When the source name had to be transcoded or made unique, set `displayName` to t
 | `Tf.MakeValidIdentifier(name)` | `usdex.core.getValidPrimName(name)` (preserves the original via display name) |
 | Re-allocate names from `getValidChildNames` repeatedly per parent | one `NameCache` for the whole conversion |
 | Hard-coded literal `defaultPrimName` | `defaultPrimName=usdex.core.getValidPrimName(asset.name)` |
-| Author either display-name location directly | `usdex.core.setDisplayName(prim, source.name)` after the prim is defined |
+| Author either display-name location directly | `usdex.core.setEffectiveDisplayName(prim, source.name)` after the prim is defined |
