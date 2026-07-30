@@ -12,9 +12,9 @@ unset PYTHONPATH
 
 # (Re)create a clean venv with uv, then install the built wheel(s) with the test extras
 rm -rf "$VENV"
-./repo.sh uv venv --python ./_build/target-deps/python/python3 "$VENV"
+./repo.sh uv -- venv --python ./_build/target-deps/python/python3 "$VENV"
 for wheel in _build/packages/*.whl; do
-    ./repo.sh uv pip install --python "$VENV/bin/python" "${wheel}[test]"
+    ./repo.sh uv -- pip install --python "$VENV/bin/python" "${wheel}[test]"
 done
 
 # Verify the usd-exchange modules import from the installed wheel (test venv),

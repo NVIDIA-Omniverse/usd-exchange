@@ -14,11 +14,11 @@ if exist "%VENV%" (
     rd /s /q "%VENV%"
 )
 
-call .\repo.bat uv venv --python .\_build\target-deps\python\python.exe "%VENV%"
+call .\repo.bat uv -- venv --python .\_build\target-deps\python\python.exe "%VENV%"
 if %errorlevel% neq 0 ( exit /b %errorlevel% )
 
 for %%f in ("_build\packages\*.whl") do (
-    call .\repo.bat uv pip install --python "%VENV%\Scripts\python.exe" "%%f[test]"
+    call .\repo.bat uv -- pip install --python "%VENV%\Scripts\python.exe" "%%f[test]"
     if %errorlevel% neq 0 ( exit /b %errorlevel% )
 )
 
