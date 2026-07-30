@@ -1092,6 +1092,45 @@ def Xform "OtherUiHints" (
 )
 {
 }
+
+def Xform "InternalReferenceSource" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
+
+def Xform "InternalReference" (
+    prepend references = </Samples/InternalReferenceSource>
+)
+{
+}
+
+def Xform "InstanceableInternalReferenceSource" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+    def Xform "Child" (
+        displayName = "foo"
+        uiHints = {
+            string displayName = "foo"
+        }
+    )
+    {
+    }
+}
+
+def Xform "InstanceableInternalReference" (
+    instanceable = true
+    prepend references = </Samples/InstanceableInternalReferenceSource>
+)
+{
+}
 }
 """
 
@@ -1261,56 +1300,18 @@ over "UiHintOnlyWithEmptyStrongerPrimSpec"
         stage = Usd.Stage.Open(rootLayer)
         return stage, strongerLayer
 
-    def getMappedEditTargetStage(self):
-        assetName = usdex.core.getValidPrimName("Asset")
-        assetPath = Sdf.Path.absoluteRootPath.AppendChild(assetName)
-        assetLayer = self.tmpLayer(name="MappedAsset")
-        self.assertTrue(
-            assetLayer.ImportFromString(
-                f"""#usda 1.0
-(
-    defaultPrim = "{assetName}"
-    kilogramsPerUnit = 1
-    metersPerUnit = 1
-    upAxis = "Y"
-)
+    def setReferenceEditTarget(self, stage, prim, sourcePrim):
+        # Select the reference arc through the public composition-query API so edits on the scene prim map back to the source prim.
+        compositionQuery = Usd.PrimCompositionQuery.GetDirectReferences(prim)
+        compositionArcs = compositionQuery.GetCompositionArcs()
+        self.assertEqual(len(compositionArcs), 1)
+        referenceArc = compositionArcs[0]
+        self.assertEqual(referenceArc.GetTargetLayer(), stage.GetRootLayer())
+        self.assertEqual(referenceArc.GetTargetPrimPath(), sourcePrim.GetPath())
 
-def Xform "{assetName}"
-{{
-}}
-"""
-            )
-        )
-        self.assertTrue(usdex.core.saveLayer(assetLayer, self.defaultAuthoringMetadata))
-
-        instanceName = usdex.core.getValidPrimName("Instance")
-        instancePath = Sdf.Path.absoluteRootPath.AppendChild(instanceName)
-        rootLayer = self.tmpLayer(name="MappedRoot")
-        self.assertTrue(
-            rootLayer.ImportFromString(
-                f"""#usda 1.0
-(
-    defaultPrim = "{instanceName}"
-    kilogramsPerUnit = 1
-    metersPerUnit = 1
-    upAxis = "Y"
-)
-
-def Xform "{instanceName}"
-{{
-}}
-"""
-            )
-        )
-        stage = Usd.Stage.Open(rootLayer)
-        instance = stage.GetDefaultPrim()
-        instance.GetReferences().AddReference(assetLayer.identifier, assetPath)
-
-        referenceNode = instance.GetPrimIndex().rootNode.children[0]
-        editTarget = Usd.EditTarget(assetLayer, referenceNode)
-        self.assertEqual(editTarget.MapToSpecPath(instancePath), assetPath)
+        editTarget = Usd.EditTarget(referenceArc.GetTargetLayer(), referenceArc.GetTargetNode())
+        self.assertEqual(editTarget.MapToSpecPath(prim.GetPath()), sourcePrim.GetPath())
         stage.SetEditTarget(editTarget)
-        return stage, instance
 
     def reopenStage(self, stage, prim):
         primPath = prim.GetPath()
@@ -1438,6 +1439,22 @@ def Xform "{instanceName}"
         self.assertEqual(usdex.core.getDisplayName(prim), "foo")
         self.assertOtherUiHintsInStage(prim)
 
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # An internal reference composes both display-name representations from its source prim.
+        prim = samples.GetChild("InternalReference")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # Making the internal reference instanceable does not change the composed display name on the instance root.
+        prim = samples.GetChild("InstanceableInternalReference")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # A child beneath an instance is an instance proxy. Metadata queries remain valid even though opinions cannot be authored on the proxy.
+        prim = stage.GetPrimAtPath(prim.GetPath().AppendChild("Child"))
+        self.assertTrue(prim.IsInstanceProxy())
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
     def testSetDisplayName(self):
         stage = self.getSampleStage()
         samples = stage.GetDefaultPrim()
@@ -1518,11 +1535,28 @@ def Xform "{instanceName}"
         self.assertIsValidUsd(stage)
 
     def testSetDisplayNameComposed(self):
-        # A non-identity edit target maps the scene prim to its referenced-layer prim before both opinions are authored.
-        stage, prim = self.getMappedEditTargetStage()
-        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
-        self.assertDisplayNameInStage(prim, "foo")
-        self.assertLegacyDisplayNameInStage(prim, "foo")
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # A reference edit target maps the scene prim to its source prim before both opinions are authored.
+        sourcePrim = samples.GetChild("InternalReferenceSource")
+        prim = samples.GetChild("InternalReference")
+        self.setReferenceEditTarget(stage, prim, sourcePrim)
+        self.assertTrue(usdex.core.setDisplayName(prim, "bar"))
+        self.assertDisplayNameInStage(sourcePrim, "bar")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "bar")
+        self.assertDisplayNameInStage(prim, "bar")
+        self.assertLegacyDisplayNameInStage(prim, "bar")
+
+        # With the root layer as the edit target, an instance root receives a local override and its referenced source remains unchanged.
+        stage.SetEditTarget(Usd.EditTarget(stage.GetRootLayer()))
+        sourcePrim = samples.GetChild("InstanceableInternalReferenceSource")
+        prim = samples.GetChild("InstanceableInternalReference")
+        self.assertTrue(usdex.core.setDisplayName(prim, "bar"))
+        self.assertDisplayNameInStage(prim, "bar")
+        self.assertLegacyDisplayNameInStage(prim, "bar")
+        self.assertDisplayNameInStage(sourcePrim, "foo")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "foo")
         self.assertIsValidUsd(stage)
 
     def testClearDisplayName(self):
@@ -1602,12 +1636,34 @@ def Xform "{instanceName}"
         self.assertLegacyDisplayNameInStage(prim, "foo")
 
     def testClearDisplayNameComposed(self):
-        # A non-identity edit target clears both opinions at the referenced-layer path.
-        stage, prim = self.getMappedEditTargetStage()
-        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # A reference edit target maps the scene prim to its source prim before both authored opinions are cleared.
+        sourcePrim = samples.GetChild("InternalReferenceSource")
+        prim = samples.GetChild("InternalReference")
+        self.setReferenceEditTarget(stage, prim, sourcePrim)
         self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(sourcePrim, None)
+        self.assertLegacyDisplayNameInStage(sourcePrim, None)
         self.assertDisplayNameInStage(prim, None)
         self.assertLegacyDisplayNameInStage(prim, None)
+
+        # Clearing an instance root with no local opinion is a successful no-op that leaves the referenced source visible.
+        stage.SetEditTarget(Usd.EditTarget(stage.GetRootLayer()))
+        sourcePrim = samples.GetChild("InstanceableInternalReferenceSource")
+        prim = samples.GetChild("InstanceableInternalReference")
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+
+        # A local override on the instance root can then be cleared without changing its referenced source.
+        self.assertTrue(usdex.core.setDisplayName(prim, "bar"))
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertDisplayNameInStage(sourcePrim, "foo")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "foo")
         self.assertIsValidUsd(stage)
 
     def testBlockDisplayName(self):
@@ -1676,6 +1732,29 @@ def Xform "{instanceName}"
         self.assertDisplayNameInStage(prim, "")
         self.assertLegacyDisplayNameInStage(prim, "")
         self.assertOtherUiHintsInStage(prim)
+        self.assertIsValidUsd(stage)
+
+    def testBlockDisplayNameComposed(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # Blocking on a reference prim authors local empty opinions that mask, but do not modify, its referenced display name.
+        sourcePrim = samples.GetChild("InternalReferenceSource")
+        prim = samples.GetChild("InternalReference")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertDisplayNameInStage(sourcePrim, "foo")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "foo")
+
+        # An instance root is also a valid authoring location, so the same local block masks the instanceable reference.
+        sourcePrim = samples.GetChild("InstanceableInternalReferenceSource")
+        prim = samples.GetChild("InstanceableInternalReference")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertDisplayNameInStage(sourcePrim, "foo")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "foo")
         self.assertIsValidUsd(stage)
 
     def testSetEffectiveDisplayName(self):
@@ -1781,6 +1860,31 @@ def Xform "{instanceName}"
         self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "bar")
         self.assertIsValidUsd(stage)
 
+    def testSetEffectiveDisplayNameComposed(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # Matching the reference prim name blocks its inherited display name locally without modifying the source prim.
+        sourcePrim = samples.GetChild("InternalReferenceSource")
+        prim = samples.GetChild("InternalReference")
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, str(prim.GetName())))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertDisplayNameInStage(sourcePrim, "foo")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "foo")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+
+        # The instance root is likewise authorable, so it can locally block the display name supplied by its reference.
+        sourcePrim = samples.GetChild("InstanceableInternalReferenceSource")
+        prim = samples.GetChild("InstanceableInternalReference")
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, str(prim.GetName())))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertDisplayNameInStage(sourcePrim, "foo")
+        self.assertLegacyDisplayNameInStage(sourcePrim, "foo")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+        self.assertIsValidUsd(stage)
+
     def testComputeEffectiveDisplayName(self):
         stage = self.getSampleStage()
         samples = stage.GetDefaultPrim()
@@ -1823,3 +1927,20 @@ def Xform "{instanceName}"
             [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to compute effective display name for an invalid prim")],
         ):
             self.assertEqual(usdex.core.computeEffectiveDisplayName(Usd.Prim()), "")
+
+    def testComputeEffectiveDisplayNameComposed(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # An ordinary internal reference uses the display name composed from its source prim.
+        prim = samples.GetChild("InternalReference")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
+
+        # Instanceability does not change the effective display name composed on the instance root.
+        prim = samples.GetChild("InstanceableInternalReference")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
+
+        # Effective-name computation also reads composed metadata from an instance proxy.
+        prim = stage.GetPrimAtPath(prim.GetPath().AppendChild("Child"))
+        self.assertTrue(prim.IsInstanceProxy())
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
