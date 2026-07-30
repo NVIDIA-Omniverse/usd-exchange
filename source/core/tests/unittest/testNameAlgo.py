@@ -1001,87 +1001,825 @@ class NameCacheTestCase(usdex.test.TestCase):
 
 class DisplayNameTestCase(usdex.test.TestCase):
 
-    def testDisplayName(self):
-        # Build a layered stage that allows us to change the edit target
-        weakerLayer = self.tmpLayer(name="Weaker")
-        strongerLayer = self.tmpLayer(name="Stronger")
+    # Define these samples as USDA because older OpenUSD runtimes do not register the uiHints metadatum. Their metadata authoring APIs cannot author
+    # the field normally, while the USDA parser preserves it as an SdfUnregisteredValue for the compatibility paths under test.
+    displayNameSamplesUsda = """#usda 1.0
+(
+    defaultPrim = "Samples"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Y"
+)
 
-        layer = Sdf.Layer.CreateAnonymous()
-        layer.subLayerPaths.append(strongerLayer.identifier)
-        layer.subLayerPaths.append(weakerLayer.identifier)
+def Xform "Samples"
+{
+def Xform "None"
+{
+}
 
-        stage = Usd.Stage.Open(layer)
-        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+def Xform "LegacyOnly" (
+    displayName = "foo"
+)
+{
+}
 
-        # Define the prim in the weaker layer
-        stage.SetEditTarget(Usd.EditTarget(weakerLayer))
-        prim = stage.DefinePrim("/Root")
+def Xform "UiHintOnly" (
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
 
-        # The newly created prim will have an empty display name and the computed value will match the prim name
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, "")
+def Xform "Both" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
 
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, prim.GetName())
+def Xform "Differing" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "bar"
+    }
+)
+{
+}
 
-        # Setting the display name in the weaker layer will produce a success result
-        stage.SetEditTarget(Usd.EditTarget(weakerLayer))
+def Xform "Empty" (
+    displayName = ""
+    uiHints = {
+        string displayName = ""
+    }
+)
+{
+}
 
-        weakerValue = "Weaker Display Name"
-        self.assertTrue(usdex.core.setDisplayName(prim, weakerValue))
+def Xform "EmptyUiHint" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = ""
+    }
+)
+{
+}
 
-        # The new value will be reflected in the get and compute functions
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, weakerValue)
+def Xform "EmptyLegacy" (
+    displayName = ""
+)
+{
+}
 
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, weakerValue)
+def Xform "InvalidUiHint" (
+    displayName = "foo"
+    uiHints = {
+        int displayName = 42
+    }
+)
+{
+}
 
-        # Setting the display name in the stronger layer will produce a success result
+def Xform "OtherUiHints" (
+    uiHints = {
+        bool hidden = 1
+        dictionary nested = {
+            string label = "Preserved"
+        }
+    }
+)
+{
+}
+}
+"""
+
+    weakerDisplayNameSamplesUsda = """#usda 1.0
+(
+    defaultPrim = "Samples"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "Samples"
+{
+def Xform "UiHintOnlyWithStrongerLegacyOnly" (
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
+
+def Xform "LegacyOnlyWithStrongerUiHintOnly" (
+    displayName = "foo"
+)
+{
+}
+
+def Xform "BothWithStrongerOtherUiHints" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+        dictionary nested = {
+            string weaker = "Preserved"
+        }
+    }
+)
+{
+}
+
+def Xform "NoneWithEmptyEditLayer"
+{
+}
+
+def Xform "BothWithEmptyEditLayer" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
+
+def Xform "BothWithEmptyStrongerPrimSpec" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
+
+def Xform "BothWithStrongerBoth" (
+    displayName = "foo"
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
+
+def Xform "LegacyOnlyWithEmptyStrongerPrimSpec" (
+    displayName = "foo"
+)
+{
+}
+
+def Xform "UiHintOnlyWithEmptyStrongerPrimSpec" (
+    uiHints = {
+        string displayName = "foo"
+    }
+)
+{
+}
+}
+"""
+
+    layeredStageUsda = """#usda 1.0
+(
+    defaultPrim = "Samples"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+"""
+
+    strongerDisplayNameSamplesUsda = """#usda 1.0
+over "Samples"
+{
+over "UiHintOnlyWithStrongerLegacyOnly" (
+    displayName = "bar"
+)
+{
+}
+
+over "LegacyOnlyWithStrongerUiHintOnly" (
+    uiHints = {
+        string displayName = "bar"
+    }
+)
+{
+}
+
+over "BothWithStrongerOtherUiHints" (
+    uiHints = {
+        bool hidden = 1
+        dictionary nested = {
+            string label = "Preserved"
+        }
+    }
+)
+{
+}
+
+over "BothWithEmptyStrongerPrimSpec"
+{
+}
+
+over "BothWithStrongerBoth" (
+    displayName = "bar"
+    uiHints = {
+        string displayName = "bar"
+    }
+)
+{
+}
+
+over "LegacyOnlyWithEmptyStrongerPrimSpec"
+{
+}
+
+over "UiHintOnlyWithEmptyStrongerPrimSpec"
+{
+}
+}
+"""
+
+    def getStageFromUsda(self, usda):
+        layer = Sdf.Layer.CreateAnonymous("DisplayName.usda")
+        self.assertTrue(layer.ImportFromString(usda))
+        return Usd.Stage.Open(layer)
+
+    def getSampleStage(self):
+        return self.getStageFromUsda(self.displayNameSamplesUsda)
+
+    def getLayeredStage(self):
+        weakerLayer = self.tmpLayer(name="DisplayNameSamplesWeaker")
+        strongerLayer = self.tmpLayer(name="DisplayNameSamplesStronger")
+        self.assertTrue(weakerLayer.ImportFromString(self.weakerDisplayNameSamplesUsda))
+        self.assertTrue(strongerLayer.ImportFromString(self.strongerDisplayNameSamplesUsda))
+        self.assertTrue(usdex.core.saveLayer(weakerLayer, self.defaultAuthoringMetadata))
+        self.assertTrue(usdex.core.saveLayer(strongerLayer, self.defaultAuthoringMetadata))
+
+        rootLayer = self.tmpLayer(name="DisplayNameSamplesRoot")
+        self.assertTrue(rootLayer.ImportFromString(self.layeredStageUsda))
+        rootLayer.subLayerPaths.append(strongerLayer.identifier)
+        rootLayer.subLayerPaths.append(weakerLayer.identifier)
+        stage = Usd.Stage.Open(rootLayer)
+        return stage, strongerLayer
+
+    def getMappedEditTargetStage(self):
+        assetName = usdex.core.getValidPrimName("Asset")
+        assetPath = Sdf.Path.absoluteRootPath.AppendChild(assetName)
+        assetLayer = self.tmpLayer(name="MappedAsset")
+        self.assertTrue(
+            assetLayer.ImportFromString(
+                f"""#usda 1.0
+(
+    defaultPrim = "{assetName}"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "{assetName}"
+{{
+}}
+"""
+            )
+        )
+        self.assertTrue(usdex.core.saveLayer(assetLayer, self.defaultAuthoringMetadata))
+
+        instanceName = usdex.core.getValidPrimName("Instance")
+        instancePath = Sdf.Path.absoluteRootPath.AppendChild(instanceName)
+        rootLayer = self.tmpLayer(name="MappedRoot")
+        self.assertTrue(
+            rootLayer.ImportFromString(
+                f"""#usda 1.0
+(
+    defaultPrim = "{instanceName}"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "{instanceName}"
+{{
+}}
+"""
+            )
+        )
+        stage = Usd.Stage.Open(rootLayer)
+        instance = stage.GetDefaultPrim()
+        instance.GetReferences().AddReference(assetLayer.identifier, assetPath)
+
+        referenceNode = instance.GetPrimIndex().rootNode.children[0]
+        editTarget = Usd.EditTarget(assetLayer, referenceNode)
+        self.assertEqual(editTarget.MapToSpecPath(instancePath), assetPath)
+        stage.SetEditTarget(editTarget)
+        return stage, instance
+
+    def reopenStage(self, stage, prim):
+        primPath = prim.GetPath()
+        rootLayer = stage.GetRootLayer()
+        if rootLayer.anonymous:
+            reopenedStage = self.getStageFromUsda(rootLayer.ExportToString())
+            return reopenedStage, reopenedStage.GetPrimAtPath(primPath)
+
+        for layer in stage.GetLayerStack():
+            if not layer.anonymous:
+                self.assertTrue(usdex.core.saveLayer(layer, self.defaultAuthoringMetadata))
+        reopenedStage = Usd.Stage.Open(rootLayer.identifier)
+        return reopenedStage, reopenedStage.GetPrimAtPath(primPath)
+
+    def getPrimUsda(self, layer, path):
+        lines = layer.ExportToString().splitlines()
+        primName = path.name
+        start = None
+        indentation = None
+        for index, line in enumerate(lines):
+            declaration = line.strip()
+            if declaration.startswith(("def ", "over ", "class ")) and f'"{primName}"' in declaration:
+                start = index
+                indentation = len(line) - len(line.lstrip())
+                break
+
+        self.assertIsNotNone(start)
+        end = len(lines)
+        for index in range(start + 1, len(lines)):
+            line = lines[index]
+            declaration = line.strip()
+            lineIndentation = len(line) - len(line.lstrip())
+            if lineIndentation == indentation and declaration.startswith(("def ", "over ", "class ")):
+                end = index
+                break
+            if lineIndentation < indentation and declaration == "}":
+                end = index
+                break
+        return "\n".join(lines[start:end])
+
+    def assertDisplayNameInStage(self, prim, expected):
+        # Older USD versions expose uiHints only as unregistered metadata and cannot preserve it when flattening. Prim-stack order is strongest to
+        # weakest, so inspect only the requested prim spec from each layer and use the first authored string displayName.
+        actual = None
+        for primSpec in prim.GetPrimStack():
+            for line in self.getPrimUsda(primSpec.layer, primSpec.path).splitlines():
+                line = line.strip()
+                if line.startswith("string displayName = "):
+                    actual = line.split("=", 1)[1].strip()[1:-1]
+                    break
+            if actual is not None:
+                break
+        self.assertEqual(actual, expected)
+
+    def assertLegacyDisplayNameInStage(self, prim, expected):
+        # The original displayName field is registered in every supported runtime and can be queried directly.
+        self.assertEqual(prim.GetMetadata("displayName"), expected)
+
+    def assertOtherUiHintsInStage(self, prim):
+        primStackUsda = "\n".join(self.getPrimUsda(primSpec.layer, primSpec.path) for primSpec in prim.GetPrimStack())
+        self.assertIn("bool hidden = 1", primStackUsda)
+        self.assertIn('string label = "Preserved"', primStackUsda)
+
+    def testGetDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # No display name: neither location has an opinion, so getDisplayName returns an empty string.
+        prim = samples.GetChild("None")
+        self.assertEqual(usdex.core.getDisplayName(prim), "")
+
+        # Legacy display name only: files from older USD versions must continue to return the original field.
+        prim = samples.GetChild("LegacyOnly")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # UI-hint display name only: files from newer USD versions must return uiHints:displayName.
+        prim = samples.GetChild("UiHintOnly")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # Both locations agree: the shared value is returned.
+        prim = samples.GetChild("Both")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # Both locations differ: uiHints:displayName wins because it is the current USD representation.
+        prim = samples.GetChild("Differing")
+        self.assertEqual(usdex.core.getDisplayName(prim), "bar")
+
+        # Both locations contain empty strings: the authored block is returned rather than treated as no opinion.
+        prim = samples.GetChild("Empty")
+        self.assertEqual(usdex.core.getDisplayName(prim), "")
+
+        # An empty UI hint blocks a non-empty legacy value because location precedence is evaluated before fallback.
+        prim = samples.GetChild("EmptyUiHint")
+        self.assertEqual(usdex.core.getDisplayName(prim), "")
+
+        # A malformed non-string UI hint cannot be returned, so getDisplayName defensively falls back to the valid legacy string.
+        prim = samples.GetChild("InvalidUiHint")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to get display name from an invalid prim")],
+        ):
+            self.assertEqual(usdex.core.getDisplayName(Usd.Prim()), "")
+
+    def testGetDisplayNameLayered(self):
+        stage, _ = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
+
+        # A stronger UI hint naturally wins over a weaker legacy opinion.
+        prim = samples.GetChild("LegacyOnlyWithStrongerUiHintOnly")
+        self.assertEqual(usdex.core.getDisplayName(prim), "bar")
+
+    def testGetDisplayNameComposed(self):
+        stage, _ = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
+
+        # A weaker UI hint still wins over a stronger legacy-only opinion because UI-hint precedence applies across the composed stage.
+        prim = samples.GetChild("UiHintOnlyWithStrongerLegacyOnly")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+
+        # A stronger uiHints dictionary without displayName composes with the weaker dictionary instead of replacing it.
+        prim = samples.GetChild("BothWithStrongerOtherUiHints")
+        self.assertEqual(usdex.core.getDisplayName(prim), "foo")
+        self.assertOtherUiHintsInStage(prim)
+
+    def testSetDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # No existing display name: setDisplayName authors the same value to both locations.
+        prim = samples.GetChild("None")
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+
+        # The flattened USDA must reopen with the same result, proving the authored representation round-trips.
+        reopenedStage, reopenedPrim = self.reopenStage(stage, prim)
+        self.assertEqual(usdex.core.getDisplayName(reopenedPrim), "foo")
+        self.assertDisplayNameInStage(reopenedPrim, "foo")
+        self.assertLegacyDisplayNameInStage(reopenedPrim, "foo")
+        self.assertIsValidUsd(reopenedStage)
+
+        # A legacy-only stage gains the UI-hint opinion and overwrites the original value.
+        prim = samples.GetChild("LegacyOnly")
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertIsValidUsd(stage)
+
+        # A UI-hint-only stage gains the legacy compatibility opinion and overwrites the preferred value.
+        prim = samples.GetChild("UiHintOnly")
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertIsValidUsd(stage)
+
+        # Differing existing values are both overwritten so no stale fallback survives.
+        prim = samples.GetChild("Differing")
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertIsValidUsd(stage)
+
+        # Existing scalar and nested uiHints values are unrelated to displayName and must be preserved.
+        prim = samples.GetChild("OtherUiHints")
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertOtherUiHintsInStage(prim)
+        self.assertIsValidUsd(stage)
+
+        # A bytes string is converted to the corresponding Unicode display name.
+        rocketEmoji = "🚀"
+        rocketBytesString = b"\xf0\x9f\x9a\x80"
+        prim = samples.GetChild("None")
+        self.assertTrue(usdex.core.setDisplayName(prim, rocketBytesString))
+        self.assertEqual(usdex.core.getDisplayName(prim), rocketEmoji)
+
+        # The corresponding Unicode string produces the same unrestricted display metadata.
+        self.assertTrue(usdex.core.setDisplayName(prim, rocketEmoji))
+        self.assertEqual(usdex.core.getDisplayName(prim), rocketEmoji)
+        self.assertIsValidUsd(stage)
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to set display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.setDisplayName(Usd.Prim(), "foo"))
+
+    def testSetDisplayNameLayered(self):
+        stage, strongerLayer = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
+
+        # A prim composed from a weaker layer has no stronger prim spec; setting creates that spec and authors both locations there.
+        prim = samples.GetChild("NoneWithEmptyEditLayer")
+        stage.SetEditTarget(Usd.EditTarget(strongerLayer))
+        self.assertIsNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertTrue(usdex.core.setDisplayName(prim, "bar"))
+        self.assertIsNotNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertDisplayNameInStage(prim, "bar")
+        self.assertLegacyDisplayNameInStage(prim, "bar")
+        self.assertIsValidUsd(stage)
+
+    def testSetDisplayNameComposed(self):
+        # A non-identity edit target maps the scene prim to its referenced-layer prim before both opinions are authored.
+        stage, prim = self.getMappedEditTargetStage()
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertIsValidUsd(stage)
+
+    def testClearDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # Both locations are authored locally: clearDisplayName removes both and leaves no display name.
+        prim = samples.GetChild("Both")
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertEqual(usdex.core.getDisplayName(prim), "")
+        self.assertNotIn("uiHints = {", self.getPrimUsda(stage.GetRootLayer(), prim.GetPath()))
+        self.assertIsValidUsd(stage)
+
+        # Legacy only: clearing removes the legacy opinion and treats the absent UI hint as a no-op.
+        prim = samples.GetChild("LegacyOnly")
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertIsValidUsd(stage)
+
+        # UI hint only: clearing removes the UI-hint opinion and treats the absent legacy field as a no-op.
+        prim = samples.GetChild("UiHintOnly")
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertIsValidUsd(stage)
+
+        # Other scalar and nested UI hints remain after only displayName is cleared.
+        prim = samples.GetChild("OtherUiHints")
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertOtherUiHintsInStage(prim)
+        self.assertIsValidUsd(stage)
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to clear display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.clearDisplayName(Usd.Prim()))
+
+    def testClearDisplayNameLayered(self):
+        stage, strongerLayer = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
         stage.SetEditTarget(Usd.EditTarget(strongerLayer))
 
-        strongerValue = "Stronger Display Name"
-        self.assertTrue(usdex.core.setDisplayName(prim, strongerValue))
-
-        # The new value will be reflected in the get and compute functions
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, strongerValue)
-
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, strongerValue)
-
-        # Clearing the display name in the stronger layer will produce a success result
+        # An empty stronger prim spec has nothing to clear; the successful no-op leaves both weaker opinions visible.
+        prim = samples.GetChild("BothWithEmptyStrongerPrimSpec")
         self.assertTrue(usdex.core.clearDisplayName(prim))
-
-        # The weaker value will now be reflected in the get and compute functions
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, weakerValue)
-
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, weakerValue)
-
-        # Blocking the display name in the stronger layer will produce a success result
-        self.assertTrue(usdex.core.blockDisplayName(prim))
-
-        # The prim will now have an empty display name and the computed value will match the prim name
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, "")
-
-        result = usdex.core.computeEffectiveDisplayName(prim)
-        self.assertEqual(result, prim.GetName())
-
-        # Setting the bytes string as the display name
-        rocket_emoji = "🚀"
-        rocket_bytes_string = b"\xf0\x9f\x9a\x80"
-        self.assertTrue(usdex.core.setDisplayName(prim, rocket_bytes_string))
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, rocket_emoji)
-
-        # Clear display name and setting rocket emoji character as the display name
-        self.assertTrue(usdex.core.clearDisplayName(prim))
-        self.assertEqual(weakerValue, usdex.core.getDisplayName(prim))
-        self.assertTrue(usdex.core.setDisplayName(prim, rocket_emoji))
-        result = usdex.core.getDisplayName(prim)
-        self.assertEqual(result, rocket_emoji)
-
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
         self.assertIsValidUsd(stage)
+
+        # Stronger opinions exist in both locations: clearing only the edit target reveals both weaker values.
+        prim = samples.GetChild("BothWithStrongerBoth")
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertIsValidUsd(stage)
+
+        # Flattening and reopening a cleared layered stage must retain the newly revealed weaker value.
+        reopenedStage, reopenedPrim = self.reopenStage(stage, prim)
+        self.assertEqual(usdex.core.getDisplayName(reopenedPrim), "foo")
+        self.assertDisplayNameInStage(reopenedPrim, "foo")
+        self.assertLegacyDisplayNameInStage(reopenedPrim, "foo")
+        self.assertIsValidUsd(reopenedStage)
+
+        # No prim spec exists in the edit target: there is no local display name to remove, so clearing is a successful no-op.
+        prim = samples.GetChild("BothWithEmptyEditLayer")
+        self.assertIsNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+
+    def testClearDisplayNameComposed(self):
+        # A non-identity edit target clears both opinions at the referenced-layer path.
+        stage, prim = self.getMappedEditTargetStage()
+        self.assertTrue(usdex.core.setDisplayName(prim, "foo"))
+        self.assertTrue(usdex.core.clearDisplayName(prim))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertIsValidUsd(stage)
+
+    def testBlockDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # No weaker opinions: blocking authors an empty string to both locations.
+        prim = samples.GetChild("None")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.getDisplayName(prim), "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+
+        # The empty opinions survive flattening and reopening, so neither old nor new readers reveal another fallback.
+        reopenedStage, reopenedPrim = self.reopenStage(stage, prim)
+        self.assertDisplayNameInStage(reopenedPrim, "")
+        self.assertLegacyDisplayNameInStage(reopenedPrim, "")
+        self.assertEqual(usdex.core.getDisplayName(reopenedPrim), "")
+        self.assertIsValidUsd(reopenedStage)
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to block display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.blockDisplayName(Usd.Prim()))
+
+    def testBlockDisplayNameLayered(self):
+        stage, strongerLayer = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
+        stage.SetEditTarget(Usd.EditTarget(strongerLayer))
+
+        # A weaker legacy-only opinion is masked by empty values in both stronger locations.
+        prim = samples.GetChild("LegacyOnlyWithEmptyStrongerPrimSpec")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertIsValidUsd(stage)
+
+        # A weaker UI-hint-only opinion is also masked for runtimes that do not consult the legacy field.
+        prim = samples.GetChild("UiHintOnlyWithEmptyStrongerPrimSpec")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertIsValidUsd(stage)
+
+        # Weaker opinions in both locations are masked by empty strings authored in the stronger layer.
+        prim = samples.GetChild("BothWithEmptyStrongerPrimSpec")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.getDisplayName(prim), "")
+        self.assertIsValidUsd(stage)
+
+        # Existing stronger values are overwritten, not cleared, because a block must continue masking weaker values.
+        prim = samples.GetChild("BothWithStrongerBoth")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertIsValidUsd(stage)
+
+        # Blocking changes only displayName; unrelated scalar and nested UI hints in the stronger dictionary are preserved.
+        prim = samples.GetChild("BothWithStrongerOtherUiHints")
+        self.assertTrue(usdex.core.blockDisplayName(prim))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertOtherUiHintsInStage(prim)
+        self.assertIsValidUsd(stage)
+
+    def testSetEffectiveDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # A value matching the prim name is already effective when no display name exists, so the function succeeds without authoring either field.
+        prim = samples.GetChild("None")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A value that differs from the prim name is useful display metadata, so it is authored to both locations.
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, "foo"))
+        self.assertDisplayNameInStage(prim, "foo")
+        self.assertLegacyDisplayNameInStage(prim, "foo")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
+        self.assertIsValidUsd(stage)
+
+        # A value matching the prim name is redundant, so the previous display name is replaced with empty values that make the prim name effective.
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A legacy-only display name must be blocked in both locations so old and new runtimes agree that the prim name is effective.
+        prim = samples.GetChild("LegacyOnly")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A UI-hint-only display name must also be blocked in both locations to mask that authored value in every runtime.
+        prim = samples.GetChild("UiHintOnly")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # An empty UI hint masks a non-empty legacy display name in newer runtimes, but the legacy value must still be blocked for older runtimes.
+        prim = samples.GetChild("EmptyUiHint")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # Display names authored in both locations are blocked rather than cleared so weaker opinions cannot become effective.
+        prim = samples.GetChild("Both")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # Invalid input is rejected by usdex before the set or block helpers are called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to set effective display name on an invalid prim")],
+        ):
+            self.assertFalse(usdex.core.setEffectiveDisplayName(Usd.Prim(), "foo"))
+
+    def testSetEffectiveDisplayNameLayered(self):
+        stage, strongerLayer = self.getLayeredStage()
+        samples = stage.GetDefaultPrim()
+        stage.SetEditTarget(Usd.EditTarget(strongerLayer))
+
+        # Matching the prim name when no display name exists is a no-op and must not create a prim spec in the stronger edit target.
+        prim = samples.GetChild("NoneWithEmptyEditLayer")
+        primName = str(prim.GetName())
+        self.assertIsNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertIsNone(strongerLayer.GetPrimAtPath(prim.GetPath()))
+        self.assertDisplayNameInStage(prim, None)
+        self.assertLegacyDisplayNameInStage(prim, None)
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # Matching the prim name in a stronger edit target must block both weaker display-name representations.
+        prim = samples.GetChild("BothWithEmptyStrongerPrimSpec")
+        primName = str(prim.GetName())
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, primName))
+        self.assertDisplayNameInStage(prim, "")
+        self.assertLegacyDisplayNameInStage(prim, "")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), primName)
+        self.assertIsValidUsd(stage)
+
+        # A subsequent differing value in the stronger edit target replaces the block and becomes the effective display name.
+        self.assertTrue(usdex.core.setEffectiveDisplayName(prim, "bar"))
+        self.assertDisplayNameInStage(prim, "bar")
+        self.assertLegacyDisplayNameInStage(prim, "bar")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "bar")
+        self.assertIsValidUsd(stage)
+
+    def testComputeEffectiveDisplayName(self):
+        stage = self.getSampleStage()
+        samples = stage.GetDefaultPrim()
+
+        # No authored display name: the prim identifier is the only effective label.
+        prim = samples.GetChild("None")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+
+        # A legacy-only value remains the effective name for older files.
+        prim = samples.GetChild("LegacyOnly")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
+
+        # A UI-hint-only value is the effective name for newer files.
+        prim = samples.GetChild("UiHintOnly")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), "foo")
+
+        # Empty display names are blocks rather than useful labels, so the prim identifier is returned.
+        prim = samples.GetChild("Empty")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+
+        # An empty legacy-only opinion also carries no effective label, so the prim identifier is returned.
+        prim = samples.GetChild("EmptyLegacy")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+
+        # An empty UI hint blocks a non-empty legacy value; after that block the prim identifier is the effective label.
+        prim = samples.GetChild("EmptyUiHint")
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(prim), prim.GetName())
+
+        # A transcoded identifier remains the actual prim name when no display metadata was authored for that prim.
+        sourceName = "Display Name With Spaces"
+        transcodedName = usdex.core.getValidPrimName(sourceName)
+        childPath = prim.GetPath().AppendChild(transcodedName)
+        child = stage.DefinePrim(childPath, "Xform")
+        self.assertNotEqual(transcodedName, sourceName)
+        self.assertEqual(usdex.core.computeEffectiveDisplayName(child), transcodedName)
+
+        # Invalid input is rejected by usdex before any USD metadata API is called.
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, "Unable to compute effective display name for an invalid prim")],
+        ):
+            self.assertEqual(usdex.core.computeEffectiveDisplayName(Usd.Prim()), "")

@@ -93,10 +93,16 @@ namespace usdex::core
 //!
 //!     def Cube "cube1" (
 //!         displayName = "\xF0\x9F\x9A\x80"
+//!         uiHints = {
+//!             string displayName = "\xF0\x9F\x9A\x80"
+//!         }
 //!     )
 //!
 //!     def Cube "cube2" (
 //!         displayName = "🚀"
+//!         uiHints = {
+//!             string displayName = "🚀"
+//!         }
 //!     )
 //!
 //! We recommend setting the display name metadata in cases where the native name of an item could not be used for the associated `UsdObject`.
@@ -106,11 +112,15 @@ namespace usdex::core
 //! However, support for storing a display name on a Prim is not consistent across all versions of OpenUsd. To make this more consistent,
 //! we provide functions to manipulate the display name metadata in any OpenUSD runtime.
 //!
-//! In OpenUSD v25.11, the `displayName` metadata field was deprecated, along with the `UsdObject::Get/SetDisplayName()` functions in favor of
-//! using the `uiHints` dictionary metadata fields and UsdUIObjectHints API. The
-//! [UI Hints proposal](https://openusd.org/release/api/usd_u_i_page_front.html#usdUI_hintsOverview) outlines this change in more detail.
-//! Currently, the `displayName` helper functions in this library only access the original `displayName` metadata field
-//! and do not read or write the new `uiHints` dictionary.
+//! OpenUSD v25.11 adopted the UI Hints schema for display names, deprecating the `displayName` metadata field and
+//! `UsdObject::Get/SetDisplayName()` functions in favor of the `uiHints` dictionary metadata fields and `UsdUIObjectHints` API.
+//! The [UI Hints schema overview](https://openusd.org/release/api/usd_u_i_page_front.html#usdUI_hintsOverview) outlines this change in more detail.
+//!
+//! The original field is the only display-name location understood by OpenUSD versions before 25.11. To keep authored files interoperable,
+//! these helpers target both the `uiHints:displayName` dictionary member and the original `displayName` field in every supported runtime.
+//!
+//! The `uiHints:displayName` notation identifies the `displayName` member of the `uiHints` metadata dictionary; it is not the same as the
+//! `ui:displayName` attribute provided by `UsdUISceneGraphPrimAPI`.
 //!
 //! @{
 
@@ -388,6 +398,9 @@ USDEX_API pxr::TfTokenVector getValidPropertyNames(const std::vector<std::string
 
 //! Return this prim's display name (metadata)
 //!
+//! The `uiHints:displayName` value is preferred when authored. The original `displayName` field is used as a fallback for compatibility with
+//! files authored by OpenUSD versions before 25.11. An authored empty value is returned as-is and blocks values from weaker layers.
+//!
 //! @param prim The prim to get the display name from
 //! @returns Authored value, or an empty string if no display name has been set
 USDEX_API std::string getDisplayName(const pxr::UsdPrim& prim);
@@ -397,6 +410,9 @@ USDEX_API std::string getDisplayName(const pxr::UsdPrim& prim);
 //! DisplayName is meant to be a descriptive label, not necessarily an alternate identifier; therefore there is no restriction on which characters can
 //! appear in it
 //!
+//! The value is authored to both `uiHints:displayName` and the original `displayName` field in the current edit target so the resulting file
+//! behaves consistently in every supported OpenUSD runtime.
+//!
 //! @param prim The prim to set the display name for
 //! @param name The value to set
 //! @returns True on success, otherwise false
@@ -404,17 +420,31 @@ USDEX_API bool setDisplayName(pxr::UsdPrim prim, const std::string& name);
 
 //! Clears this prim's display name (metadata) in the current EditTarget (only)
 //!
+//! Both `uiHints:displayName` and the original `displayName` field are cleared. Other members of the `uiHints` dictionary are preserved.
+//!
 //! @param prim The prim to clear the display name for
 //! @returns True on success, otherwise false
 USDEX_API bool clearDisplayName(pxr::UsdPrim prim);
 
 //! Block this prim's display name (metadata)
 //!
-//! The fallback value will be explicitly authored to cause the value to resolve as if there were no authored value opinions in weaker layers
+//! The fallback value will be explicitly authored to both `uiHints:displayName` and the original `displayName` field to cause the value to
+//! resolve as if there were no authored value opinions in weaker layers.
 //!
 //! @param prim The prim to block the display name for
 //! @returns True on success, otherwise false
 USDEX_API bool blockDisplayName(pxr::UsdPrim prim);
+
+//! Sets the effective display name of this prim
+//!
+//! If `name` matches the prim's name and a non-empty display name is present, the display name is blocked so `computeEffectiveDisplayName()` returns
+//! the prim name and display-name opinions from weaker layers cannot contribute. If neither location contains a non-empty display name, no
+//! display-name opinion is authored. Otherwise `name` is authored as the display name.
+//!
+//! @param prim The prim to set the effective display name for
+//! @param name The effective display name
+//! @returns True on success, otherwise false
+USDEX_API bool setEffectiveDisplayName(pxr::UsdPrim prim, const std::string& name);
 
 //! Calculate the effective display name of this prim
 //!
