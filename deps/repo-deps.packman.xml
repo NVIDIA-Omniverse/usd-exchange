@@ -3,7 +3,7 @@
     <package name="repo_man" version="2.9.3" />
   </dependency>
   <dependency name="repo_test" linkPath="../_repo/deps/repo_test">
-    <package name="repo_test" version="2.50.3" />
+    <package name="repo_test" version="2.46.1" />
   </dependency>
   <dependency name="repo_format" linkPath="../_repo/deps/repo_format">
     <package name="repo_format" version="2.18.0" />
