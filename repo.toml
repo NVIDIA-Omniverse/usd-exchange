@@ -52,9 +52,6 @@ enabled = true
 
 [repo_stubgen]
 enabled = true
-stubgen_exclude = [
-    "$root/_build/$platform/$config/python/pxr/UsdMtlx",  # fails on some flavors (eg houdini)
-]
 
 [repo_test]
 default_config = "release"
