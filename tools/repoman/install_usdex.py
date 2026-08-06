@@ -182,6 +182,7 @@ def __install(
     usd_ver: str,
     python_ver: str,
     usd_validation_version: str,
+    uv_extra_index_url: str,
     repoVersionFile: str,
     buildConfig: str,
     clean: bool,
@@ -262,23 +263,26 @@ def __install(
     if installTestModules and python_ver != "0":
         # the packman python package exposes the canonical `python${exe_ext}` entry point
         pythonExecutable = os.path.join(python_path, "python" + mapping["exe_ext"])
-        print(f"Install usd-validation-nvidia=={usd_validation_version} from PyPI to {validator_path}")
+        # a non-empty (and resolved) token means the package may come from that index rather than PyPI
+        extraIndex = uv_extra_index_url if (uv_extra_index_url and not uv_extra_index_url.startswith("${")) else None
+        source = f"PyPI or {extraIndex}" if extraIndex else "PyPI"
+        print(f"Install usd-validation-nvidia=={usd_validation_version} from {source} to {validator_path}")
         # `uv pip install` is uv's own native installer (it does not shell out to pip); resolve the vendored uv
         # binary via get_uv() exactly as repo_man does internally (see omni.repo.man.deps._uv_requirements_load).
         # `--no-deps` keeps OpenUSD (which we already bundle) out of the validator's staging directory.
-        omni.repo.man.run_process(
-            [
-                str(omni.repo.man.get_uv()),
-                "pip",
-                "install",
-                "--no-config",
-                "--no-deps",
-                f"--python={pythonExecutable}",
-                f"--target={validator_path}",
-                f"usd-validation-nvidia=={usd_validation_version}",
-            ],
-            exit_on_error=True,
-        )
+        uvInstall = [
+            str(omni.repo.man.get_uv()),
+            "pip",
+            "install",
+            "--no-config",
+            "--no-deps",
+            f"--python={pythonExecutable}",
+            f"--target={validator_path}",
+        ]
+        if extraIndex:
+            uvInstall += ["--extra-index-url", extraIndex]
+        uvInstall.append(f"usd-validation-nvidia=={usd_validation_version}")
+        omni.repo.man.run_process(uvInstall, exit_on_error=True)
 
     runtimeInstallDir = "${install_dir}/bin" if os.name == "nt" else "${install_dir}/lib"
     libInstallDir = runtimeInstallDir
@@ -625,6 +629,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usd_ver = options.usd_ver or toolConfig["usd_ver"]
         python_ver = options.python_ver or toolConfig["python_ver"]
         usd_validation_version = options.usd_validation_version or toolConfig["usd_validation_version"]
+        # optional index for wheel dependencies; empty by default means PyPI only
+        uv_extra_index_url = omni.repo.man.resolve_tokens("${uv_extra_index_url}")
 
         if usd_flavor == "usd-minimal":
             if python_ver != "0":
@@ -639,6 +645,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             usd_ver,
             python_ver,
             usd_validation_version,
+            uv_extra_index_url,
             repoVersionFile,
             options.config,
             options.clean,

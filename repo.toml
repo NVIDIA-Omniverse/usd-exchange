@@ -26,6 +26,9 @@ python_ver = "3.12"
 "token:python_ver==3.13".python_pkg = "3.13.14+nv1"
 "token:python_ver==0".python_pkg = "3.12.13+nv6"
 
+# extra PyPI index for uv installs; empty = PyPI only.
+uv_extra_index_url = ""
+
 [repo_version_header]
 enabled = true
 company = "NVIDIA"
@@ -85,9 +88,6 @@ library_paths = [
 python_paths = [
     "${test_root}/python",
 ]
-env_vars = [
-    [ "USD_FLAVOR", "${usd_flavor}" ],  # We pass the USD flavor token to environment so it can be queried in tests.
-]
 
 # note: move this to `repo.python_executable` when all tools support it
 [repo_test.python_executable]
@@ -127,6 +127,9 @@ python_paths = []
 library_paths = [
     "$root/_build/target-deps/python/lib",  # for linux
     "$root/_build/target-deps/python",  # for windows
+]
+env_vars = [
+    [ "USDEX_UV_EXTRA_INDEX_URL", "${uv_extra_index_url}" ],
 ]
 
 [repo_format]
