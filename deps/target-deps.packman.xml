@@ -9,7 +9,8 @@
 
   <!-- unused for usd-minimal flavors -->
   <dependency name="python" linkPath="../_build/target-deps/python" tags="non-redist">
-    <package name="python" version="${python_pkg}-${platform_target_abi}" />
+    <package name="python" version="${python_pkg}-${platform_target_abi}" platforms="linux-x86_64 linux-aarch64" />
+    <package name="python" version="${python_pkg}-${platform}" platforms="windows-x86_64" />
   </dependency>
   <dependency name="pybind11" linkPath="../_build/target-deps/pybind11">
     <package name="pybind11" version="2.11.1-0" />
