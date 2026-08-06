@@ -148,6 +148,13 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             omni.repo.man.logger.info(" ".join(install))
             omni.repo.man.run_process(install, exit_on_error=True)
 
+            # repo_licensing only self-derives the manylinux abi (its `if "linux" in platform` branch); on windows it
+            # falls back to the bare platform and misses the v143 marker, so openusd/materialx (published as
+            # windows_v143_x86_64) can't be resolved. Hand it the abi-translated platform we build against instead.
+            license_platform = platform
+            if platform.startswith("windows"):
+                license_platform = omni.repo.man.get_abi_platform_translation(platform, abi)
+
             # gather third-party licenses into _build/PACKAGE-LICENSES (shipped by the package)
             omni.repo.man.run_process(
                 [
@@ -163,7 +170,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                     "--packages",
                     "deps/target-deps.packman.xml",
                     "--platform",
-                    platform,
+                    license_platform,
                     "--config",
                     repo_config,
                     "--output",
