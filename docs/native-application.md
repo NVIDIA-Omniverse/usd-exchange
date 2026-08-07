@@ -299,7 +299,7 @@ clean:
 
 ### Windows
 
-Create a new Visual Studio 2019 or 2022 project based on the `C++ Console App`, `Empty Project` template and call it `UsdTraverse`.  Make sure that the solution and project files live in `$project_root`.  Add the CPP source that traverses the USD file to the project. All of the settings specified in this section are found by right clicking on the created project and selecting `Properties` from within Visual Studio.
+Create a new Visual Studio 2022 (or newer) project based on the `C++ Console App`, `Empty Project` template and call it `UsdTraverse`.  Make sure that the solution and project files live in `$project_root`.  Add the CPP source that traverses the USD file to the project. All of the settings specified in this section are found by right clicking on the created project and selecting `Properties` from within Visual Studio.
 
 ```{eval-rst}
 .. note::
