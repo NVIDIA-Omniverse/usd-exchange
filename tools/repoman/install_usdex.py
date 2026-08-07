@@ -400,25 +400,20 @@ def __install(
     for lib in usdPluginLibs:
         prebuild_dict["copy"].append([f"{usdPluginSourceDir}/{lib}" + "${lib_ext}", usdPluginInstallDir])
 
-    # 25.08+ uses the new oneTBB API, and the lib name on Windows was changed to tbb12
-    if __SemVersion(usd_ver) < __SemVersion("25.08"):
-        tbb_windows_name = "tbb"
-    else:
-        tbb_windows_name = "tbb12"
-
-    # tbb comes from the standalone oneTBB package; the lib name differs by config (debug) and platform (windows tbb12)
+    # tbb comes from the standalone oneTBB package on every supported flavor; the lib name differs only by config
+    # (debug suffix) and platform (linux libtbb.so*, windows tbb12.dll)
     if buildConfig == "debug":
         prebuild_dict["copy"].extend(
             [
-                [tbb_path + "/lib/${lib_prefix}" + "tbb" + "_debug${lib_ext}*", libInstallDir],
-                [tbb_path + "/bin/${lib_prefix}" + tbb_windows_name + "_debug${lib_ext}*", libInstallDir],  # windows
+                [tbb_path + "/lib/${lib_prefix}" + "tbb_debug" + "${lib_ext}*", libInstallDir],
+                [tbb_path + "/bin/${lib_prefix}" + "tbb12_debug" + "${lib_ext}*", libInstallDir],  # windows
             ]
         )
     else:
         prebuild_dict["copy"].extend(
             [
                 [tbb_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
-                [tbb_path + "/bin/${lib_prefix}" + tbb_windows_name + "${lib_ext}*", libInstallDir],  # windows
+                [tbb_path + "/bin/${lib_prefix}" + "tbb12" + "${lib_ext}*", libInstallDir],  # windows
             ]
         )
 
