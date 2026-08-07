@@ -20,11 +20,11 @@ python_ver = "3.12"
 "platform:windows-x86_64".abi = "v143"
 
 # python runtime package resolved from python_ver; py 0 (usd-minimal, no bindings) tracks the default python
-"token:python_ver==3.10".python_pkg = "3.10.20+nv6"
-"token:python_ver==3.11".python_pkg = "3.11.15+nv6"
-"token:python_ver==3.12".python_pkg = "3.12.13+nv6"
-"token:python_ver==3.13".python_pkg = "3.13.14+nv1"
-"token:python_ver==0".python_pkg = "3.12.13+nv6"
+"token:python_ver==3.10".python_pkg = "3.10.20+nv8"
+"token:python_ver==3.11".python_pkg = "3.11.15+nv8"
+"token:python_ver==3.12".python_pkg = "3.12.13+nv8"
+"token:python_ver==3.13".python_pkg = "3.13.15+nv1"
+"token:python_ver==0".python_pkg = "3.12.13+nv8"
 
 # extra PyPI index for uv installs; empty = PyPI only.
 uv_extra_index_url = ""
