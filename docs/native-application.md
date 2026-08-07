@@ -182,7 +182,7 @@ For Linux, all of the build configuration settings are described in the Makefile
 
 # The expectation is that OpenUSD, the OpenUSD Exchange SDK, and other dependencies are present in the `$project_root/usdex/target-deps` directory
 DEPSDIR = $(CURDIR)/usdex/target-deps
-PYTHONVER = python3.10
+PYTHONVER = python3.12
 PROGRAMNAME = UsdTraverse
 
 ifndef CONFIG
@@ -213,7 +213,8 @@ endif
 # Include search directories
 USDEX_INCLUDE_DIRS = \
  -isystem $(DEPSDIR)/usd-exchange/$(CONFIG)/include \
- -isystem $(DEPSDIR)/usd/$(CONFIG)/include
+ -isystem $(DEPSDIR)/usd/$(CONFIG)/include \
+ -isystem $(DEPSDIR)/tbb/$(CONFIG)/include
 
 # USD libs (most of these not required, but this is a proper set for a fully featured converter)
 USD_LIBS = \
@@ -234,12 +235,16 @@ USD_LIBS = \
  -lusd_usdLux \
  -lusd_usdPhysics \
  -lusd_usdShade \
+ -lusd_usdUI \
  -lusd_usdUtils \
  -lusd_vt \
  -lusd_work
 
+# OpenUSD's shared libs pull in oneTBB; link it explicitly (the name differs by config) so the executable resolves the transitive TBB symbols they reference
 ifeq ($(CONFIG),debug)
 	USD_LIBS += -ltbb_debug
+else
+	USD_LIBS += -ltbb
 endif
 
 USDEX_LIBS = \
@@ -248,7 +253,8 @@ USDEX_LIBS = \
 # Library dependency directories
 USDEX_LIB_DIRS = \
  -L$(DEPSDIR)/usd-exchange/$(CONFIG)/lib \
- -L$(DEPSDIR)/usd/$(CONFIG)/lib
+ -L$(DEPSDIR)/usd/$(CONFIG)/lib \
+ -L$(DEPSDIR)/tbb/$(CONFIG)/lib
 
 # Python specifics
 ifndef PYTHON_INCLUDE_DIR
@@ -293,7 +299,7 @@ clean:
 
 ### Windows
 
-Create a new Visual Studio 2019 or 2022 project based on the `C++ Console App`, `Empty Project` template and call it `UsdTraverse`.  Make sure that the solution and project files live in `$project_root`.  Add the CPP source that traverses the USD file to the project. All of the settings specified in this section are found by right clicking on the created project and selecting `Properties` from within Visual Studio.
+Create a new Visual Studio 2022 (or newer) project based on the `C++ Console App`, `Empty Project` template and call it `UsdTraverse`.  Make sure that the solution and project files live in `$project_root`.  Add the CPP source that traverses the USD file to the project. All of the settings specified in this section are found by right clicking on the created project and selecting `Properties` from within Visual Studio.
 
 ```{eval-rst}
 .. note::
@@ -307,6 +313,7 @@ Create a new Visual Studio 2019 or 2022 project based on the `C++ Console App`, 
 usdex/target-deps/usd-exchange/$(CONFIGURATION)/include
 usdex/target-deps/python/include
 usdex/target-deps/usd/$(CONFIGURATION)/include
+usdex/target-deps/tbb/$(CONFIGURATION)/include
 ```
 
 #### Library Include Paths
@@ -355,6 +362,7 @@ usd_usdGeom.lib
 usd_usdLux.lib
 usd_usdPhysics.lib
 usd_usdShade.lib
+usd_usdUI.lib
 usd_usdUtils.lib
 usd_vt.lib
 usd_work.lib

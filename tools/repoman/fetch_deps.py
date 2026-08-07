@@ -17,8 +17,9 @@ import packmanapi
 def fetch_dependencies(config: Dict, build_config: str) -> Dict:
     """Pull the configured packman files, returning packman's resolved package info keyed by dependency name.
 
-    Target dependencies resolve for the abi-tagged target platform; host tools (cmake, msvc, ...) resolve for the
-    host platform. This is why the target and host file lists are kept separate.
+    Everything is pulled for the canonical packman platform (linux-x86_64, windows-x86_64, ...) so that a package's
+    `platforms="..."` filter matches. The abi-specific package variant is selected via the ${platform_target_abi}
+    token in the target files' version strings, not via the pull platform.
     """
     fetch_cfg = config.get("repo_fetch_deps", {}).get("fetch", {})
 
@@ -28,15 +29,14 @@ def fetch_dependencies(config: Dict, build_config: str) -> Dict:
     tokens["platform_target"] = tokens["platform"]
     tokens["platform_target_abi"] = omni.repo.man.get_abi_platform_translation(tokens["platform"], tokens.get("abi", "2.35"))
 
-    targets = [(f, tokens["platform_target_abi"]) for f in fetch_cfg.get("packman_target_files_to_pull", [])]
-    hosts = [(f, tokens["platform_host"]) for f in fetch_cfg.get("packman_host_files_to_pull", [])]
+    files = fetch_cfg.get("packman_target_files_to_pull", []) + fetch_cfg.get("packman_host_files_to_pull", [])
 
     pulled: Dict = {}
-    for dep_file, platform in targets + hosts:
+    for dep_file in files:
         path = omni.repo.man.resolve_tokens(dep_file, extra_tokens=tokens)
         if not os.path.exists(path):  # some dependency files are optional
             continue
-        result = packmanapi.pull(path, platform=platform, tokens=tokens, return_extra_info=True)
+        result = packmanapi.pull(path, platform=tokens["platform"], tokens=tokens, return_extra_info=True)
         pulled.update(result)
     return pulled
 

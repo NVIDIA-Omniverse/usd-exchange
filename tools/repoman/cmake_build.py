@@ -15,6 +15,7 @@ from typing import Callable, Dict
 
 import fetch_deps
 import omni.repo.man
+import usd_deps
 
 # release/debug token -> CMake configuration name
 _CMAKE_CONFIG = {"release": "Release", "debug": "Debug"}
@@ -64,6 +65,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usd_flavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usd_ver = omni.repo.man.resolve_tokens("${usd_ver}")
         python_ver = omni.repo.man.resolve_tokens("${python_ver}")
+        python_pkg = omni.repo.man.resolve_tokens("${python_pkg}")
         abi = omni.repo.man.resolve_tokens("${abi}")
         cmake_config = _CMAKE_CONFIG.get(repo_config, "Release")
 
@@ -76,11 +78,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         if options.clean:
             return
 
-        # regenerate the flavor's usd-deps manifest (the one remaining repo_usd call), then fetch every dep file
-        omni.repo.man.run_process(
-            [repo, "usd", "--generate-usd-deps", "--usd-flavor", usd_flavor, "--usd-ver", usd_ver, "--python-ver", python_ver],
-            exit_on_error=True,
-        )
+        # regenerate the flavor's usd-deps manifest and fetch the packages
+        usd_deps.generate_usd_deps(usd_flavor, usd_ver, python_ver, config["repo"]["default_flavor"])
         pulled = fetch_deps.fetch_dependencies(config, repo_config)
         strip_deps = config.get("repo_cmake", {}).get("strip_deps", [])
 
@@ -114,6 +113,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             f"-DCMAKE_BUILD_TYPE={cmake_config}",
             "-DCMAKE_INSTALL_LIBDIR=lib",  # our package layout uses lib/, not lib64
             f"-DUSDEX_USD_ROOT={usd_root}",
+            f"-DUSDEX_TBB_ROOT={target_deps}/tbb/{repo_config}",
+            f"-DUSDEX_MATERIALX_ROOT={target_deps}/materialx/{repo_config}",
             f"-DUSDEX_PYTHON_VERSION={python_ver}",
             f"-DUSDEX_VERSION_STRING={version_string}",
             f"-DUSDEX_BUILD_STRING={build_string}",
@@ -126,6 +127,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         if python_ver != "0":
             # locate the target python, not a system interpreter
             configure += [f"-DPython3_ROOT_DIR={python_root}", "-DPython3_FIND_STRATEGY=LOCATION"]
+        if platform.startswith("windows"):
+            # on windows the abi is the MSVC toolset (e.g. v143); pin it so our binaries match the toolset of the openusd packages we link
+            configure += ["-T", abi]
 
         omni.repo.man.logger.info(" ".join(configure))
         omni.repo.man.run_process(configure, exit_on_error=True)
@@ -140,10 +144,16 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
 
         if not options.skip_post:
             # assemble the relocatable tree (libs, headers, python, dev/, find_package config) into output_dir
-            omni.repo.man.run_process(
-                [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir],
-                exit_on_error=True,
-            )
+            install = [cmake_exe, "--install", build_dir, "--config", cmake_config, "--prefix", output_dir]
+            omni.repo.man.logger.info(" ".join(install))
+            omni.repo.man.run_process(install, exit_on_error=True)
+
+            # repo_licensing only self-derives the manylinux abi (its `if "linux" in platform` branch); on windows it
+            # falls back to the bare platform and misses the v143 marker, so openusd/materialx (published as
+            # windows_v143_x86_64) can't be resolved. Hand it the abi-translated platform we build against instead.
+            license_platform = platform
+            if platform.startswith("windows"):
+                license_platform = omni.repo.man.get_abi_platform_translation(platform, abi)
 
             # gather third-party licenses into _build/PACKAGE-LICENSES (shipped by the package)
             omni.repo.man.run_process(
@@ -151,6 +161,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                     repo,
                     "--set-token",
                     f"platform_host:{platform}",  # usd-deps.packman.xml references it
+                    "--set-token",
+                    f"python_pkg:{python_pkg}",  # the python side-car imported by target-deps.packman.xml references it
                     "licensing",
                     "gather",
                     "--dir",
@@ -158,7 +170,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                     "--packages",
                     "deps/target-deps.packman.xml",
                     "--platform",
-                    platform,
+                    license_platform,
                     "--config",
                     repo_config,
                     "--output",

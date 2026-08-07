@@ -38,7 +38,7 @@ This project requires "make" and "g++".
 ````{tab-item} Windows
 :sync: windows
 
-This project requires Microsoft Visual Studio 2019 or newer.
+This project requires Microsoft Visual Studio 2022 or newer.
 
 1. Download & install [Visual Studio with C++](https://visualstudio.microsoft.com/vs/features/cplusplus).
 2. Use the provided build script to download all dependencies (e.g OpenUSD), create the projects, and compile the code:

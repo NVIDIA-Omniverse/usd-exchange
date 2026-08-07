@@ -44,6 +44,39 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
     if(UNIX AND NOT APPLE)
         target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_USD_LIB_DIR}")
     endif()
+
+    # OpenUSD's public headers expose TBB symbols directly in some cases, so anything compiling against them needs TBB.
+    # NVIDIA ships TBB as a separate package with no CMake config, so USDEX_TBB_ROOT points at it explicitly.
+    # Otherwise fall back to a standard find_package(TBB). If neither is present the USD-header compile surfaces the
+    # missing <tbb/...> itself.
+    if(USDEX_TBB_ROOT)
+        if(NOT EXISTS "${USDEX_TBB_ROOT}/include")
+            message(FATAL_ERROR "USDEX_TBB_ROOT='${USDEX_TBB_ROOT}' has no include/ directory; ensure the dependency was fetched.")
+        endif()
+        target_include_directories(usdex_usd_headers SYSTEM INTERFACE "${USDEX_TBB_ROOT}/include")
+        target_link_directories(usdex_usd_headers INTERFACE "${USDEX_TBB_ROOT}/lib")
+        if(UNIX AND NOT APPLE)
+            target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_TBB_ROOT}/lib")
+        endif()
+    else()
+        find_package(TBB QUIET)
+        if(TARGET TBB::tbb)
+            target_link_libraries(usdex_usd_headers INTERFACE TBB::tbb)
+        endif()
+    endif()
+
+    # MaterialX is a sibling package too, but neither usdex nor OpenUSD's core headers #include it.
+    # Only consumers that use the UsdMtlx schemas require it.
+    if(USDEX_MATERIALX_ROOT)
+        if(NOT EXISTS "${USDEX_MATERIALX_ROOT}/include")
+            message(FATAL_ERROR "USDEX_MATERIALX_ROOT='${USDEX_MATERIALX_ROOT}' has no include/ directory; ensure the dependency was fetched.")
+        endif()
+        target_include_directories(usdex_usd_headers SYSTEM INTERFACE "${USDEX_MATERIALX_ROOT}/include")
+        target_link_directories(usdex_usd_headers INTERFACE "${USDEX_MATERIALX_ROOT}/lib")
+        if(UNIX AND NOT APPLE)
+            target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_MATERIALX_ROOT}/lib")
+        endif()
+    endif()
 endif()
 
 # Link the named OpenUSD libraries into `target` (handles `usd_`-prefixed and unprefixed names). Monolithic
@@ -69,6 +102,30 @@ function(usdex_target_link_usd target)
             target_link_libraries(${target} PRIVATE "${${_var}}")
         endforeach()
     endif()
+
+    # USD's public headers inline TBB, so executables must link it. Resolve release/debug separately and select via
+    # optimized/debug so a combined external TBB dir links the config-correct one, not always release.
+    if(USDEX_TBB_ROOT)
+        if(WIN32)
+            set(_usdex_tbb_release_names tbb12)
+            set(_usdex_tbb_debug_names tbb12_debug)
+        else()
+            set(_usdex_tbb_release_names tbb)
+            set(_usdex_tbb_debug_names tbb_debug)
+        endif()
+        find_library(USDEX_USDLIB_tbb_RELEASE NAMES ${_usdex_tbb_release_names} PATHS "${USDEX_TBB_ROOT}/lib" NO_DEFAULT_PATH)
+        find_library(USDEX_USDLIB_tbb_DEBUG NAMES ${_usdex_tbb_debug_names} PATHS "${USDEX_TBB_ROOT}/lib" NO_DEFAULT_PATH)
+        if(USDEX_USDLIB_tbb_RELEASE AND USDEX_USDLIB_tbb_DEBUG)
+            target_link_libraries(${target} PRIVATE optimized "${USDEX_USDLIB_tbb_RELEASE}" debug "${USDEX_USDLIB_tbb_DEBUG}")
+        elseif(USDEX_USDLIB_tbb_RELEASE)
+            target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_tbb_RELEASE}")
+        elseif(USDEX_USDLIB_tbb_DEBUG)
+            target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_tbb_DEBUG}")
+        else()
+            message(FATAL_ERROR "oneTBB library not found in '${USDEX_TBB_ROOT}/lib'")
+        endif()
+    endif()
+
     if(USDEX_WITH_PYTHON)
         find_library(USDEX_USDLIB_python NAMES "usd_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
         if(USDEX_USDLIB_python)

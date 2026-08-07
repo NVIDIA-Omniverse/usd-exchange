@@ -14,11 +14,20 @@ if exist "%VENV%" (
     rd /s /q "%VENV%"
 )
 
-call .\repo.bat uv venv --python .\_build\target-deps\python\python.exe "%VENV%"
+call .\repo.bat uv -- venv --python .\_build\target-deps\python\python.exe "%VENV%"
 if %errorlevel% neq 0 ( exit /b %errorlevel% )
 
+REM Add our token's index to uv's native UV_EXTRA_INDEX_URL when set, appending to any the environment already provides
+if not "%USDEX_UV_EXTRA_INDEX_URL%"=="" (
+    if defined UV_EXTRA_INDEX_URL (
+        set "UV_EXTRA_INDEX_URL=%UV_EXTRA_INDEX_URL% %USDEX_UV_EXTRA_INDEX_URL%"
+    ) else (
+        set "UV_EXTRA_INDEX_URL=%USDEX_UV_EXTRA_INDEX_URL%"
+    )
+)
+
 for %%f in ("_build\packages\*.whl") do (
-    call .\repo.bat uv pip install --python "%VENV%\Scripts\python.exe" "%%f[test]"
+    call .\repo.bat uv -- pip install --python "%VENV%\Scripts\python.exe" "%%f[test]"
     if %errorlevel% neq 0 ( exit /b %errorlevel% )
 )
 

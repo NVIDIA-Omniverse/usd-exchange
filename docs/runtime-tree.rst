@@ -10,8 +10,8 @@
             ├── lib
             │   ├── libusdex_core.so
             │   ├── libusdex_rtx.so
-            │   ├── libpython3.10.so -> libpython3.10.so.1.0
-            │   ├── libpython3.10.so.1.0
+            │   ├── libpython3.12.so -> libpython3.12.so.1.0
+            │   ├── libpython3.12.so.1.0
             │   ├── libpython3.so
             │   ├── libtbb.so.2
             │   ├── libusd_arch.so
@@ -91,7 +91,7 @@
             │   ├── usdex_core.dll
             │   ├── usdex_rtx.dll
             │   ├── python3.dll
-            │   ├── python310.dll
+            │   ├── python312.dll
             │   ├── tbb.dll                                 <-- USD 25.05 & older
             │   ├── tbb12.dll                               <-- USD 25.08 & newer
             │   ├── usd_ar.dll
@@ -131,11 +131,11 @@
             |       ├── core
             |       │   ├── __init__.py
             |       │   ├── _StageAlgoBindings.py
-            |       |   ├── _usdex_core.cp310-win_amd64.pyd
+            |       |   ├── _usdex_core.cp312-win_amd64.pyd
             |       │   └── _usdex_core.pyi
             |       └── rtx
             |           ├── __init__.py
-            |           ├── _usdex_rtx.cp310-win_amd64.pyd
+            |           ├── _usdex_rtx.cp312-win_amd64.pyd
             |           └── _usdex_rtx.pyi
             └── python-runtime
                 ├── bin

@@ -2,49 +2,55 @@
     "flavors": [
         {
             "usd_flavor": "usd",
-            "usd_ver": "25.11",
+            "usd_ver": "26.08",
+            "python_ver": "3.13",
+            "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
+        },
+        {
+            "usd_flavor": "usd",
+            "usd_ver": "26.08",
             "python_ver": "3.12",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd",
-            "usd_ver": "25.11",
+            "usd_ver": "26.08",
             "python_ver": "3.11",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd",
-            "usd_ver": "25.11",
+            "usd_ver": "26.08",
             "python_ver": "3.10",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd-minimal",
-            "usd_ver": "25.11",
+            "usd_ver": "26.08",
             "python_ver": "0",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd",
-            "usd_ver": "25.08",
+            "usd_ver": "25.11",
             "python_ver": "3.12",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd",
-            "usd_ver": "25.08",
+            "usd_ver": "25.11",
             "python_ver": "3.11",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd",
-            "usd_ver": "25.08",
+            "usd_ver": "25.11",
             "python_ver": "3.10",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
         {
             "usd_flavor": "usd-minimal",
-            "usd_ver": "25.08",
+            "usd_ver": "25.11",
             "python_ver": "0",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
         },
@@ -71,48 +77,6 @@
             "usd_ver": "25.05",
             "python_ver": "0",
             "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
-        },
-        {
-            "usd_flavor": "usd",
-            "usd_ver": "25.02",
-            "python_ver": "3.12",
-            "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
-        },
-        {
-            "usd_flavor": "usd",
-            "usd_ver": "25.02",
-            "python_ver": "3.11",
-            "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
-        },
-        {
-            "usd_flavor": "usd",
-            "usd_ver": "25.02",
-            "python_ver": "3.10",
-            "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
-        },
-        {
-            "usd_flavor": "usd-minimal",
-            "usd_ver": "25.02",
-            "python_ver": "0",
-            "platforms": ["windows-x86_64", "linux-x86_64", "linux-aarch64"]
-        },
-        {
-            "usd_flavor": "usd",
-            "usd_ver": "24.11",
-            "python_ver": "3.11",
-            "platforms": ["windows-x86_64", "linux-x86_64"]
-        },
-        {
-            "usd_flavor": "usd",
-            "usd_ver": "24.11",
-            "python_ver": "3.10",
-            "platforms": ["windows-x86_64", "linux-x86_64"]
-        },
-        {
-            "usd_flavor": "usd-minimal",
-            "usd_ver": "24.11",
-            "python_ver": "0",
-            "platforms": ["windows-x86_64", "linux-x86_64"]
         }
     ]
 }

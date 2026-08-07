@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -74,19 +74,15 @@ class CoreTest(unittest.TestCase):
                 "usd-exchange-LICENSE.md",
                 "pybind11-LICENSE.txt",
                 "pyboost11-LICENSE.txt",
-                "usd-license.txt",
-                "*tbb-LICENSE*",
-                "zlib-LICENSE*",
+                "openusd-LICENSE.txt",
+                "onetbb-LICENSE.txt",
+                "materialx-LICENSE.txt",
             ]
             packageInfoDir = get_package_metadata_directory("usd-exchange")
             self.assertIsNotNone(packageInfoDir, "usd-exchange package is not installed.")
             licenseDir = pathlib.Path(packageInfoDir) / "licenses"
         elif is_running_on_ci():
             expectedLicenses = [
-                "cortex-LICENSE.txt",
-                "cxxopts-LICENSE.txt",
-                "doctest-LICENSE.txt",
-                "gaffer-LICENSE.txt",
                 "pybind11-LICENSE.txt",
                 "pybind11-stubgen-LICENSE.txt",
                 "pyboost11-LICENSE.txt",

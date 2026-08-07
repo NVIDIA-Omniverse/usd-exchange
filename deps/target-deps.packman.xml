@@ -1,21 +1,26 @@
 <project toolsVersion="5.0">
 
-  <!-- OpenUSD Dependencies are generated at build time using repo_usd -->
+  <!-- runtime dependencies -->
   <import path="../deps/usd-deps.packman.xml">
     <filter include="usd-${config}" />
-    <filter include="python" />
+    <filter include="tbb-${config}" />
+    <filter include="materialx-${config}" />
   </import>
-  <dependency name="usd-${config}" linkPath="../_build/target-deps/usd/${config}" tags="non-redist" />
-  <dependency name="python" linkPath="../_build/target-deps/python" tags="non-redist" />
 
-  <!-- General OSS -->
+  <!-- unused for usd-minimal flavors -->
+  <dependency name="python" linkPath="../_build/target-deps/python" tags="non-redist">
+    <package name="python" version="${python_pkg}-${platform_target_abi}" platforms="linux-x86_64 linux-aarch64" />
+    <package name="python" version="${python_pkg}-${platform}" platforms="windows-x86_64" />
+  </dependency>
   <dependency name="pybind11" linkPath="../_build/target-deps/pybind11">
     <package name="pybind11" version="2.11.1-0" />
   </dependency>
-  <dependency name="cxxopts" linkPath="../_build/target-deps/cxxopts">
+
+  <!-- testing only -->
+  <dependency name="cxxopts" linkPath="../_build/target-deps/cxxopts" tags="non-redist">
     <package name="cxxopts" version="2.2.0-1" />
   </dependency>
-  <dependency name="doctest" linkPath="../_build/target-deps/doctest">
+  <dependency name="doctest" linkPath="../_build/target-deps/doctest" tags="non-redist">
     <package name="doctest" version="2.4.5+nv1-3" />
   </dependency>
 

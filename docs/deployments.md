@@ -163,7 +163,7 @@ If it does, you will likely want to match the exact OpenUSD binaries. You _might
 
 However, the more likely outcome is that you should re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your application's USD distribution.
 
-Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works — point it at your USD distro via `USDEX_USD_ROOT` and, for the default build that includes the Python bindings, at your pybind11 headers via `USDEX_PYBIND11_INCLUDE_DIR` (or add both to `CMAKE_PREFIX_PATH`) and build:
+Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works. Point it at your USD distro via `USDEX_USD_ROOT`. Because some OpenUSD's public headers inline public TBB symbols, oneTBB must also be discoverable. Put your oneTBB on `CMAKE_PREFIX_PATH` (the SDK calls `find_package(TBB)`) or pass `USDEX_TBB_ROOT`. For the default build that includes the Python bindings, also provide pybind11 headers via `USDEX_PYBIND11_INCLUDE_DIR`. Then build:
 
 ``````{card}
 `````{tab-set}
@@ -218,18 +218,13 @@ If you encounter missing file errors, it likely indicates a difference between y
   NVIDIA developers building the internal flavor matrix (or source-linking a local USD via ``repo source link``) should use the ``repo build`` workflow described in `CONTRIBUTING.md <https://github.com/NVIDIA-Omniverse/usd-exchange/blob/main/CONTRIBUTING.md#building>`_ instead.
 ```
 
-### Does it use TBB or Boost?
+### Does it use TBB?
 
-[TBB](https://oneapi-src.github.io/oneTBB) and [Boost](https://www.boost.org) are open source software that OpenUSD requires. While OpenUSD Exchange does not use them directly, several critical OpenUSD libraries do link & require them.
+[TBB](https://oneapi-src.github.io/oneTBB) is open source software that OpenUSD requires. While OpenUSD Exchange does not use TBB directly, several critical OpenUSD libraries do link & require it, and some of OpenUSD's public headers directly include inlined tbb symbols.
 
-```{eval-rst}
-.. note::
-  In OpenUSD 24.11 the use of Boost was eliminated from many modules. It is still required for OpenVDB and OpenImageIO, but none of the modules used by OpenUSD Exchange SDK require Boost as of this version. If you want to avoid Boost, consider using 24.11 flavors (or newer).
-```
+If your application ships its own TBB, you _might_ be able to use the prebuilt binaries from [`install_usdex`](./devtools.md#install_usdex), it works out more often than not.
 
-If your application ships its own TBB or Boost, you _might_ be able to use the prebuilt binaries from [`install_usdex`](./devtools.md#install_usdex), it works out more often than not.
-
-However, some applications use an older TBB or Boost library that is incompatible. There isn't any great way to detect this, other than to try & see if you hit issues. If you do, you should re-compile OpenUSD against your application's TBB and/or Boost libraries, then re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your new USD distribution.
+However, some applications use an older TBB library that is incompatible. There isn't any great way to detect this, other than to try & see if you hit issues. If you do, you should re-compile OpenUSD against your application's TBB libraries, then re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your new USD distribution. It is common to locate TBB via a distinct distro rather than part of the USD distro, so when building the SDK from source you must make it discoverable. In cmake you can use `find_package(TBB)` (assuming your oneTBB distro is on `CMAKE_PREFIX_PATH`) or `USDEX_TBB_ROOT`, as covered in the build steps above.
 
 ### Does it provide its own Python runtime?
 

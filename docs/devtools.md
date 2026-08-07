@@ -101,7 +101,7 @@ This tool can be invoked from a clone of the [GitHub repository](https://github.
 
 ### Install usdex_core
 
-By default, the tool will install the core library and module from OpenUSD Exchange SDK. For example, to download & assemble a USD 24.11 & Python 3.11 compatible binaries for OpenUSD Exchange v${repo_docs_version} call:
+By default, the tool will install the core library and module from OpenUSD Exchange SDK. For example, to download & assemble a USD 25.05 & Python 3.11 compatible binaries for OpenUSD Exchange v${repo_docs_version} call:
 
 ``````{card}
 `````{tab-set}
@@ -109,20 +109,20 @@ By default, the tool will install the core library and module from OpenUSD Excha
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --usd-version 24.11 --python-version 3.11 --version ${repo_docs_version}
+./repo.sh install_usdex --usd-version 25.05 --python-version 3.11 --version ${repo_docs_version}
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --usd-version 24.11 --python-version 3.11 --version ${repo_docs_version}
+.\repo.bat install_usdex --usd-version 25.05 --python-version 3.11 --version ${repo_docs_version}
 ```
 ````
 `````
 ``````
 
-Similarly, to download & assemble a minimal monolithic USD 24.11, with no python support, for OpenUSD Exchange v${repo_docs_version} call:
+Similarly, to download & assemble a minimal monolithic USD 25.05, with no python support, for OpenUSD Exchange v${repo_docs_version} call:
 
 ``````{card}
 `````{tab-set}
@@ -130,14 +130,14 @@ Similarly, to download & assemble a minimal monolithic USD 24.11, with no python
 :sync: linux
 
 ```bash
-./repo.sh install_usdex --usd-flavor usd-minimal --usd-version 24.11 --python-version 0 --version ${repo_docs_version}
+./repo.sh install_usdex --usd-flavor usd-minimal --usd-version 25.05 --python-version 0 --version ${repo_docs_version}
 ```
 ````
 ````{tab-item} Windows
 :sync: windows
 
 ```bat
-.\repo.bat install_usdex --usd-flavor usd-minimal --usd-version 24.11 --python-version 0 --version ${repo_docs_version}
+.\repo.bat install_usdex --usd-flavor usd-minimal --usd-version 25.05 --python-version 0 --version ${repo_docs_version}
 ```
 ````
 `````

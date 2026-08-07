@@ -182,6 +182,7 @@ def __install(
     usd_ver: str,
     python_ver: str,
     usd_validation_version: str,
+    uv_extra_index_url: str,
     repoVersionFile: str,
     buildConfig: str,
     clean: bool,
@@ -219,8 +220,7 @@ def __install(
         tokens,
     )
 
-    # determine the required runtime dependencies
-    runtimeDeps = [f"usd-{buildConfig}"]
+    runtimeDeps = [f"usd-{buildConfig}", f"tbb-{buildConfig}", f"materialx-{buildConfig}"]
     if python_ver != "0":
         runtimeDeps.append("python")
 
@@ -231,6 +231,10 @@ def __install(
         if dep in runtimeDeps:
             if dep == f"usd-{buildConfig}":
                 linkPath = f"{targetDepsDir}/usd/{buildConfig}"
+            elif dep == f"tbb-{buildConfig}":
+                linkPath = f"{targetDepsDir}/tbb/{buildConfig}"
+            elif dep == f"materialx-{buildConfig}":
+                linkPath = f"{targetDepsDir}/materialx/{buildConfig}"
             elif "package_name" in info and buildConfig in info["package_name"]:  # dep uses omniflow v2 naming with separate release/debug packages
                 linkPath = f"{targetDepsDir}/{dep}/{buildConfig}"
             elif "local_path" in info and buildConfig in info["local_path"]:  # dep is source linked locally
@@ -250,6 +254,8 @@ def __install(
 
     python_path = f"{targetDepsDir}/python"
     usd_path = f"{targetDepsDir}/usd/{buildConfig}"
+    tbb_path = f"{targetDepsDir}/tbb/{buildConfig}"
+    materialx_path = f"{targetDepsDir}/materialx/{buildConfig}"
 
     # Acquire the asset validator from PyPI. It is a pure-python wheel, so a single install into the staging dir
     # provides the module that is assembled into the install tree below (covers both in-repo and standalone installs).
@@ -257,23 +263,26 @@ def __install(
     if installTestModules and python_ver != "0":
         # the packman python package exposes the canonical `python${exe_ext}` entry point
         pythonExecutable = os.path.join(python_path, "python" + mapping["exe_ext"])
-        print(f"Install usd-validation-nvidia=={usd_validation_version} from PyPI to {validator_path}")
+        # a non-empty (and resolved) token means the package may come from that index rather than PyPI
+        extraIndex = uv_extra_index_url if (uv_extra_index_url and not uv_extra_index_url.startswith("${")) else None
+        source = f"PyPI or {extraIndex}" if extraIndex else "PyPI"
+        print(f"Install usd-validation-nvidia=={usd_validation_version} from {source} to {validator_path}")
         # `uv pip install` is uv's own native installer (it does not shell out to pip); resolve the vendored uv
         # binary via get_uv() exactly as repo_man does internally (see omni.repo.man.deps._uv_requirements_load).
         # `--no-deps` keeps OpenUSD (which we already bundle) out of the validator's staging directory.
-        omni.repo.man.run_process(
-            [
-                str(omni.repo.man.get_uv()),
-                "pip",
-                "install",
-                "--no-config",
-                "--no-deps",
-                f"--python={pythonExecutable}",
-                f"--target={validator_path}",
-                f"usd-validation-nvidia=={usd_validation_version}",
-            ],
-            exit_on_error=True,
-        )
+        uvInstall = [
+            str(omni.repo.man.get_uv()),
+            "pip",
+            "install",
+            "--no-config",
+            "--no-deps",
+            f"--python={pythonExecutable}",
+            f"--target={validator_path}",
+        ]
+        if extraIndex:
+            uvInstall += ["--extra-index-url", extraIndex]
+        uvInstall.append(f"usd-validation-nvidia=={usd_validation_version}")
+        omni.repo.man.run_process(uvInstall, exit_on_error=True)
 
     runtimeInstallDir = "${install_dir}/bin" if os.name == "nt" else "${install_dir}/lib"
     libInstallDir = runtimeInstallDir
@@ -305,16 +314,14 @@ def __install(
             "usdPhysics",
             "usdProc",
             "usdRender",
+            "usdSemantics",
             "usdShade",
+            "usdShaders",
             "usdSkel",
             "usdUI",
             "usdVol",
         ]
         usdPluginLibs = []
-        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
-            usdPlugins.append("usdSemantics")
-        if __SemVersion(usd_ver) >= __SemVersion("25.05"):
-            usdPlugins.append("usdShaders")
         if __SemVersion(usd_ver) < __SemVersion("25.08"):
             usdPlugins.append("ndr")
     else:
@@ -330,10 +337,12 @@ def __install(
             "sdr",
             "tf",
             "trace",
+            "ts",
             "usd",
             "usdGeom",
             "usdLux",
             "usdPhysics",
+            "usdSemantics",
             "usdShade",
             "usdUtils",
             "usdUI",
@@ -348,6 +357,7 @@ def __install(
             "usdGeom",
             "usdLux",
             "usdPhysics",
+            "usdSemantics",
             "usdShade",
             "usdShaders",
             "usdUI",
@@ -356,10 +366,6 @@ def __install(
         usdPluginLibs = [
             "usdShaders",
         ]
-        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
-            usdLibs.append("ts")
-            usdLibs.append("usdSemantics")
-            usdPlugins.append("usdSemantics")
 
         if __SemVersion(usd_ver) < __SemVersion("25.08"):
             usdLibs.append("ndr")
@@ -394,41 +400,35 @@ def __install(
     for lib in usdPluginLibs:
         prebuild_dict["copy"].append([f"{usdPluginSourceDir}/{lib}" + "${lib_ext}", usdPluginInstallDir])
 
-    # 25.08+ uses the new oneTBB API, and the lib name on Windows was changed to tbb12
-    if __SemVersion(usd_ver) < __SemVersion("25.08"):
-        tbb_windows_name = "tbb"
-    else:
-        tbb_windows_name = "tbb12"
-
+    # tbb comes from the standalone oneTBB package on every supported flavor; the lib name differs only by config
+    # (debug suffix) and platform (linux libtbb.so*, windows tbb12.dll)
     if buildConfig == "debug":
         prebuild_dict["copy"].extend(
             [
-                # tbb ships with usd, but is named differently in release/debug
-                [usd_path + "/lib/${lib_prefix}" + "tbb" + "_debug${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "_debug${lib_ext}*", libInstallDir],  # windows
+                [tbb_path + "/lib/${lib_prefix}" + "tbb_debug" + "${lib_ext}*", libInstallDir],
+                [tbb_path + "/bin/${lib_prefix}" + "tbb12_debug" + "${lib_ext}*", libInstallDir],  # windows
             ]
         )
     else:
         prebuild_dict["copy"].extend(
             [
-                # tbb ships with usd, but is named differently in release/debug
-                [usd_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}" + tbb_windows_name + "${lib_ext}*", libInstallDir],  # windows
+                [tbb_path + "/lib/${lib_prefix}" + "tbb" + "${lib_ext}*", libInstallDir],
+                [tbb_path + "/bin/${lib_prefix}" + "tbb12" + "${lib_ext}*", libInstallDir],  # windows
             ]
         )
 
-    # usdMtlx requires MaterialX libraries
+    # usdMtlx requires MaterialX libraries from the standalone MaterialX package
     if installTestModules and python_ver != "0":
         mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
         prebuild_dict["copy"].extend(
             [
-                [usd_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
-                [usd_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
-                [usd_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
-                [usd_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
-                [f"{usd_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
-                [f"{usd_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
-                [f"{usd_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
+                [materialx_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
+                [materialx_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
+                [materialx_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
+                [materialx_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
+                [f"{materialx_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
+                [f"{materialx_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
+                [f"{materialx_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
             ]
         )
 
@@ -461,10 +461,12 @@ def __install(
             ("pxr/Sdr", "_sdr"),
             ("pxr/Tf", "_tf"),
             ("pxr/Trace", "_trace"),
+            ("pxr/Ts", "_ts"),
             ("pxr/Usd", "_usd"),
             ("pxr/UsdGeom", "_usdGeom"),
             ("pxr/UsdLux", "_usdLux"),
             ("pxr/UsdPhysics", "_usdPhysics"),
+            ("pxr/UsdSemantics", "_usdSemantics"),
             ("pxr/UsdShade", "_usdShade"),
             ("pxr/UsdUtils", "_usdUtils"),
             ("pxr/UsdUI", "_usdUI"),
@@ -472,9 +474,6 @@ def __install(
             ("pxr/Vt", "_vt"),
             ("pxr/Work", "_work"),
         ]
-        if __SemVersion(usd_ver) >= __SemVersion("24.11"):
-            usdModules.append(("pxr/Ts", "_ts"))
-            usdModules.append(("pxr/UsdSemantics", "_usdSemantics"))
 
         # usdex.test
         if installTestModules:
@@ -558,13 +557,13 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         "--usd-version",
         dest="usd_ver",
         default=usd_ver,
-        choices=["25.11", "25.08", "25.05", "25.02", "24.11"],  # public versions only
+        choices=["26.08", "25.11", "25.05"],  # public versions only
         help=f"The OpenUSD version to install. Defaults to `{usd_ver}`",
     )
     parser.add_argument(
         "--python-version",
         dest="python_ver",
-        choices=["3.12", "3.11", "3.10", "0"],
+        choices=["3.13", "3.12", "3.11", "3.10", "0"],
         help=f"The Python flavor to install. Use `0` to disable Python features. Defaults to `{python_ver}`",
     )
     parser.add_argument(
@@ -625,6 +624,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usd_ver = options.usd_ver or toolConfig["usd_ver"]
         python_ver = options.python_ver or toolConfig["python_ver"]
         usd_validation_version = options.usd_validation_version or toolConfig["usd_validation_version"]
+        # optional index for wheel dependencies; empty by default means PyPI only
+        uv_extra_index_url = omni.repo.man.resolve_tokens("${uv_extra_index_url}")
 
         if usd_flavor == "usd-minimal":
             if python_ver != "0":
@@ -639,6 +640,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             usd_ver,
             python_ver,
             usd_validation_version,
+            uv_extra_index_url,
             repoVersionFile,
             options.config,
             options.clean,

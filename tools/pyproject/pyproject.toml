@@ -9,12 +9,11 @@ license-files = [
     "usd-exchange-LICENSE.md",
     "pybind11-LICENSE.txt",
     "pyboost11-LICENSE.txt",
-    "usd-license.txt",
-    "*tbb-LICENSE*",
-    "*hwloc*",
-    "zlib-LICENSE*",
+    "openusd-LICENSE.txt",
+    "onetbb-LICENSE.txt",
+    "materialx-LICENSE.txt",
 ]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 
 [project.urls]
 Homepage = "https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk"
