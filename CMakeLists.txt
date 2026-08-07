@@ -161,22 +161,6 @@ if(USDEX_BUILD_TESTS)
     target_link_libraries(test_usdex_core PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers usdex_core)
     target_include_directories(test_usdex_core SYSTEM PRIVATE "${USDEX_CXXOPTS_INCLUDE_DIR}" "${USDEX_DOCTEST_INCLUDE_DIR}")
     usdex_target_link_usd(test_usdex_core arch gf sdf tf usd usdGeom usdPhysics usdUtils vt)
-    # The tests reference symbols from USD's transitive DSOs directly (e.g. TBB via TfErrorMark). On Linux let ld
-    # resolve them through USD's DT_NEEDED (covers tbb, tbb_debug, etc. without enumerating each flavor's libs).
-    # MSVC has no equivalent, so link TBB explicitly there.
-    if(WIN32)
-        if(PXR_VERSION GREATER_EQUAL 2508)
-            set(_tbb_names tbb12 tbb)
-        else()
-            set(_tbb_names tbb)
-        endif()
-        find_library(USDEX_TBB NAMES ${_tbb_names} PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
-        if(USDEX_TBB)
-            target_link_libraries(test_usdex_core PRIVATE "${USDEX_TBB}")
-        endif()
-    else()
-        target_link_options(test_usdex_core PRIVATE "-Wl,--copy-dt-needed-entries")
-    endif()
 endif()
 
 # the packman config shipped in dev/ so consumers can fetch the runtime deps install_usdex needs

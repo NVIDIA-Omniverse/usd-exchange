@@ -45,18 +45,22 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
         target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_USD_LIB_DIR}")
     endif()
 
-    # TBB/MaterialX are sibling packages in USD 26+ (the pxr headers still #include <tbb/...>); older distros bundle them
-    # under USDEX_USD_ROOT. A provided root must be valid: set-but-missing means the dependency was never fetched.
-    if(USDEX_TBB_ROOT)
-        if(NOT EXISTS "${USDEX_TBB_ROOT}/include")
-            message(FATAL_ERROR "USDEX_TBB_ROOT='${USDEX_TBB_ROOT}' has no include/ directory; ensure the dependency was fetched.")
-        endif()
-        target_include_directories(usdex_usd_headers SYSTEM INTERFACE "${USDEX_TBB_ROOT}/include")
-        target_link_directories(usdex_usd_headers INTERFACE "${USDEX_TBB_ROOT}/lib")
-        if(UNIX AND NOT APPLE)
-            target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_TBB_ROOT}/lib")
-        endif()
+    # TBB is a required sibling package: OpenUSD's public headers #include <tbb/...>, so any compile against USD needs it
+    # (and usdex_target_link_usd links it). A provided root must be valid: set-but-missing means it was never fetched.
+    if(NOT USDEX_TBB_ROOT)
+        message(FATAL_ERROR "USDEX_TBB_ROOT is required: OpenUSD's headers #include <tbb/...>. Point it at the oneTBB sibling package.")
     endif()
+    if(NOT EXISTS "${USDEX_TBB_ROOT}/include")
+        message(FATAL_ERROR "USDEX_TBB_ROOT='${USDEX_TBB_ROOT}' has no include/ directory; ensure the dependency was fetched.")
+    endif()
+    target_include_directories(usdex_usd_headers SYSTEM INTERFACE "${USDEX_TBB_ROOT}/include")
+    target_link_directories(usdex_usd_headers INTERFACE "${USDEX_TBB_ROOT}/lib")
+    if(UNIX AND NOT APPLE)
+        target_link_options(usdex_usd_headers INTERFACE "-Wl,-rpath-link,${USDEX_TBB_ROOT}/lib")
+    endif()
+
+    # MaterialX is a sibling package too, but neither usdex nor OpenUSD's core headers #include it.
+    # Only consumers that use the UsdMtlx schemas require it.
     if(USDEX_MATERIALX_ROOT)
         if(NOT EXISTS "${USDEX_MATERIALX_ROOT}/include")
             message(FATAL_ERROR "USDEX_MATERIALX_ROOT='${USDEX_MATERIALX_ROOT}' has no include/ directory; ensure the dependency was fetched.")
@@ -92,6 +96,21 @@ function(usdex_target_link_usd target)
             target_link_libraries(${target} PRIVATE "${${_var}}")
         endforeach()
     endif()
+
+    # OpenUSD's public headers inline TBB (e.g. pxr/base/work/*), so anything compiling against them carries TBB symbol references.
+    # Link TBB here so consumers resolve them via this helper alone. Names are platform-specific; we list both the release
+    # and debug spellings because a multi-config generator can't pick one at configure time. Our packages give
+    # USDEX_TBB_ROOT a per-config lib dir holding just one, so the order is moot; a dir holding both resolves to release.
+    if(WIN32)
+        set(_usdex_tbb_names tbb12 tbb12_debug)
+    else()
+        set(_usdex_tbb_names tbb tbb_debug)
+    endif()
+    find_library(USDEX_USDLIB_tbb NAMES ${_usdex_tbb_names} PATHS "${USDEX_TBB_ROOT}/lib" NO_DEFAULT_PATH)
+    if(USDEX_USDLIB_tbb)
+        target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_tbb}")
+    endif()
+
     if(USDEX_WITH_PYTHON)
         find_library(USDEX_USDLIB_python NAMES "usd_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
         if(USDEX_USDLIB_python)
