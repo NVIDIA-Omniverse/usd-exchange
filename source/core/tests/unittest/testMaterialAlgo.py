@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 import os
 import pathlib
@@ -1098,7 +1097,7 @@ class DefinePreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFu
             # Helper function to create a temp file under the temp base dir within a subdir
             tempDir = pathlib.Path(self.tmpBaseDir()) / subdir
             tempDir.mkdir(parents=True, exist_ok=True)
-            (handle, fileName) = tempfile.mkstemp(prefix=f"{os.path.join(tempDir, name)}_", suffix=f".{ext}")
+            handle, fileName = tempfile.mkstemp(prefix=f"{os.path.join(tempDir, name)}_", suffix=f".{ext}")
             os.close(handle)
             return fileName
 

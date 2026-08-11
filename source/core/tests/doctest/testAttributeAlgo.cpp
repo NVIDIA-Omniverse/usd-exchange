@@ -1,6 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
-//
 
 // C++ doctests for setEffectiveAttributeValue type coercion paths that Python unit tests
 // cannot exercise. Python floating-point literals are converted to double in VtValue,

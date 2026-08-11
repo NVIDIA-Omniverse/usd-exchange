@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Contributing to OpenUSD Exchange SDK
 
 If you are interested in contributing to OpenUSD Exchange SDK, your contributions will fall

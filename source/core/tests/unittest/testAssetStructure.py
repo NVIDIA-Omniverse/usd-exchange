@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 import os
 import pathlib
@@ -51,7 +50,7 @@ class AssetStructureTestBase:
         for subdir in subdirs:
             tempDir = tempDir / subdir
         tempDir.mkdir(parents=True, exist_ok=True)
-        (handle, fileName) = tempfile.mkstemp(prefix=f"{os.path.join(tempDir, name)}_", suffix=f".{ext}")
+        handle, fileName = tempfile.mkstemp(prefix=f"{os.path.join(tempDir, name)}_", suffix=f".{ext}")
         os.close(handle)
         return fileName
 

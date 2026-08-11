@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Try the Samples
 
 The best way to learn about OpenUSD Exchange functionality is to try out the OpenUSD Exchange Samples. These are simple applications that showcase many features and key concepts of the SDK.

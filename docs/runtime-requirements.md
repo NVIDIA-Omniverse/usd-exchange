@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Runtime Requirements
 
 If you are using the Python wheels, simply install the wheel using your preferred package manager. All runtime requirements are precompiled & self-contained within the wheel setup.

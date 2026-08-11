@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 import argparse
 from typing import Callable, Dict
 
@@ -36,7 +36,7 @@ def run_verify_deps(options: argparse.Namespace, toolConfig: Dict):
             tokens["config"] = config
             for depsFile in depsFiles:
                 omni.repo.man.print_log(f"Verifying deps `{depsFile}` for platform={platform} config={config}")
-                (_, missing) = packmanapi.verify(
+                _, missing = packmanapi.verify(
                     depsFile,
                     platform=platform,
                     tokens=tokens,

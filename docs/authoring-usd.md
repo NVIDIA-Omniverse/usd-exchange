@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Authoring USD Data
 
 The OpenUSD Exchange SDK helps developers implement their own USD I/O solutions that produce consistent and correct USD assets across diverse 3D ecosystems.

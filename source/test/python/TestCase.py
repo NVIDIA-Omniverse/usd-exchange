@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 __all__ = [
     "TestCase",
@@ -275,7 +274,7 @@ class TestCase(unittest.TestCase):
 
         # Sanitize name string
         name = re.sub(TestCase.validFileIdentifierRegex, "_", name or self._testMethodName)
-        (handle, fileName) = tempfile.mkstemp(prefix=f"{os.path.join(tempDir, name)}_", suffix=f".{ext}")
+        handle, fileName = tempfile.mkstemp(prefix=f"{os.path.join(tempDir, name)}_", suffix=f".{ext}")
         # closing the os handle immediately. we don't need this now that the file is known to be unique
         # and it interferes with some internal processes.
         os.close(handle)
