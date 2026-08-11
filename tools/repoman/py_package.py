@@ -137,6 +137,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         else:
             # Only plugInfo (auditwheel will handle libs)
             shutil.copytree(f"{source}/lib/usd", f"{stagingDir}/usd_exchange.libs/usd", ignore=ignore_callable)
+            # Validators plugins need to be copied explicitly
+            for validatorLib in glob.glob(f"{source}/lib/libusd_*Validators.so"):
+                shutil.copyfile(validatorLib, f"{stagingDir}/usd_exchange.libs/{os.path.basename(validatorLib)}")
 
         # generate pyproject file
         pyproject_source = omni.repo.man.resolve_tokens("$root/tools/pyproject/pyproject.toml")

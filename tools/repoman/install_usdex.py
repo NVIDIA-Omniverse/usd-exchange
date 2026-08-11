@@ -302,28 +302,22 @@ def __install(
 
     # usd
     usdLibMidfix, monolithic = __computeUsdMidfix(usd_path)
+    # plugins usdex links against; identical for monolithic & modular, only the backing libraries differ (usd_ms vs per-module)
+    usdPlugins = [
+        "ar",
+        "sdf",
+        "sdr",
+        "usd",
+        "usdGeom",
+        "usdLux",
+        "usdPhysics",
+        "usdShade",
+        "usdShaders",
+        "usdUI",
+    ]
     if monolithic:
         usdLibs = ["usd_ms"]
-        usdPlugins = [
-            "ar",
-            "sdf",
-            "usd",
-            "usdGeom",
-            "usdLux",
-            "usdMedia",
-            "usdPhysics",
-            "usdProc",
-            "usdRender",
-            "usdSemantics",
-            "usdShade",
-            "usdShaders",
-            "usdSkel",
-            "usdUI",
-            "usdVol",
-        ]
         usdPluginLibs = []
-        if __SemVersion(usd_ver) < __SemVersion("25.08"):
-            usdPlugins.append("ndr")
     else:
         usdLibs = [
             "ar",
@@ -342,38 +336,53 @@ def __install(
             "usdGeom",
             "usdLux",
             "usdPhysics",
-            "usdSemantics",
             "usdShade",
             "usdUtils",
             "usdUI",
-            "usdVol",
             "vt",
             "work",
-        ]
-        usdPlugins = [
-            "ar",
-            "sdf",
-            "usd",
-            "usdGeom",
-            "usdLux",
-            "usdPhysics",
-            "usdSemantics",
-            "usdShade",
-            "usdShaders",
-            "usdUI",
-            "usdVol",
         ]
         usdPluginLibs = [
             "usdShaders",
         ]
 
-        if __SemVersion(usd_ver) < __SemVersion("25.08"):
+    if __SemVersion(usd_ver) < __SemVersion("25.08"):
+        usdPlugins.append("ndr")
+        if not monolithic:
             usdLibs.append("ndr")
-            usdPlugins.append("ndr")
 
+    # schemas we ship for downstream authoring but do not link ourselves
+    shippedSchemas = [
+        "usdMedia",
+        "usdMtlx",
+        "usdProc",
+        "usdRender",
+        "usdSemantics",
+        "usdSkel",
+        "usdVol",
+    ]
+    if __SemVersion(usd_ver) >= __SemVersion("26.08"):
+        shippedSchemas += ["usdLod", "usdProfiles"]
+    usdPlugins += shippedSchemas
+    if not monolithic:
+        usdLibs += shippedSchemas
+
+    # native OpenUSD validators loaded by usd_validation_nvidia's adapters
+    validators = []
     if installTestModules and python_ver != "0":
-        # usd_validation_nvidia uses some OpenUSD modules that we don't otherwise require in our runtime
-        extraPlugins.extend(["usdSkel", "usdMtlx"])
+        validators = [
+            "usdValidation",
+            "usdGeomValidators",
+            "usdPhysicsValidators",
+            "usdShadeValidators",
+            "usdSkelValidators",
+            "usdUtilsValidators",
+        ]
+        if __SemVersion(usd_ver) >= __SemVersion("26.08"):
+            validators.append("usdLuxValidators")
+        usdPlugins += validators
+        if not monolithic:
+            usdLibs += validators
 
     # allow for extra user supplied plugins
     for extra in extraPlugins:
@@ -417,20 +426,19 @@ def __install(
             ]
         )
 
-    # usdMtlx requires MaterialX libraries from the standalone MaterialX package
-    if installTestModules and python_ver != "0":
-        mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
-        prebuild_dict["copy"].extend(
-            [
-                [materialx_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
-                [materialx_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
-                [materialx_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
-                [materialx_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
-                [f"{materialx_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
-                [f"{materialx_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
-                [f"{materialx_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
-            ]
-        )
+    # usdMtlx is a mandatory shipped schema, so its MaterialX libraries from the standalone MaterialX package always ship too
+    mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
+    prebuild_dict["copy"].extend(
+        [
+            [materialx_path + "/lib/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],
+            [materialx_path + "/lib/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],
+            [materialx_path + "/bin/${lib_prefix}MaterialXFormat*${lib_ext}*", libInstallDir],  # windows
+            [materialx_path + "/bin/${lib_prefix}MaterialXCore*${lib_ext}*", libInstallDir],  # windows
+            [f"{materialx_path}/libraries/bxdf/*open_pbr_surface.mtlx", f"{mtlxLibraryDir}/bxdf/"],
+            [f"{materialx_path}/libraries/stdlib/stdlib_defs.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_defs.mtlx"],
+            [f"{materialx_path}/libraries/stdlib/stdlib_ng.mtlx", f"{mtlxLibraryDir}/stdlib/stdlib_ng.mtlx"],
+        ]
+    )
 
     if python_ver != "0":
         # usdex core only
@@ -466,20 +474,36 @@ def __install(
             ("pxr/UsdGeom", "_usdGeom"),
             ("pxr/UsdLux", "_usdLux"),
             ("pxr/UsdPhysics", "_usdPhysics"),
-            ("pxr/UsdSemantics", "_usdSemantics"),
             ("pxr/UsdShade", "_usdShade"),
-            ("pxr/UsdUtils", "_usdUtils"),
             ("pxr/UsdUI", "_usdUI"),
-            ("pxr/UsdVol", "_usdVol"),
+            ("pxr/UsdUtils", "_usdUtils"),
             ("pxr/Vt", "_vt"),
             ("pxr/Work", "_work"),
         ]
+        # python modules for the shipped schemas
+        shippedSchemaModules = [
+            ("pxr/UsdMedia", "_usdMedia"),
+            ("pxr/UsdMtlx", "_usdMtlx"),
+            ("pxr/UsdProc", "_usdProc"),
+            ("pxr/UsdRender", "_usdRender"),
+            ("pxr/UsdSemantics", "_usdSemantics"),
+            ("pxr/UsdSkel", "_usdSkel"),
+            ("pxr/UsdVol", "_usdVol"),
+        ]
+        if __SemVersion(usd_ver) >= __SemVersion("26.08"):
+            shippedSchemaModules += [
+                ("pxr/UsdLod", "_usdLod"),
+                ("pxr/UsdProfiles", "_usdProfiles"),
+            ]
+        usdModules += shippedSchemaModules
 
         # usdex.test
         if installTestModules:
             __installPythonModule(prebuild_dict["copy"], f"{usd_exchange_path}/python", "usdex/test", None)
             # usd_validation_nvidia is pip-installed above; copy the whole package (the capabilities submodule comes along)
             prebuild_dict["copy"].append([f"{validator_path}/usd_validation_nvidia", "${install_dir}/python/usd_validation_nvidia"])
+            # pxr.UsdValidation is the native framework usd_validation_nvidia's adapters load
+            usdModules.append(("pxr/UsdValidation", "_usdValidation"))
 
         # allow for extra user supplied plugins
         for extra in extraPlugins:

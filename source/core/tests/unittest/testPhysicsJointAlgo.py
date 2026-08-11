@@ -364,7 +364,7 @@ class PhysicsJointAlgoTest_FixedJoint(PhysicsJointAlgoTest, usdex.test.DefineFun
         self.assertIsValidUsd(
             stage,
             issuePredicates=[
-                usd_validation_nvidia.IssuePredicates.ContainsMessage("ScaleOrientation is not supported for rigid bodies."),
+                usd_validation_nvidia.IssuePredicates.ContainsMessage("ScaleOrientation is not supported for rigid bodies"),
             ],
         )
 
@@ -1241,13 +1241,13 @@ class PhysicsJointAlgoTest_RevoluteJoint(PhysicsJointAlgoTest, usdex.test.Define
         localRot1 = Gf.Quatf.GetIdentity()
         self.assertIsPhysicsJoint(joint, localPos0, localRot0, localPos1, localRot1, UsdGeom.Tokens.x, joint_lower_limit, joint_upper_limit)
 
-        # 'Simulation of multiple rigid bodies in a hierarchy will cause unpredicted results. Please fix the hierarchy or use XformStack reset'
-        # This warning will be skipped during USD validation.
+        # This stage intentionally nests rigid bodies. USD's RigidBodyChecker flags that, but the message wording differs by
+        # version ("RigidBodyAPI's" on 25.05, "rigid bodies" on newer), so match the shared tail to skip it on all flavors.
         self.assertIsValidUsd(
             stage,
             issuePredicates=[
                 usd_validation_nvidia.IssuePredicates.ContainsMessage(
-                    "Simulation of multiple rigid bodies in a hierarchy will cause unpredicted results. Please fix the hierarchy or use XformStack reset"
+                    "in a hierarchy will cause unpredicted results. Please fix the hierarchy or use XformStack reset"
                 ),
             ],
         )

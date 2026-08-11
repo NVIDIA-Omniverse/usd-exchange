@@ -78,7 +78,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
 
         def checkUnresolvableDependenciesIssue(issue):
             # special case for MDL material libraries
-            if re.match("Found unresolvable external dependency '.*\.(mdl)'\.", issue.message):
+            if re.match(r"Found unresolvable external dependency '.*\.(mdl)'\.", issue.message):
                 return True
 
         # Allows any issue reporting `The path "Omni*.mdl" does not exist.` to be bypassed.
@@ -90,15 +90,17 @@ class MaterialAlgoTest(usdex.test.TestCase):
         return [omniMdlPredicate, checkUnresolvableDependenciesIssue]
 
     @staticmethod
-    def getExpectedResolveDiagMsgs(failCount, mdlName):
-        expected = []
-        # OpenUSD 26.08+ de-duplicates the repeated identical reference-resolution warnings emitted during composition
-        if not MaterialAlgoTest.isUsdOlderThan("0.26.08"):
-            failCount = min(failCount, 1)
-        msg = f".*Failed to resolve reference @{mdlName}@"
-        for i in range(failCount):
-            expected.append((Tf.TF_DIAGNOSTIC_WARNING_TYPE, msg))
-        return expected
+    def getExpectedResolveDiagMsgs(*specs):
+        # Each spec is a (failCount, mdlName) pair describing one composition of the stage. The whole sequence is
+        # doubled because the native usdz-package validator and usd-validation-nvidia's own dependency analysis each
+        # localize the stage via UsdUtilsComputeAllDependencies, so every unresolvable reference resolves (and warns) twice.
+        single = []
+        for failCount, mdlName in specs:
+            # OpenUSD 26.08+ de-duplicates the repeated identical reference-resolution warnings emitted during composition
+            if not MaterialAlgoTest.isUsdOlderThan("0.26.08"):
+                failCount = min(failCount, 1)
+            single += [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, f".*Failed to resolve reference @{mdlName}@")] * failCount
+        return single * 2
 
     def _createTestStage(self):
         stage = Usd.Stage.CreateInMemory()
@@ -478,8 +480,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
             testShader = usdex.rtx.createMdlShader(UsdShade.Material(), "badShader", Sdf.AssetPath("OmniPBR.mdl"), "OmniPBR", False)
         self.assertFalse(testShader.GetPrim())
 
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniGlass.mdl")
-        expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniGlass.mdl"), (2, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             self.assertIsValidUsd(stage, issuePredicates=self.allowedIssuePredicates())
 
@@ -705,8 +706,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         self.assertFalse(mdlShader)
         self.assertFalse(previewShader)
 
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniGlass.mdl")
-        expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((2, "OmniGlass.mdl"), (2, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             self.assertIsValidUsd(stage, issuePredicates=self.allowedIssuePredicates())
 
@@ -986,7 +986,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
             emissive_color = Gf.Vec3f(-1.0, 1.0, 0.0)
             emissive_intensity = 100.0
             with usdex.test.ScopedDiagnosticChecker(
-                self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Color value .* is invalid: each component must be at least 0 \(no upper bound\).")]
+                self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, r".*Color value .* is invalid: each component must be at least 0 \(no upper bound\).")]
             ):
                 result = usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color, emissive_intensity)
             self.assertFalse(result)
@@ -1003,7 +1003,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
             emissive_color = Gf.Vec3f(1.0, 1.0, 0.0)
             emissive_intensity = -1.0
             with usdex.test.ScopedDiagnosticChecker(
-                self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, ".*Intensity value .* is invalid: must be at least 0.0 \(no upper bound\).")]
+                self, [(Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE, r".*Intensity value .* is invalid: must be at least 0.0 \(no upper bound\).")]
             ):
                 result = usdex.rtx.addEmissiveColorToPbrMaterial(matPrim, emissive_color, emissive_intensity)
             self.assertFalse(result)
@@ -1099,11 +1099,11 @@ class MaterialAlgoTest(usdex.test.TestCase):
             checkOpacityTexture(material, opacityTexture, opacity, diffLayer=True)
             checkEmissiveTexture(material, emissiveTexture, emissive_color, diffLayer=True)
 
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniPBR.mdl")
-        expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniGlass.mdl")
+        specs = [(1, "OmniPBR.mdl"), (1, "OmniGlass.mdl")]
         # older USD re-warns per composition arc; 26.08+ caches the resolve failure so OmniPBR only warns once
         if self.isUsdOlderThan("0.26.08"):
-            expected += MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
+            specs.append((2, "OmniPBR.mdl"))
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(*specs)
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             self.assertIsValidUsd(stage, issuePredicates=self.allowedIssuePredicates())
 
@@ -1124,7 +1124,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         source, sourceName, sourceType = mdlShader.GetInput("diffuse_texture").GetConnectedSource()
         self.assertEqual(source.GetInput(sourceName), material.GetInput("ColorTexture"))
 
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             self.assertIsValidUsd(stage, issuePredicates=self.allowedIssuePredicates())
 
@@ -1249,7 +1249,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
         self.assertIsInstance(shaderInput, UsdShade.Input)
         self.assertFalse(shaderInput)
 
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             self.assertIsValidUsd(stage, issuePredicates=self.allowedIssuePredicates())
 
@@ -1292,22 +1292,22 @@ class definePbrMaterialTestCase(usdex.test.DefineFunctionTestCase):
     defaultValidationIssuePredicates = MaterialAlgoTest.allowedIssuePredicates()
 
     def testStagePathSuccess(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testStagePathSuccess()
 
     def testWeakerStronger(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((2, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testWeakerStronger()
 
     def testStrongerWeaker(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((2, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testStrongerWeaker()
 
     def testParentNameSuccess(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniPBR.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniPBR.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testParentNameSuccess()
 
@@ -1323,21 +1323,21 @@ class defineGlassMaterialTestCase(usdex.test.DefineFunctionTestCase):
     defaultValidationIssuePredicates = MaterialAlgoTest.allowedIssuePredicates()
 
     def testStagePathSuccess(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniGlass.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniGlass.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testStagePathSuccess()
 
     def testWeakerStronger(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniGlass.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((2, "OmniGlass.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testWeakerStronger()
 
     def testStrongerWeaker(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(2, "OmniGlass.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((2, "OmniGlass.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testStrongerWeaker()
 
     def testParentNameSuccess(self):
-        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs(1, "OmniGlass.mdl")
+        expected = MaterialAlgoTest.getExpectedResolveDiagMsgs((1, "OmniGlass.mdl"))
         with usdex.test.ScopedDiagnosticChecker(self, expected):
             super().testParentNameSuccess()
