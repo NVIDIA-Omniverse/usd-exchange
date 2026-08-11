@@ -14,8 +14,8 @@ __all__ = [
     "createMdlShaderInput",
     "computeEffectiveMdlSurfaceShader",
     # Need to be split up to handle UPS, Mtlx, Mdl
-    "defineOmniPbrMaterial",
-    "defineOmniGlassMaterial",
+    "definePbrMaterial",
+    "defineGlassMaterial",
     "addEmissiveColorToPbrMaterial",
     "addColorTextureToPbrMaterial",
     "addDiffuseTextureToPbrMaterial",
