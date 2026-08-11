@@ -1,6 +1,5 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 import inspect
 import os
@@ -56,16 +55,14 @@ class SettingsTest(usdex.test.TestCase):
         self.assertEnvSetting(
             setting=usdex.core.enableTranscodingSetting,
             value=True,
-            command=inspect.cleandoc(
-                """
+            command=inspect.cleandoc("""
                 import usdex.core
                 from pxr import Tf
                 assert Tf.GetEnvSetting(usdex.core.enableTranscodingSetting) == True
                 assert usdex.core.getValidPrimName(r"sphere%$%#ad@$1") == "tn__spheread1_kAHAJ8jC"
                 assert usdex.core.getValidPrimName("1 mesh") == "tn__1mesh_c5"
                 assert usdex.core.getValidPrimName("") == "tn__"
-                """
-            ),
+                """),
             expectedOutputPattern="",
         )
 
@@ -74,16 +71,14 @@ class SettingsTest(usdex.test.TestCase):
         self.assertEnvSetting(
             setting=usdex.core.enableTranscodingSetting,
             value=False,
-            command=inspect.cleandoc(
-                """
+            command=inspect.cleandoc("""
                 import usdex.core
                 from pxr import Tf
                 assert Tf.GetEnvSetting(usdex.core.enableTranscodingSetting) == False
                 assert usdex.core.getValidPrimName(r"sphere%$%#ad@$1") == "sphere____ad__1"
                 assert usdex.core.getValidPrimName("1 mesh") == "_1_mesh"
                 assert usdex.core.getValidPrimName("") == "_"
-                """
-            ),
+                """),
             expectedOutputPattern=".*USDEX_ENABLE_TRANSCODING is overridden to 'false'.*",
         )
 
@@ -92,15 +87,13 @@ class SettingsTest(usdex.test.TestCase):
         self.assertEnvSetting(
             setting=usdex.core.enableTranscodingSetting,
             value="invalid value type",
-            command=inspect.cleandoc(
-                """
+            command=inspect.cleandoc("""
                 import usdex.core
                 from pxr import Tf
                 assert Tf.GetEnvSetting(usdex.core.enableTranscodingSetting) == False
                 assert usdex.core.getValidPrimName(r"sphere%$%#ad@$1") == "sphere____ad__1"
                 assert usdex.core.getValidPrimName("1 mesh") == "_1_mesh"
                 assert usdex.core.getValidPrimName("") == "_"
-                """
-            ),
+                """),
             expectedOutputPattern=".*USDEX_ENABLE_TRANSCODING is overridden to 'false'.*",
         )

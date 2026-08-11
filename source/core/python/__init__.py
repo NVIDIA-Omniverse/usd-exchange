@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 """
 `usdex.core <https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/latest/docs/python-usdex-core.html>`_ provides higher-level convenience
 functions top of lower-level `OpenUSD <https://openusd.org/release/index.html>`_ concepts, so developers can quickly adopt OpenUSD best practices

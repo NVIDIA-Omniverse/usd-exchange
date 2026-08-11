@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 """Generate deps/usd-deps.packman.xml for the active USD flavor.
 
 Each supported USD version has a template under deps/usd-flavors/<ver>/. This tool resolves the flavor-specific package

@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Getting Started
 
 The OpenUSD Exchange SDK is available as Python wheels on [PyPI](https://pypi.org/project/usd-exchange/) and [PyPI NVIDIA](https://pypi.nvidia.com/usd-exchange/), making it easy to get started without having to build.

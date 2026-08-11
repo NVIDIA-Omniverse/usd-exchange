@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Testing and Debugging
 
 When developing an application using OpenUSD Exchange SDK it is important to understand how to test your results & debug any issues you may run into.

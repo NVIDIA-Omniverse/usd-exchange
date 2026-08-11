@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 import argparse
 import datetime
 import os
@@ -147,9 +147,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         semantic_version = version.split("-")[0]
         tokens = semantic_version.split(".")
         if len(tokens) == 3:
-            (major, minor, patch) = tokens
+            major, minor, patch = tokens
         elif len(tokens) == 2:
-            (major, minor) = tokens
+            major, minor = tokens
             patch = "0"
         else:
             raise RuntimeError(f"Invalid version specification: {tokens}. repo_version_header requires at major.minor or major.minor.patch syntax")

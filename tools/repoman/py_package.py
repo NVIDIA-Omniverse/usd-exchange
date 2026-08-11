@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 import argparse
 import glob
 import inspect
@@ -189,9 +189,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             # On Windows, the plugInfo LibraryPaths values are correct, but in order to auto-locate them the python modules
             # need to be configured to look in the usd_exchange.libs folder using the PXR_USD_WINDOWS_DLL_PATH environment variable.
             with open(f"{stagingDir}/pxr/__init__.py", "w") as f:
-                f.write(
-                    inspect.cleandoc(
-                        """
+                f.write(inspect.cleandoc("""
                         import os
 
                         # Set environment variable for USD Windows DLL path
@@ -203,9 +201,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                         normalized_entries = [os.path.normcase(os.path.normpath(entry)) for entry in path_entries if entry]
                         if os.path.normcase(os.path.normpath(dll_path)) not in normalized_entries:
                             os.environ["PATH"] = dll_path + os.pathsep + os.environ.get("PATH", "")
-                        """
-                    )
-                )
+                        """))
         elif not omni.repo.man.is_linux():
             raise omni.repo.man.ExpectedError("Unsupported platform")
         # On Linux the plugInfo LibraryPath values are patched after auditwheel (see __patch_usd_pluginfo), once the

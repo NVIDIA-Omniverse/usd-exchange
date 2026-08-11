@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 """Fetch dependencies and build the CMake project for the current USD flavor.
 
 The internal flavor-matrix entry point: fetch target deps via packman, then configure + build the root

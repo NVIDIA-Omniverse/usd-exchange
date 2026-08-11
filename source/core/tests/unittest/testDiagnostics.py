@@ -1,6 +1,5 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
 
 import inspect
 import os
@@ -99,8 +98,7 @@ Stderr:
         self.assertTrue(usdex.core.isDiagnosticsDelegateActive())
 
     def testOutputFormatting(self):
-        command = inspect.cleandoc(
-            """
+        command = inspect.cleandoc("""
             import usdex.core
             from pxr import Tf
 
@@ -117,17 +115,14 @@ Stderr:
 
             usdex.core.activateDiagnosticsDelegate()
             emitDiagnostics()
-            """
-        )
+            """)
 
         self.assertOutputStreams(
             command=command.format(
                 level=usdex.core.DiagnosticsLevel.eWarning,
-                body=inspect.cleandoc(
-                    """
+                body=inspect.cleandoc("""
                     Tf.Warn("This is a warning")
-                    """
-                ),
+                    """),
             ),
             expectedStdout=[],
             expectedStderr=[
@@ -140,11 +135,9 @@ Stderr:
         self.assertOutputStreams(
             command=command.format(
                 level=usdex.core.DiagnosticsLevel.eStatus,
-                body=inspect.cleandoc(
-                    """
+                body=inspect.cleandoc("""
                     Tf.Status("This is a status")
-                    """
-                ),
+                    """),
             ),
             expectedStdout=[],
             expectedStderr=[
@@ -158,11 +151,9 @@ Stderr:
         self.assertOutputStreams(
             command=command.format(
                 level=usdex.core.DiagnosticsLevel.eStatus,
-                body=inspect.cleandoc(
-                    """
+                body=inspect.cleandoc("""
                     Tf.Status("This is a succinct status", verbose=False)
-                    """
-                ),
+                    """),
             ),
             expectedStdout=[],
             expectedStderr=[
@@ -173,8 +164,7 @@ Stderr:
         )
 
     def testLevel(self):
-        command = inspect.cleandoc(
-            """
+        command = inspect.cleandoc("""
             import usdex.core
             from pxr import Tf, Usd, UsdGeom
 
@@ -190,8 +180,7 @@ Stderr:
                 usdex.core.defineXform(Usd.Stage.CreateInMemory(), "/")  # emits Tf Runtime Error
 
             emitDiagnostics()
-            """
-        )
+            """)
 
         # eStatus emits all diagnostics
         self.assertOutputStreams(
@@ -231,8 +220,7 @@ Stderr:
         )
 
     def testOutputStream(self):
-        command = inspect.cleandoc(
-            """
+        command = inspect.cleandoc("""
             import usdex.core
             from pxr import Tf, Usd
 
@@ -246,8 +234,7 @@ Stderr:
                 Tf.Warn("This is a warning")
 
             emitDiagnostics()
-            """
-        )
+            """)
 
         self.assertOutputStreams(
             command=command.format(stream=usdex.core.DiagnosticsOutputStream.eStdout),
@@ -269,8 +256,7 @@ Stderr:
 
     def testUtf8Diagnostics(self):
         self.assertOutputStreams(
-            command=inspect.cleandoc(
-                """
+            command=inspect.cleandoc("""
                 import usdex.core
                 from pxr import Tf
 
@@ -281,8 +267,7 @@ Stderr:
 
                 usdex.core.activateDiagnosticsDelegate()
                 emitDiagnostics()
-                """
-            ),
+                """),
             expectedStdout=[],
             expectedStderr=[
                 "[Warning] [__main__.emitDiagnostics] カーテンウォール",
@@ -292,8 +277,7 @@ Stderr:
         )
 
     def testFatal(self):
-        command = inspect.cleandoc(
-            """
+        command = inspect.cleandoc("""
             import usdex.core
             from pxr import Tf
             usdex.core.activateDiagnosticsDelegate()
@@ -304,8 +288,7 @@ Stderr:
                 Tf.Warn("Will only be emitted in older USD versions")
 
             emitDiagnostics()
-            """
-        )
+            """)
 
         # Fatal Error diagnostics cause the subprocess to abort
         self.assertOutputStreams(

@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 """
 `usdex.rtx <https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/latest/docs/python-usdex-rtx.html>`_ provides utility functions for creating,
 editing, and querying `UsdShade <https://openusd.org/release/api/usd_shade_page_front.html>`_ data models which represent

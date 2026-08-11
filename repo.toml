@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 [repo]
 name = "usd-exchange-sdk"
 logging = "warning"
@@ -143,9 +146,14 @@ python.files.exclude."++" = [
     "tools/repoman/pybind11_stubgen.py",
     "_*/**",
 ]
-python.line_length = 150
+python.black.line_length = 150
+python.black.python_version = "py312"
 python.maintain_legal_blurbs = true
-python.python_version = "py310"
+# These files are parsed in the build process, do not inject headers into them
+text_files.md.files.exclude."++" = [
+    "README.md",
+    "CHANGELOG.md",
+]
 
 [repo_install_usdex]
 enabled = true

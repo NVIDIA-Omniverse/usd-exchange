@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Deployment Options
 
 While there are certainly a large range of deployment options & styles, the most common cases for OpenUSD Exchange SDK customers fall into a few main categories:
