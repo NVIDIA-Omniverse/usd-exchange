@@ -39,7 +39,7 @@ body_names = cache.getPrimNames(parent.GetPath(), [source.name] * count)
 joint_names = cache.getPrimNames(joints_xform.GetPath(), [joint_label] * count)
 prev = parent
 for i, body_name in enumerate(body_names):
-    capsule = usdex.core.defineCapsule(parent, body_name, radius=r, height=h, axis=UsdGeom.Tokens.x)
+    capsule = usdex.core.defineCapsule(parent, body_name, radius=r, height=h, axis=UsdGeom.Tokens.X)
     UsdPhysics.RigidBodyAPI.Apply(capsule.GetPrim())
     UsdPhysics.CollisionAPI.Apply(capsule.GetPrim())
     frame = usdex.core.JointFrame(usdex.core.JointFrame.Space.Body1, Gf.Vec3d(-h * 0.5, 0, 0), Gf.Quatd.GetIdentity())
