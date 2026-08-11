@@ -1,7 +1,7 @@
 ---
 name: usd-authoring
 description: Author USD content via OpenUSD Exchange helpers (usdex.core, usdex.rtx, usdex.test). Use when writing or converting USD; do NOT use for install tasks.
-version: "2.3.0"
+version: "3.0.0"
 license: Apache-2.0
 tools: [Read]
 metadata:
@@ -37,17 +37,23 @@ These rules apply to every snippet you write and every API you call. Do not rela
 | References | `usdex.core.defineReference` | `prim.GetReferences().AddReference(...)` |
 | Payloads | `usdex.core.definePayload` | `prim.GetPayloads().AddPayload(...)` |
 | Scopes | `usdex.core.defineScope` | `UsdGeomScope.Define` |
-| Xforms / meshes / curves / points / gprims / cameras / lights / preview materials / physics joints / physics materials | the matching `usdex.core.define*` helper | `Usd<Schema>.Define` plus attribute writes |
+| Xforms / meshes / curves / points / gprims / cameras / lights / materials / physics joints / physics materials | the matching `usdex.core.define*` helper | `Usd<Schema>.Define` plus attribute writes |
+| OpenPBR (MaterialX) + Preview Surface materials | `usdex.core.definePbrMaterial` / `defineGlassPbrMaterial` | canonical MaterialX shader graphs |
 | RTX MDL materials | `usdex.rtx.definePbrMaterial` / `defineGlassMaterial` | hand-rolled MDL shader graphs |
-| Primvars (normals, UVs, widths, displayColor, displayOpacity, ids, custom) | wrap in `usdex.core.PrimvarData` (or `Vec3fPrimvarData` / `Vec2fPrimvarData` / `FloatPrimvarData` / `Int64PrimvarData` / `IntPrimvarData` / `TokenPrimvarData` / `StringPrimvarData`) | direct `CreatePrimvar` + raw `VtArray` writes |
+| Primvars (normals, UVs, widths, displayColor, displayOpacity, ids, custom) | wrap in `usdex.core.PrimvarData` or typed aliases `Vec3fPrimvarData` / `Vec2fPrimvarData` / `FloatPrimvarData` / `Int64PrimvarData` / `IntPrimvarData` / `TokenPrimvarData` / `StringPrimvarData` | direct `CreatePrimvar` + raw `VtArray` writes |
+| Constant primvars holding one scalar value | `usdex.core.createConstantPrimvar(prim, name, value, [valueTypeName])`, or `setConstantPrimvar` to write another time sample | a one-element typed alias with `constant` interpolation |
+| Custom primvars no `define*` helper covers | `<alias>.createPrimvar(prim, name, [valueTypeName])` | `prim.CreatePrimvar(...)` + `Set(...)` |
+| Values on schema-declared attributes | `usdex.core.setEffectiveAttributeValue` | `prim.GetAttribute(name).Set(value)` for every value including schema fallbacks |
 
-Raw schema is allowed (and required) only for APIs without a helper — e.g. `UsdPhysicsRigidBodyAPI.Apply`, `UsdPhysicsCollisionAPI.Apply`, `UsdPhysics.Scene.Define`, `UsdLux.LightAPI.CreateColorAttr` — and only **after** the prim has been defined via the helper.
+Both primvar creation calls take an optional `valueTypeName`, which must be an array type. It carries a role only for `Vec3f` data, which authors `float3[]` unless told to author `color3f[]`, `normal3f[]`, or `point3f[]` — so pass it there, and leave it defaulted elsewhere. Every other alias accepts just its own array type, and a scalar spelling is rejected: `createConstantPrimvar(prim, "myInt", 42, Sdf.ValueTypeNames.Int)` authors nothing, it needs `IntArray`.
+
+Raw schema is allowed (and required) only for APIs without a helper — e.g. `UsdPhysicsRigidBodyAPI.Apply`, `UsdPhysicsCollisionAPI.Apply`, `UsdPhysics.Scene.Define`, `UsdLux.LightAPI.CreateColorAttr` — and only **after** the prim has been defined via the helper. Once the schema is applied, author its attribute values with `setEffectiveAttributeValue` so schema fallbacks stay unauthored; see `references/attributes.md`.
 
 ### Names
 
 Every prim name you author — including names you "own" (asset names, scope names, default-prim names, throwaway example names) — flows through the name pipeline. Never pass a string literal to a `usdex.core.define*` / `usdex.rtx.define*` / `defineScope` / `createMaterial` `name=` argument. Never pass a string literal to `defaultPrimName=`. Use a variable populated from `NameCache.getPrimName(parent, source.name)`, `getValidChildName(parent, source.name)`, or `getValidPrimName(asset.name)`.
 
-For property names, the same rule applies via `getValidPropertyName(s)` or `NameCache.getPropertyName(s)`.
+For property names, the same rule applies via `getValidPropertyName(s)` or `NameCache.getPropertyName(s)`. The pipeline is for names you derive from source data, so names a schema already declares (`physics:mass`, `primvars:displayColor`) are passed through as literals.
 
 ### Authoring metadata
 
@@ -73,7 +79,7 @@ The flow below applies whether you are writing one stage or an asset library. Th
     - Set the local transform via `usdex.core.setLocalTransform` or by passing a transform to the `define*` helper.
     - For mesh normals use the source-provided `Vec3fPrimvarData` when available, or compute it when the source data lacks normals. Asset Validator's `NormalsExistChecker` rejects non-subdiv meshes that have no `primvars:normals` authored. When computing, use `usdex.core.computeMeshNormals` unless a higher fidelity mesh operation library is being used as well.
 7. For multi-layer asset structure (Atomic Component, Library + Content + Interface layers), use `createAssetPayload` / `addAssetLibrary` / `addAssetContent` / `addAssetInterface`. See `references/asset-structure.md`.
-8. For materials, prefer `definePreviewMaterial` for portability and `usdex.rtx.definePbrMaterial` / `defineGlassMaterial` for RTX. Bind with `bindMaterial` / `bindMaterialSubsets`. See `references/materials.md`.
+8. For materials, prefer `usdex.core.definePbrMaterial` — it drives an OpenPBR shader for the `mtlx` render context and a Preview Surface for the universal context from one Material Interface. Use `definePreviewMaterial` when only the universal context is wanted, and `usdex.rtx.definePbrMaterial` / `defineGlassMaterial` when targeting the RTX Renderer specifically. Bind with `bindMaterial` / `bindMaterialSubsets`. See `references/materials.md`.
 9. For physics, define visual / collision geometry first, then apply `UsdPhysicsRigidBodyAPI` / `UsdPhysicsCollisionAPI`, define `UsdPhysics.Scene` (raw schema), and use `definePhysicsFixedJoint` / `definePhysicsRevoluteJoint` / `definePhysicsPrismaticJoint` / `definePhysicsSphericalJoint` for joints. See `references/physics.md`.
 10. Save with `usdex.core.saveStage(stage, AUTHORING_METADATA)`. For single-layer flows, use `saveLayer` / `exportLayer` instead. See `references/stages-and-layers.md`.
 11. Validate the result with `usd_validation_nvidia.ValidationEngine` or `usdex.test.TestCase.assertIsValidUsd`. See `references/diagnostics-and-testing.md`.
@@ -87,12 +93,13 @@ Load only the files needed for the current task; this `SKILL.md` already contain
 | `references/stages-and-layers.md` | Creating, configuring, saving, or exporting stages / layers; choosing USDA vs USDC; layer authoring metadata; `Usd` → `Sdf` API moves in USD 25.11. |
 | `references/names.md` | Any prim or property name; `NameCache`; `displayName` metadata; transcoding; the `USDEX_ENABLE_TRANSCODING` env setting. |
 | `references/geometry.md` | Meshes, curves, points, basic gprims (sphere/cube/cone/cylinder/capsule/plane), subsets, primvars, normals computation. |
-| `references/materials.md` | UsdPreviewSurface materials, RTX MDL materials, textures, material interfaces, bindings, color space, primvar shaders. |
+| `references/attributes.md` | Authoring values on schema-declared attributes, sparse layers, codeless schemas. |
+| `references/materials.md` | OpenPBR (MaterialX), UsdPreviewSurface, and RTX MDL materials, textures, material interfaces, bindings, color space, primvar shaders. |
 | `references/asset-structure.md` | Atomic Component assets, Library / Content / Interface layers, `defineReference` / `definePayload`, scopes, kinds. |
 | `references/physics.md` | UsdPhysics scenes, rigid bodies, colliders, joints, physics materials, friction / restitution / density. |
 | `references/lights.md` | `UsdLuxDomeLight`, `UsdLuxRectLight`, generic `UsdLuxLightAPI` attributes, the `inputs:` rename, dome pole axis. |
 | `references/cameras.md` | `UsdGeomCamera` via `GfCamera`. |
-| `references/diagnostics-and-testing.md` | Diagnostics delegate, `TF_DEBUG`, `usdex.test.TestCase`, `ScopedDiagnosticChecker`, Asset Validator. |
+| `references/diagnostics-and-testing.md` | Diagnostics delegate, `TF_DEBUG`, `usdex.test.TestCase`, `ScopedDiagnosticChecker`, USD Validation. |
 
 ## External references
 

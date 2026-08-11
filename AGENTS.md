@@ -10,6 +10,6 @@ Read and follow the linked skills whenever a task involves the OpenUSD Exchange 
 ## Skills
 
 - [.agents/skills/getting-started/SKILL.md](.agents/skills/getting-started/SKILL.md) — environment setup, Python wheel install, native (C++) install via `install_usdex`, project layout, and a smoke-test script. Read this first when bootstrapping or installing.
-- [.agents/skills/usd-authoring/SKILL.md](.agents/skills/usd-authoring/SKILL.md) — non-negotiable authoring rules, canonical flow, and an index into topical reference files (stages and layers, names, geometry, materials, asset structure, physics, lights, cameras, diagnostics and testing). Read this whenever you are authoring USD with the SDK.
+- [.agents/skills/usd-authoring/SKILL.md](.agents/skills/usd-authoring/SKILL.md) — non-negotiable authoring rules, canonical flow, and an index into topical reference files (stages and layers, names, geometry, attributes, materials, asset structure, physics, lights, cameras, diagnostics and testing). Read this whenever you are authoring USD with the SDK.
 
 Load only the reference files inside `usd-authoring/` that the current task actually needs; the `SKILL.md` itself is the index and contains the rules that apply to every domain.
