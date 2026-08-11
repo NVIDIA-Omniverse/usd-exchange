@@ -23,7 +23,7 @@ body:
       required: true
 
   - type: textarea
-    id: Feature_Description
+    id: feature_description
     attributes:
       label: Feature Description
       description: Please provide clear description of the feature you request
