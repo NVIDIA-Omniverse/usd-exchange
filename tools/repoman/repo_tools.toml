@@ -30,7 +30,7 @@ usd_ver = ""
 python_ver = ""
 
 # Sets the pinned version of the usd-validation-nvidia PyPI package, which provides the asset validator used by usdex.test.
-usd_validation_version = "1.21.0rc1"
+usd_validation_version = "1.21.0rc2"
 
 [repo_stubgen]
 enabled = false
