@@ -74,8 +74,8 @@ Run from a clone of either `usd-exchange` *or* the [Exchange Samples](https://gi
 
 The output goes to `_install/`. Deep-copy it (preserving symlinks/junctions) into the project's `usdex/` folder:
 
-- Linux: `cp -Lr _install $project_root/usdex`
-- Windows: `robocopy /s _install $project_root\usdex > NUL`
+- Linux: `cp -ar _install/. "$project_root/usdex/"`
+- Windows: `robocopy /E "_install" "$project_root\usdex" > NUL`
 
 Do **not** copy without preserving links — `target-deps/` contains soft links on Linux and junctions on Windows.
 
