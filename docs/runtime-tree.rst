@@ -88,8 +88,8 @@
                 ├── libusdex_rtx.so                                         <-- optional
                 ├── libtbb.so.12
                 ├── libusd_ms.so
-                ├── libMaterialXCore.so                                     <-- optional (ships with usdMtlx)
-                ├── libMaterialXFormat.so                                   <-- optional (ships with usdMtlx)
+                ├── libMaterialXCore.so
+                ├── libMaterialXFormat.so
                 └── usd
                     ├── plugInfo.json
                     └── ...
@@ -182,8 +182,8 @@
                 ├── usdex_rtx.dll                           <-- optional
                 ├── tbb12.dll
                 ├── usd_ms.dll
-                ├── MaterialXCore.dll                       <-- optional (ships with usdMtlx)
-                ├── MaterialXFormat.dll                     <-- optional (ships with usdMtlx)
+                ├── MaterialXCore.dll
+                ├── MaterialXFormat.dll
                 └── usd
                     ├── plugInfo.json
                     └── ...
