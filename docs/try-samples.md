@@ -27,27 +27,29 @@ To try the Samples you will need to build them from source. The included build s
 ````{tab-item} Linux
 :sync: linux
 
-This project requires "make" and "g++".
+This project builds with CMake and requires "make" and "g++". The build script fetches a pinned CMake automatically (or uses a system `cmake` if one is present).
 
 1. Open a terminal.
 2. To obtain "make" type `sudo apt install make` (Ubuntu/Debian), or `yum install make` (CentOS/RHEL).
 3. For "g++" type `sudo apt install g++` (Ubuntu/Debian), or `yum install gcc-c++` (CentOS/RHEL).
-4. Use the provided build script to download all other dependencies (e.g OpenUSD), create the Makefiles, and compile the code:
+4. Use the provided build script to assemble the OpenUSD Exchange SDK & OpenUSD runtime (via `install_usdex`) and compile the C++ samples:
     ```bash
-    ./repo.sh build
+    ./build.sh
     ```
+    For debug builds, use `./build.sh --debug`
 ````
 
 ````{tab-item} Windows
 :sync: windows
 
-This project requires Microsoft Visual Studio 2022 or newer.
+This project requires Microsoft Visual Studio 2022 or newer. The build script fetches CMake automatically, so Visual Studio is the only manual install.
 
 1. Download & install [Visual Studio with C++](https://visualstudio.microsoft.com/vs/features/cplusplus).
-2. Use the provided build script to download all dependencies (e.g OpenUSD), create the projects, and compile the code:
+2. Use the provided build script to assemble the OpenUSD Exchange SDK & OpenUSD runtime (via `install_usdex`) and compile the C++ samples:
 ```bash
-.\repo.bat build
+.\build.bat
 ```
+For debug builds, use `.\build.bat --debug`
 ````
 
 `````

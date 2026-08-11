@@ -24,6 +24,8 @@ Assembling the minimal requirements for the OpenUSD Exchange SDK can be complica
 
 Running these commands from either the [Samples](./try-samples.md) root folder, or the `usd-exchange` repository itself, will generate the `_install` folder for both debug and release configurations and deep copy them to your project root.
 
+The copy flags matter, as the `target-deps` folders contain packman links (soft links on Linux, junctions on Windows) and a link-preserving copy produces a project that breaks as soon as it moves to another machine. On Linux, `-L` dereferences those links and `-T` prevents `_install` from nesting itself under an existing `usdex` folder. On Windows, `/E` copies all subdirectories including empty ones, and robocopy follows links and junctions unless `/SL` or `/SJ` is specified.
+
 ```{eval-rst}
 .. tab-set::
 
@@ -32,31 +34,31 @@ Running these commands from either the [Samples](./try-samples.md) root folder, 
 
         .. code-block:: bash
 
-          # only fetch dependencies and generate build files first when running from usd-exchange-samples
-          ./repo.sh build --generate
+          # only fetch dependencies first when running from usd-exchange-samples
+          ./repo.sh fetch_deps
 
           ./repo.sh install_usdex --config release --install-python-libs
           ./repo.sh install_usdex --config debug --install-python-libs
 
-          cp -Lr _install $project_root/usdex
+          cp -LrT _install "$project_root/usdex"
 
     .. tab-item:: Windows
       :sync: windows
 
         .. code-block:: batch
 
-          # only fetch dependencies and generate build files first when running from usd-exchange-samples
-          .\repo.bat build --generate
+          # only fetch dependencies first when running from usd-exchange-samples
+          .\repo.bat fetch_deps
 
           .\repo.bat install_usdex --config release --install-python-libs
           .\repo.bat install_usdex --config debug --install-python-libs
 
-          robocopy /s _install $project_root\usdex > NUL
+          robocopy /E "_install" "$project_root\usdex" > NUL
 ```
 
 ```{eval-rst}
 .. note::
-  The ``install_usdex`` script may be run from either the Exchange Samples or the Exchange SDK root directory, it is provided with both repositories.  If ``repo.bat|sh install_usdex`` is run from within the usd-exchange repository root, there is no need to run ``repo.bat|sh build`` first. The version of OpenUSD Exchange that is downloaded will match the top line of the USD Exchange repository's CHANGELOG.md if no ``--version`` argument is provided.
+  The ``install_usdex`` script may be run from either the Exchange Samples or the Exchange SDK root directory, it is provided with both repositories.  If ``repo.bat|sh install_usdex`` is run from within the usd-exchange repository root, there is no need to run ``repo.bat|sh fetch_deps`` first. The version of OpenUSD Exchange that is downloaded will match the top line of the USD Exchange repository's CHANGELOG.md if no ``--version`` argument is provided.
 ```
 
 This tree describes the proposed file layout for the project:
