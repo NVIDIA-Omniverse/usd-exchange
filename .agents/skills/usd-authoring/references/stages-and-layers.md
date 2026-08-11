@@ -9,7 +9,7 @@
 
 | Function | Purpose |
 | --- | --- |
-| `createStage(identifier, defaultPrimName, upAxis, linearUnits, [massUnits], authoringMetadata, [fileFormatArgs])` | Create a stage with required metadata authored explicitly. Default prim is created as `Scope` if missing — for placeable assets, immediately overwrite it with `defineXform`. `defaultPrimName` must come from `usdex.core.getValidPrimName(asset.name)`; `authoringMetadata` from the `AUTHORING_METADATA` variable. |
+| `createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata, [massUnits], [fileFormatArgs])` | Create a stage with required metadata authored explicitly. Default prim is created as `Scope` if missing — for placeable assets, immediately overwrite it with `defineXform`. `defaultPrimName` must come from `usdex.core.getValidPrimName(asset.name)`; `authoringMetadata` from the `AUTHORING_METADATA` variable. |
 | `configureStage(stage, defaultPrimName, upAxis, linearUnits, [massUnits], [authoringMetadata])` | Apply the same metadata to an opened stage without overwriting an existing `creator` key. |
 | `saveStage(stage, authoringMetadata, [comment])` | Save every dirty layer; layers without a `creator` key get one. Always pass `AUTHORING_METADATA`. |
 | `saveLayer(layer, authoringMetadata, [comment])` / `exportLayer(layer, identifier, authoringMetadata, [comment], [fileFormatArgs])` | Save / export a single `SdfLayer`; export does not modify the source layer. |
