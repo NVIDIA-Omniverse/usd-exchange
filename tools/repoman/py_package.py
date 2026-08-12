@@ -11,6 +11,7 @@ import shutil
 import tempfile
 from typing import Callable, Dict
 
+import licenses
 import omni.repo.man
 import toml
 
@@ -166,24 +167,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             f.writelines(data[4:7])
 
         # gather the license files
-        license_files = [
-            ("$root/LICENSE.md", f"{stagingDir}/usd-exchange-LICENSE.md"),
-            ("$root/_build/target-deps/pybind11/PACKAGE-LICENSES/pybind11-LICENSE.txt", None),
-            ("$root/tools/internal-licenses/pyboost11-LICENSE.txt", None),
-            ("$root/_build/target-deps/tbb/release/PACKAGE-LICENSES/onetbb-LICENSE.txt", None),
-            ("$root/_build/target-deps/usd/release/PACKAGE-LICENSES/openusd-LICENSE.txt", None),
-            ("$root/_build/target-deps/materialx/release/PACKAGE-LICENSES/materialx-LICENSE", f"{stagingDir}/materialx-LICENSE.txt"),
-        ]
-        for src, target in license_files:
-            resolved_src = omni.repo.man.resolve_tokens(src)
-            matches = glob.glob(resolved_src)
-            if matches:
-                source_file = matches[0]
-                if target is None:
-                    target = f"{stagingDir}/{os.path.basename(source_file)}"
-                shutil.copyfile(source_file, target)
-            else:
-                raise omni.repo.man.ExpectedError(f"Unable to find license file for pattern: {src}")
+        licenses.gather(stagingDir, "release", licenses.WHEEL_NOTICES)
 
         if omni.repo.man.is_windows():
             # On Windows, the plugInfo LibraryPaths values are correct, but in order to auto-locate them the python modules
