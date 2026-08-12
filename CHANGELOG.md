@@ -1,4 +1,180 @@
-# 3.0.0-dev
+# 3.0.0-rc1
+
+## Core
+
+### Features
+
+- Added USD 26.08 support & made it the new default flavor
+- Added Python 3.13 support & made Python 3.12 the new default
+- Added OpenPBR Material authoring via MaterialX
+  - `definePbrMaterial` and `defineGlassPbrMaterial` author a dual context Material, driving an OpenPBR shader for the `mtlx` render context and a
+    `UsdPreviewSurface` shader for the universal render context, both from a shared Material Interface
+  - `addColorTextureToPbrMaterial`, `addNormalTextureToPbrMaterial`, `addOrmTextureToPbrMaterial`, `addRoughnessTextureToPbrMaterial`,
+    `addMetallicTextureToPbrMaterial`, `addOpacityTextureToPbrMaterial`, and `addEmissiveTextureToPbrMaterial` author both shader networks in one call
+  - `addEmissiveColorToPbrMaterial` authors `emissiveColor` alongside the OpenPBR emissive luminance
+  - `addPrimvarShaderToPbrMaterial` connects a MaterialX primvar reader to an OpenPBR surface input
+    - Unlike the texture functions, it only affects the `mtlx` render context. Use `addPrimvarShaderToPreviewMaterial` to drive the same primvar
+      into the universal render context
+  - `computeEffectiveMtlxSurfaceShader` is the MaterialX counterpart to `computeEffectivePreviewSurfaceShader`
+- Added `defineGlassPreviewMaterial` for Preview Surface only glass, with color, index of refraction, roughness, and opacity
+- Added `setEffectiveAttributeValue` to author a value on a defined attribute only when it differs from the schema fallback
+  - This enables sparse authoring of layers that only contain opinions differing from schema defaults
+  - It is especially useful with codeless schemas, which do not provide generated accessors or `TfToken` constants for attribute names
+- Added `setEffectiveDisplayName` and adopted the UI Hints display name introduced in OpenUSD 25.11
+  - All display name functions now read and author both `uiHints:displayName` and the original `displayName` field, so the resulting files behave
+    consistently in every supported OpenUSD runtime
+- Added more primvar authoring & inspection utilities
+  - Use `PrimvarData::createPrimvar` to create & author a primvar from existing `PrimvarData` in one call
+  - Use `createConstantPrimvar` or `setConstantPrimvar` as a shortcut for single scalar values
+  - Use `PrimvarData::hasUnindexedValues` to detect values which are never referenced by the indices
+
+### Fixes
+
+- Fixed `getLocalTransform` to maintain orientation during the internal calculation
+- Changed color space conversion to use `GfColor` under the hood
+- Stopped connecting the `displacement` terminal of Preview Materials
+  - Displacement was never driven by our Preview Surface networks & the unused terminal caused Hydra to ingest the wrong shader graph when an
+    OpenPBR displacement terminal was also present
+- Fixed the public headers to compile against OpenUSD builds that use a custom namespace
+
+### Breaking Changes
+
+- Dropped USD 25.08, 25.02, 24.11, 24.08, and 24.05 support
+  - The supported flavors are now 26.08 (default), 25.11, and 25.05
+  - This removes the last of the `boost` based flavors, all supported flavors use `pxr_python`
+- The USD 25.05 flavor now uses oneTBB, so all supported flavors are consistent
+  - Applications which link this flavor must migrate from the legacy TBB, as the two cannot coexist in one process
+- Changed `definePolyMesh` to emit a `TF_RUNTIME_ERROR` when indexed topology leaves points, normals, uvs, displayColor, or displayOpacity unused
+  - This performs verification equivalent to the Validator's `UnusedMeshTopologyChecker`
+  - The signature is unchanged, but call sites which previously authored these meshes will now fail & need to correct their topology
+- Removed `ValidChildNameCache`, which has been deprecated since v1.1.0
+  - Use `NameCache` instead
+- Deprecated `addDiffuseTextureToPreviewMaterial` in favor of `addColorTextureToPreviewMaterial`
+  - Both author a Shader named "ColorTexture", and a Material Interface input of the same name, where the deprecated function previously authored
+    "DiffuseTexture", so existing call sites produce different prim & property names
+
+## Pybind
+
+### Features
+
+- Added pybind11 interoperability for `Gf.Vec2f`
+
+### Breaking Changes
+
+- Removed the `boost::python` fallback from `usdex/pybind/BindingUtils.h`, as all supported flavors use `pxr_python`
+  - The `USDEX_BOOST_PYTHON_NAMESPACE` macro no longer exists, use `PXR_BOOST_PYTHON_NAMESPACE` directly
+
+## RTX
+
+### Features
+
+- Added a `roughness` argument to all `defineGlassMaterial` signatures
+  - It is exposed on the Material Interface & drives both OmniGlass `frosting_roughness` and the Preview Surface `roughness`
+- Added `addColorTextureToPbrMaterial`
+
+### Breaking Changes
+
+- Deprecated `addDiffuseTextureToPbrMaterial` in favor of `addColorTextureToPbrMaterial`
+  - The Material Interface input is named "ColorTexture" rather than "DiffuseTexture"
+- Renamed the Material Interface color input from "diffuseColor" to "color"
+  - Both `definePbrMaterial` and `defineGlassMaterial` author `inputs:color`, so stronger layers & path based tools which target `inputs:diffuseColor`
+    must be updated
+- Changed `defineGlassMaterial` to author "opacity" and "roughness" on the Material Interface, defaulting to 0.2 and 0.02 respectively
+  - v2.3.0 authored an opacity of 0.0 directly on the Preview Surface shader & no roughness at all, so existing calls will render differently
+- Changed `defineGlassMaterial` to accept an `indexOfRefraction` above 4.0, which is now only a `softMax` limit metadata hint
+- Changed `addEmissiveColorToPbrMaterial` to reject color components above 1.0
+  - v2.3.0 accepted any positive value, so existing calls which passed a color brighter than white will now fail
+  - Use the `intensity` argument, which remains unbounded, to drive the emission strength
+- Changed `addEmissiveColorToPbrMaterial` to reject OmniGlass materials, as OmniGlass does not support the OmniPBR emissive inputs
+  - v2.3.0 only required an MDL shader, so existing calls on glass materials authored inputs that OmniGlass ignored & will now fail instead
+
+## Test
+
+### Breaking Changes
+
+- Replaced Omni Asset Validator with the `usd-validation-nvidia` package from PyPI
+  - `usdex.test` now uses `usd_validation_nvidia`, which is where `ValidationEngine`, `IssuePredicates`, and `IssuesList` come from
+  - `pip install usd-exchange[test]` and `install_usdex --install-test` both install the version this SDK was tested against
+  - The `omni_asset_validate` CLI is replaced by `nvidia_usd_validate`
+- The native OpenUSD validators are now registered & will run during `assertIsValidUsd`
+  - `usd-validation-nvidia` adapts OpenUSD's own `UsdValidation` registry, so assets which previously passed may report new issues
+  - Similarly, some diagnostics are now emitted more than once, as the native validators re-compose the stage
+
+## Dev Tools
+
+### Features
+
+- Replaced Premake with CMake
+  - A single `CMakeLists.txt` serves both the internal flavor matrix and external source builds, so there is one consistent build definition
+    - `repo build` configures & drives it for a given flavor, while external consumers can configure it directly with a system CMake
+  - The packages now ship a relocatable `find_package(usd-exchange)` config, so downstream C++ projects can consume the binaries directly
+- Added a `repo fetch_deps` tool to pull packman dependencies without a build, for re-use in downstream tooling
+- Modernized the wheel build using `uv` & `hatchling`
+  - The libraries and bindings are stripped before packaging, which significantly reduces the wheel size
+  - The `plugInfo.json` files are patched to account for the hashed library names produced by `auditwheel`
+- Expanded the OpenUSD plugins installed by default
+  - Added `sdr`, `usdMedia`, `usdMtlx`, `usdProc`, `usdRender`, `usdSkel`, and `usdVol`, along with `usdLod` and `usdProfiles` on USD 26.08 and newer
+  - `usdMtlx` is required to author MaterialX shaders & the MaterialX libraries ship alongside it
+  - The plugin set is now identical for modular and monolithic flavors, only the backing libraries differ
+- Added the native OpenUSD validator plugins to the `--install-test` group
+  - `usdValidation`, `usdGeomValidators`, `usdPhysicsValidators`, `usdShadeValidators`, `usdSkelValidators`, and `usdUtilsValidators` install for every
+    supported flavor, while `usdLuxValidators` requires USD 26.08 or newer
+  - These back the validators that `usd-validation-nvidia` adapts, so they are not installed for runtime-only deployments
+
+### Fixes
+
+- Fixed lazy USD plugin loading in the Windows wheels
+  - Exposing the bundled `usd_exchange.libs` directory via `PXR_USD_WINDOWS_DLL_PATH` was enough for plugin discovery, but not for resolving the
+    dependent DLLs during a lazy `Plug.Load()`
+  - The generated `pxr/__init__.py` now derives that directory from `__file__` at import time & prepends it to `PATH`, so no build machine paths
+    are baked into the wheel
+  - The wheel import check asserts that `usdMtlx` and `usdShaders` load through `pxr.Plug` from the installed wheel, to catch regressions and
+    build tree leakage
+- Fixed the Linux wheels to include the native OpenUSD validator plugins
+  - They have no python bindings, so they were not detected as wheel content until they were staged explicitly for `auditwheel` to repair
+
+### Breaking Changes
+
+- Windows DLLs are now installed to `bin` rather than `lib`, following the usual convention for Windows runtimes
+- Windows binaries are built with the v143 toolset & require Microsoft Visual Studio 2022 or newer
+- oneTBB and MaterialX are distributed as separate packages from OpenUSD
+  - No changes required for `install_usdex`
+  - Packman consumers must gather `onetbb` and `materialx` from `dev/deps/all-deps.packman.xml` as they are no longer bundled with `openusd`
+  - Building from source requires them to be discoverable, either via `CMAKE_PREFIX_PATH` or the `USDEX_TBB_ROOT` and `USDEX_MATERIALX_ROOT` variables
+- The packages no longer ship `dev/tools/premake`, downstream projects should use CMake and the `find_package(usd-exchange)` config
+- Removed `repo_feature_header` as CMake now generates `Feature.h`
+  - `repo_version_header` still ships, but it is unused & untested now that CMake generates `Version.h` and `version.rc` directly
+- Removed `repo_usd` in favor of in-tree packman templates for each supported flavor
+
+## Documentation
+
+- Re-wrote Native Application Development around CMake and `find_package(usd-exchange)`
+- Updated the Runtime Tree for the new plugin set, the separate oneTBB & MaterialX libraries, and the Windows `bin` directory
+- Updated Dev Tools, Testing and Debugging, and the authoring skills for `usd-validation-nvidia`
+- Re-wrote the source build section of the Deployment Guide around CMake, covering the `USDEX_*` configure options, the install step, the
+  `usdex::usdex_core` & `usdex::usdex_rtx` imported targets, and how oneTBB is discovered
+- Updated License Notices for the dependency changes
+
+## Dependencies
+
+### Runtime Deps
+
+- OpenUSD 26.08 (default), 25.11, 25.05
+- MaterialX 1.39.5 for USD 26.08, 1.39.3 for USD 25.11 and 25.05
+- oneTBB 2021.13.0
+- usd-validation-nvidia 1.21.0 (test only)
+- Python 3.13.15, 3.12.13 (default), 3.11.15, 3.10.20
+- pybind11 2.11.1
+
+### Dev Tools
+
+- CMake 4.3.2
+- GCC 11.4.0
+- MSVC 2022-v143
+- doctest 2.4.5
+- cxxopts 2.2.0
+- packman 8.5
+- repo_tools (all matching latest public)
 
 # 2.3.0
 
