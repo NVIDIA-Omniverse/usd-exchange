@@ -14,6 +14,7 @@ import stat
 from typing import Callable, Dict
 
 import fetch_deps
+import licenses
 import omni.repo.man
 import usd_deps
 
@@ -65,7 +66,6 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         usd_flavor = omni.repo.man.resolve_tokens("${usd_flavor}")
         usd_ver = omni.repo.man.resolve_tokens("${usd_ver}")
         python_ver = omni.repo.man.resolve_tokens("${python_ver}")
-        python_pkg = omni.repo.man.resolve_tokens("${python_pkg}")
         abi = omni.repo.man.resolve_tokens("${abi}")
         cmake_config = _CMAKE_CONFIG.get(repo_config, "Release")
 
@@ -148,37 +148,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             omni.repo.man.logger.info(" ".join(install))
             omni.repo.man.run_process(install, exit_on_error=True)
 
-            # repo_licensing only self-derives the manylinux abi (its `if "linux" in platform` branch); on windows it
-            # falls back to the bare platform and misses the v143 marker, so openusd/materialx (published as
-            # windows_v143_x86_64) can't be resolved. Hand it the abi-translated platform we build against instead.
-            license_platform = platform
-            if platform.startswith("windows"):
-                license_platform = omni.repo.man.get_abi_platform_translation(platform, abi)
-
-            # gather third-party licenses into _build/PACKAGE-LICENSES (shipped by the package)
-            omni.repo.man.run_process(
-                [
-                    repo,
-                    "--set-token",
-                    f"platform_host:{platform}",  # usd-deps.packman.xml references it
-                    "--set-token",
-                    f"python_pkg:{python_pkg}",  # the python side-car imported by target-deps.packman.xml references it
-                    "licensing",
-                    "gather",
-                    "--dir",
-                    ".",
-                    "--packages",
-                    "deps/target-deps.packman.xml",
-                    "--platform",
-                    license_platform,
-                    "--config",
-                    repo_config,
-                    "--output",
-                    "_build/PACKAGE-LICENSES",
-                    "--fail",
-                ],
-                exit_on_error=True,
-            )
+            # gather the third-party notices into _build/PACKAGE-LICENSES (shipped by the package)
+            shutil.rmtree(f"{root}/_build/PACKAGE-LICENSES", ignore_errors=True)  # fully derived, so never keep stale notices
+            licenses.gather(f"{root}/_build/PACKAGE-LICENSES", repo_config)
             _write_all_deps_manifest(f"{output_dir}/dev/deps/all-deps.packman.xml", pulled, strip_deps)
 
             # assemble the runtime tree (pxr/, plugInfo, test deps) then generate python stubs
