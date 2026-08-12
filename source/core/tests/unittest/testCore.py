@@ -70,18 +70,22 @@ class CoreTest(unittest.TestCase):
     def testRedistLicenses(self):
         if in_virtual_environment():
             expectedLicenses = [
-                "usd-exchange-LICENSE.md",
+                "materialx-LICENSE.txt",
+                "onetbb-LICENSE.txt",
+                "openusd-LICENSE.txt",
                 "pybind11-LICENSE.txt",
                 "pyboost11-LICENSE.txt",
-                "openusd-LICENSE.txt",
-                "onetbb-LICENSE.txt",
-                "materialx-LICENSE.txt",
+                "usd-exchange-LICENSE.md",
             ]
             packageInfoDir = get_package_metadata_directory("usd-exchange")
             self.assertIsNotNone(packageInfoDir, "usd-exchange package is not installed.")
             licenseDir = pathlib.Path(packageInfoDir) / "licenses"
         elif is_running_on_ci():
+            # the packages also ship our vendored copy of pybind11-stubgen in dev/tools
             expectedLicenses = [
+                "materialx-LICENSE.txt",
+                "onetbb-LICENSE.txt",
+                "openusd-LICENSE.txt",
                 "pybind11-LICENSE.txt",
                 "pybind11-stubgen-LICENSE.txt",
                 "pyboost11-LICENSE.txt",
@@ -96,6 +100,5 @@ class CoreTest(unittest.TestCase):
 
         self.assertTrue(licenseDir.exists(), f"Licenses directory does not exist at {licenseDir.as_posix()}")
 
-        for licensePattern in expectedLicenses:
-            matchingFiles = list(licenseDir.glob(licensePattern))
-            self.assertEqual(len(matchingFiles), 1, f"License file matching pattern '{licensePattern}' not found in {licenseDir.as_posix()}")
+        foundLicenses = {x.name for x in licenseDir.iterdir() if x.is_file()}
+        self.assertEqual(foundLicenses, set(expectedLicenses), f"Notices in {licenseDir.as_posix()} do not match what we redistribute")
