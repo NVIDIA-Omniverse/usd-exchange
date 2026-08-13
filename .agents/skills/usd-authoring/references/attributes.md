@@ -11,7 +11,9 @@
 | --- | --- |
 | `setEffectiveAttributeValue(prim, name, value)` | Author `value` on the already-declared attribute `name` only when it differs from the schema fallback. Returns `False` (with a runtime error) if the attribute is not in the prim's composed definition. |
 
-`name` is the attribute's name exactly as its schema declares it, namespaces included (`physics:mass`), so it is a literal you read off the schema rather than a name you allocate. Pass a plain `str` in Python — there is no `Tf.Token` type — or a `TfToken` in C++. The value must match the attribute's `SdfValueTypeName` or be trivially convertible (`double` → `float`); Python accepts a `list` for array-typed attributes. Reach for the `PrimvarData` helpers for primvars instead.
+`name` is the attribute's name exactly as its schema declares it, namespaces included (`physics:mass`, `inputs:intensity`), so it is a literal you read off the schema rather than a name you allocate. Pass a plain `str` in Python — there is no `Tf.Token` type — or a `TfToken` in C++. The value must match the attribute's `SdfValueTypeName` or be trivially convertible (`double` → `float`); Python accepts a `list` for array-typed attributes. Reach for the `PrimvarData` helpers for primvars instead.
+
+This is the right call even when the schema is code-generated and offers `CreateIntensityAttr()` / `GetIntensityAttr()`. There is no time argument, so it authors at default time only — keep using the generated accessors (or raw `Usd.Attribute`) for time samples, connections, and metadata.
 
 ## Why it matters
 
@@ -33,4 +35,5 @@ This is most valuable with codeless schemas, which generate no accessors or toke
 | --- | --- |
 | `prim.CreateAttribute(name, typeName)` for an attribute a schema already declares | apply the schema (or use the `define*` helper), then `setEffectiveAttributeValue(prim, name, value)` |
 | `prim.GetAttribute(name).Set(value)` for every source value, fallbacks included | `setEffectiveAttributeValue(prim, name, value)` so schema-default values stay unauthored |
+| `light.CreateIntensityAttr(value)` / `light.GetIntensityAttr().Set(value)` for a static value | `setEffectiveAttributeValue(prim, "inputs:intensity", value)` — a generated accessor cannot see the fallback either |
 | Compare against a hard-coded default before writing | let the function compare against the composed schema fallback |
