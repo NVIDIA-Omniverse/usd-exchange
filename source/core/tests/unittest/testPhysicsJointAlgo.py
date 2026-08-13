@@ -149,6 +149,43 @@ class PhysicsJointAlgoTest(usdex.test.TestCase):
                 self.assertFalse(joint.GetConeAngle1LimitAttr().HasAuthoredValue())
 
 
+class PhysicsJointAlgoTest_DefaultAxis(PhysicsJointAlgoTest):
+    # The bindings must expose the same (1, 0, 0) axis default as the C++ signatures.
+    def testDefaultAxis(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+
+        translation = Gf.Vec3d(0.0, 0.0, 0.0)
+        rotationXYZ = Gf.Vec3f(0, 0, 0)
+        scale = Gf.Vec3f(1.0, 1.0, 1.0)
+        body0 = self.createCube(stage, f"/{self.defaultPrimName}/cube0", 10.0, Gf.Vec3f(0.0, 1.0, 0.0), translation, rotationXYZ, scale)
+        body1 = self.createCube(stage, f"/{self.defaultPrimName}/cube1", 10.0, Gf.Vec3f(0.0, 0.0, 1.0), Gf.Vec3d(20.0, 0.0, 0.0), rotationXYZ, scale)
+        UsdPhysics.CollisionAPI.Apply(body0)
+        UsdPhysics.RigidBodyAPI.Apply(body0)
+        UsdPhysics.CollisionAPI.Apply(body1)
+        UsdPhysics.RigidBodyAPI.Apply(body1)
+        jointFrame = usdex.core.JointFrame(usdex.core.JointFrame.Space.World, Gf.Vec3d(10.0, 0.0, 0.0), Gf.Quatd.GetIdentity())
+
+        for defineFunc in (
+            usdex.core.definePhysicsRevoluteJoint,
+            usdex.core.definePhysicsPrismaticJoint,
+            usdex.core.definePhysicsSphericalJoint,
+        ):
+            name = defineFunc.__name__
+            implicit = defineFunc(stage, f"/{self.defaultPrimName}/{name}_implicit", body0, body1, jointFrame)
+            explicit = defineFunc(stage, f"/{self.defaultPrimName}/{name}_explicit", body0, body1, jointFrame, Gf.Vec3f(1.0, 0.0, 0.0))
+            self.assertTrue(implicit, msg=name)
+            self.assertEqual(implicit.GetAxisAttr().Get(), explicit.GetAxisAttr().Get(), msg=name)
+            self.assertEqual(implicit.GetLocalRot0Attr().Get(), explicit.GetLocalRot0Attr().Get(), msg=name)
+            self.assertEqual(implicit.GetLocalRot1Attr().Get(), explicit.GetLocalRot1Attr().Get(), msg=name)
+
+        # the joint manipulation functions share the default
+        joint = usdex.core.definePhysicsRevoluteJoint(stage, f"/{self.defaultPrimName}/joint", body0, body1, jointFrame)
+        usdex.core.alignPhysicsJoint(joint, jointFrame)
+        usdex.core.connectPhysicsJoint(joint, body0, body1, jointFrame)
+        self.assertIsValidUsd(stage)
+
+
 class PhysicsJointAlgoTest_FixedJoint(PhysicsJointAlgoTest, usdex.test.DefineFunctionTestCase):
     defineFunc = usdex.core.definePhysicsFixedJoint
     requiredArgs = tuple([Usd.Prim(), Usd.Prim(), usdex.core.JointFrame()])

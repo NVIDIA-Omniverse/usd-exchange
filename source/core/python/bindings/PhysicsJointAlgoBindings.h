@@ -136,7 +136,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("lowerLimit") = nullptr,
         arg("upperLimit") = nullptr,
         R"(
@@ -183,7 +183,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("lowerLimit") = nullptr,
         arg("upperLimit") = nullptr,
         R"(
@@ -215,7 +215,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("lowerLimit") = nullptr,
         arg("upperLimit") = nullptr,
         R"(
@@ -253,7 +253,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("lowerLimit") = nullptr,
         arg("upperLimit") = nullptr,
         R"(
@@ -303,7 +303,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("lowerLimit") = nullptr,
         arg("upperLimit") = nullptr,
         R"(
@@ -335,7 +335,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("lowerLimit") = nullptr,
         arg("upperLimit") = nullptr,
         R"(
@@ -373,7 +373,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("coneAngle0Limit") = nullptr,
         arg("coneAngle1Limit") = nullptr,
         R"(
@@ -423,7 +423,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("coneAngle0Limit") = nullptr,
         arg("coneAngle1Limit") = nullptr,
         R"(
@@ -455,7 +455,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         arg("coneAngle0Limit") = nullptr,
         arg("coneAngle1Limit") = nullptr,
         R"(
@@ -482,7 +482,7 @@ void bindPhysicsJointAlgo(module& m)
         &alignPhysicsJoint,
         arg("joint"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         R"(
             Aligns an existing joint with the specified position, rotation, and axis.
 
@@ -513,7 +513,7 @@ void bindPhysicsJointAlgo(module& m)
         arg("body0"),
         arg("body1"),
         arg("frame"),
-        arg("axis"),
+        arg("axis") = GfVec3f(1.0f, 0.0f, 0.0f),
         R"(
             Connects an existing joint to the specified body prims and realigns the joint frame accordingly.
 
