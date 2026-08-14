@@ -1,4 +1,4 @@
-# 3.0.0-rc1
+# 3.0.0-rc2
 
 ## Core
 
@@ -36,6 +36,10 @@
   - Displacement was never driven by our Preview Surface networks & the unused terminal caused Hydra to ingest the wrong shader graph when an
     OpenPBR displacement terminal was also present
 - Fixed the public headers to compile against OpenUSD builds that use a custom namespace
+- Fixed default arguments for several python bindings to match the C++ signatures
+  - `definePhysicsRevoluteJoint`, `definePhysicsPrismaticJoint`, `definePhysicsSphericalJoint`, `alignPhysicsJoint`, and `connectPhysicsJoint` now
+    default `axis` to (1, 0, 0)
+  - `definePlane`, `defineSphere`, `defineCube`, `defineCone`, `defineCylinder`, and `defineCapsule` now default their dimensions and `axis`
 
 ### Breaking Changes
 
@@ -71,6 +75,11 @@
 - Added a `roughness` argument to all `defineGlassMaterial` signatures
   - It is exposed on the Material Interface & drives both OmniGlass `frosting_roughness` and the Preview Surface `roughness`
 - Added `addColorTextureToPbrMaterial`
+
+### Fixes
+
+- Fixed the symbols exported by `usdex.rtx`
+  - `from usdex.rtx import *` previously raised an `AttributeError`
 
 ### Breaking Changes
 
@@ -148,12 +157,16 @@
 
 ## Documentation
 
-- Re-wrote Native Application Development around CMake and `find_package(usd-exchange)`
+- Added a Materials and Shaders section to Authoring USD Data, covering OpenPBR via MaterialX, Preview Surface, MDL, and render contexts
 - Updated the Runtime Tree for the new plugin set, the separate oneTBB & MaterialX libraries, and the Windows `bin` directory
-- Updated Dev Tools, Testing and Debugging, and the authoring skills for `usd-validation-nvidia`
+- Updated Dev Tools & Testing and Debugging for `usd-validation-nvidia`
+- Re-wrote Native Application Development around CMake and `find_package(usd-exchange)`
+- Updated Try the Samples for the CMake based `build.sh` & `build.bat` scripts, which assemble the runtime via `install_usdex`
 - Re-wrote the source build section of the Deployment Guide around CMake, covering the `USDEX_*` configure options, the install step, the
   `usdex::usdex_core` & `usdex::usdex_rtx` imported targets, and how oneTBB is discovered
 - Updated License Notices for the dependency changes
+- Updated Agent Skills covering OpenPBR materials, sparse attribute authoring with `setEffectiveAttributeValue`,  `usd-validation-nvidia`,
+  and the CMake based install & build flow
 
 ## Dependencies
 
