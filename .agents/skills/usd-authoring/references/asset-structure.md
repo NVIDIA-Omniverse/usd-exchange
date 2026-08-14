@@ -30,6 +30,8 @@ Use the SDK getters wherever you would type a directory or scope name; pass dire
 
 `createAssetPayload` returns the Payload Layer as a stage. `addAssetLibrary` / `addAssetContent` operate on the *current edit target* of the stage you pass — call them on the payload stage, not the asset stage. `addAssetInterface` already sets component kind; reach for `configureComponentHierarchy` only when retrofitting.
 
+Kind is an obligation on both sides of a reference. A `component` model may only be parented under `assembly` or `group`, so when you `defineReference` / `definePayload` an asset that carries `kind=component` — anything built by `addAssetInterface` or `configureComponentHierarchy` — the referencing stage's own root needs a Kind too, via `configureAssemblyHierarchy(root)`. Leave it unauthored and validation fails `KindChecker` with `Invalid Kind "component"` on the reference, even though the referenced asset is correct in isolation.
+
 ## Atomic Component layer tree
 
 1. **Asset Layer** (entry, USDA) — payloads the contents.
@@ -50,4 +52,5 @@ For monolithic single-layer assets, skip the payload helpers entirely. For very 
 | `UsdGeomScope.Define(stage, path)` | `defineScope(parent, cached_name)` after allocating the name through the cache |
 | Hard-code domain strings for layer or scope names | `getGeometryToken()` / `getMaterialsToken()` / `getPhysicsToken()` |
 | `Usd.ModelAPI(prim).SetKind("component")` and walk descendants by hand | `configureComponentHierarchy(prim)` (or rely on `addAssetInterface`) |
+| Reference a `component` asset into a scene whose root has no Kind | `configureAssemblyHierarchy(root)` on the referencing stage, so the component has an `assembly` / `group` parent |
 | Edit `layer.subLayerPaths` directly to assemble the payload | `addAssetContent(payloadStage, name)` |

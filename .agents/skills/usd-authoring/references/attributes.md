@@ -15,6 +15,8 @@
 
 This is the right call even when the schema is code-generated and offers `CreateIntensityAttr()` / `GetIntensityAttr()`. There is no time argument, so it authors at default time only — keep using the generated accessors (or raw `Usd.Attribute`) for time samples, connections, and metadata.
 
+A connection beats a value, and this function does not check for one: if the target attribute is already connected, the write is accepted and returns `True`, but consumers resolve the value through the connection and never read the local opinion. Author the value at the source the connection points at instead. Shader inputs are where this comes up — see `references/materials.md`.
+
 ## Why it matters
 
 Sparse layers compose better and diff smaller. When the supplied value equals the schema fallback, the function does the right thing per case rather than writing a redundant opinion:
@@ -36,4 +38,5 @@ This is most valuable with codeless schemas, which generate no accessors or toke
 | `prim.CreateAttribute(name, typeName)` for an attribute a schema already declares | apply the schema (or use the `define*` helper), then `setEffectiveAttributeValue(prim, name, value)` |
 | `prim.GetAttribute(name).Set(value)` for every source value, fallbacks included | `setEffectiveAttributeValue(prim, name, value)` so schema-default values stay unauthored |
 | `light.CreateIntensityAttr(value)` / `light.GetIntensityAttr().Set(value)` for a static value | `setEffectiveAttributeValue(prim, "inputs:intensity", value)` — a generated accessor cannot see the fallback either |
+| `setEffectiveAttributeValue` on an attribute that already has a connection — it returns `True` and the connection still wins | author the value at the source the connection points at |
 | Compare against a hard-coded default before writing | let the function compare against the composed schema fallback |
