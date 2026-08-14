@@ -251,26 +251,28 @@ USDEX_API std::vector<pxr::UsdGeomSubset> defineNonOverlappingSubsets(
 //! need not represent the whole geometry. Use when overlapping or partial subsets are needed.
 //!
 //! The prim must be a geometry that supports subsets (e.g. `UsdGeomMesh` from `usdex::core::definePolyMesh`).
-//! Use `usdex::core::bindMaterial` to bind materials to each subset.
 //!
-//! elementType defaults to `UsdGeomTokens->face`.
 //! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#a74ba2657851f6c0884e72b4a762d1607) for details.
 //!
-//! familyName defaults to `UsdShadeTokens->materialBind`.
+//! Unlike the partition variants, elementType and familyName are both required, as there is no sensible default family for overlapping
+//! subsets. Pass an empty token for subsets that belong to no family. `UsdShadeTokens->materialBind` is not accepted, as that family must
+//! be a partition or non-overlapping. Use `usdex::core::definePartitionedSubsets` or `usdex::core::defineNonOverlappingSubsets` to bind
+//! materials to subsets.
+//!
 //! See [UsdGeomSubset](https://openusd.org/release/api/class_usd_geom_subset.html#af278c1bd6603a66ffcb1a033f395a876) for details.
 //!
 //! @param mesh Mesh prim to add the subsets to
 //! @param names The names of the subsets (size must equal indices.size())
 //! @param indices Per-subset element indices; indices.size() is the number of subsets, indices[i] is the index list for subset i
 //! @param elementType The element type of the subsets. Valid values are `UsdGeomTokens->face`, `UsdGeomTokens->edge`, and `UsdGeomTokens->point`.
-//! @param familyName The family name of the subsets
+//! @param familyName The family name of the subsets, or an empty token for subsets that belong to no family
 //! @returns The subsets created
 USDEX_API std::vector<pxr::UsdGeomSubset> defineUnrestrictedSubsets(
     pxr::UsdGeomMesh mesh,
     const std::vector<pxr::TfToken>& names,
     const std::vector<pxr::VtIntArray>& indices,
-    const pxr::TfToken& elementType = pxr::UsdGeomTokens->face,
-    const pxr::TfToken& familyName = pxr::UsdShadeTokens->materialBind
+    const pxr::TfToken& elementType,
+    const pxr::TfToken& familyName
 );
 
 } // namespace usdex::core
