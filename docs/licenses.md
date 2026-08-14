@@ -56,8 +56,8 @@ These licenses are optional in that the python-less flavors of `usdex_core` do n
 ```
 
 MaterialX is optional in a different sense: the default runtime ships the `usdMtlx` OpenUSD schema and its MaterialX libraries
-so downstream code can author MaterialX shaders. No OpenUSD Exchange module links MaterialX directly, but it ships in every flavor
-whose OpenUSD build includes `usdMtlx`:
+so downstream code can resolve MaterialX shader definitions. No OpenUSD Exchange module links MaterialX directly, but it ships
+in every flavor whose OpenUSD build includes `usdMtlx`:
 
 ```{eval-rst}
 - MaterialX `(jump to license) <materialx LICENSE_>`_

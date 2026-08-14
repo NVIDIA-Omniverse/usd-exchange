@@ -156,7 +156,7 @@ Both networks are driven from a shared Material Interface authored on the Materi
 
 ```{eval-rst}
 .. note::
-  Authoring OpenPBR shaders requires the ``usdMtlx`` OpenUSD plugin and the MaterialX libraries. These ship in the default runtime for every supported flavor, so no extra install arguments are required. See `Runtime Requirements <./runtime-requirements.html>`_.
+  Authoring with these functions does not require the ``usdMtlx`` OpenUSD plugin, as they author the shader IDs and inputs directly. However, extending them might; authoring a MaterialX shader, or discovering the inputs an existing shader declares, is easiest using the ``Sdr`` registry. The plugin and the MaterialX libraries ship in the default runtime for every supported flavor, so no extra install arguments are required to use ``Sdr``. See `Runtime Requirements <./runtime-requirements.html>`_.
 ```
 
 ### Preview Materials (Universal Render Context)
