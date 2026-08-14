@@ -21,9 +21,11 @@ Enums: `DiagnosticsLevel` = `eFatal`, `eError`, `eWarning` (default after activa
 
 SDK-specific symbol: `USDEX_TRANSCODING_ERROR` (failure encoding a `UsdPrim` / `UsdProperty` name). Useful general OpenUSD symbols: `PLUG_LOAD`, `PLUG_REGISTRATION`, `USD_CHANGES`, `USD_STAGE_LIFETIMES`, `AR_RESOLVER_INIT`. Combine with wildcards: `TF_DEBUG=USDEX_*`, `TF_DEBUG='PLUG_* AR_*'`, `TF_DEBUG=*`. Debugger break: `TF_ATTACH_DEBUGGER_ON_ERROR`, `TF_ATTACH_DEBUGGER_ON_FATAL_ERROR`, `TF_ATTACH_DEBUGGER_ON_WARNING`, or `TF_DEBUG=TF_ATTACH_DEBUGGER*`.
 
-## Asset Validator
+## USD Validation
 
-`pip install "usd-exchange[test]"` (or `repo install_usdex --install-test` for native builds). Validate every output before declaring a converter pass complete: `engine = usd_validation_nvidia.ValidationEngine(init_rules=True)`; `engine.validate(stage_or_path)` returns a `Result` whose `issues()` is an `IssuesList`. Filter with `usd_validation_nvidia.IssuePredicates.Or(*predicates)`. Wraps OpenUSD's `usdchecker` rules and adds NVIDIA's; CLI usage is in the [Asset Validator CLI sample](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/source/assetValidator/README.md). OpenUSD's own `UsdValidatorSuite` is converging with this; for now C++ tests still rely on `doctest`.
+`pip install "usd-exchange[test]"` (or `repo install_usdex --install-test` for native builds) provides the `usd_validation_nvidia` package and the `nvidia_usd_validate` CLI. Validate every output before declaring a converter pass complete: `engine = usd_validation_nvidia.ValidationEngine(init_rules=True)`; `engine.validate(stage_or_path)` returns a `Result` whose `issues()` is an `IssuesList`. Filter with `usd_validation_nvidia.IssuePredicates.Or(*predicates)`. CLI usage is in the [USD Validation CLI sample](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/source/validateUsd/README.md); C++ tests still rely on `doctest`.
+
+Coverage is NVIDIA's own rules plus OpenUSD's, the latter adapted from the native `UsdValidation` registry (`usdGeom` / `usdPhysics` / `usdShade` / `usdSkel` / `usdUtils` validators, plus `usdLux` on USD 26.08+). All of it — the `usd_validation_nvidia` package and the native validator plugins its adapters load — installs only with `[test]` / `--install-test`, so validation is an authoring and CI gate rather than something a runtime-only deployment can perform. The native validators re-compose the stage, so a diagnostic raised during authoring can be emitted more than once across a validated run — assert on content, not on occurrence counts.
 
 ## `usdex.test` (Python)
 

@@ -100,6 +100,31 @@ class GprimAlgoTest(usdex.test.TestCase):
         scale = Gf.Vec3f(1)
         usdex.core.setLocalTransform(prim, position, pivot, rotation, usdex.core.RotationOrder.eXyz, scale)
 
+    # The bindings must expose the same dimension & axis defaults as the C++ signatures.
+    def testDefaultArgs(self):
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        parent = usdex.core.defineXform(stage, f"/{self.defaultPrimName}/xform").GetPrim()
+
+        plane = usdex.core.definePlane(parent, "plane")
+        self.assertEqual(plane.GetWidthAttr().Get(), 2.0)
+        self.assertEqual(plane.GetLengthAttr().Get(), 2.0)
+        self.assertEqual(plane.GetAxisAttr().Get(), UsdGeom.Tokens.z)
+
+        self.assertEqual(usdex.core.defineSphere(parent, "sphere").GetRadiusAttr().Get(), 1.0)
+        self.assertEqual(usdex.core.defineCube(parent, "cube").GetSizeAttr().Get(), 2.0)
+
+        for defineFunc in (usdex.core.defineCone, usdex.core.defineCylinder, usdex.core.defineCapsule):
+            name = defineFunc.__name__
+            gprim = defineFunc(parent, name)
+            self.assertEqual(gprim.GetRadiusAttr().Get(), 1.0, msg=name)
+            self.assertEqual(gprim.GetHeightAttr().Get(), 2.0, msg=name)
+            self.assertEqual(gprim.GetAxisAttr().Get(), UsdGeom.Tokens.z, msg=name)
+
+        # the defaults must not shadow the (prim) overload used to convert an existing prim
+        self.assertEqual(usdex.core.defineCube(stage.DefinePrim(f"{parent.GetPath()}/converted")).GetSizeAttr().Get(), 2.0)
+        self.assertIsValidUsd(stage)
+
     # Geometric primitives are placed by specifying the prim path.
     def testGprimAlgo(self):
         stage = Usd.Stage.CreateInMemory()

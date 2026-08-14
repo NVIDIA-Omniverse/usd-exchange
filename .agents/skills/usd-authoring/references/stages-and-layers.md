@@ -9,7 +9,7 @@
 
 | Function | Purpose |
 | --- | --- |
-| `createStage(identifier, defaultPrimName, upAxis, linearUnits, [massUnits], authoringMetadata, [fileFormatArgs])` | Create a stage with required metadata authored explicitly. Default prim is created as `Scope` if missing — for placeable assets, immediately overwrite it with `defineXform`. `defaultPrimName` must come from `usdex.core.getValidPrimName(asset.name)`; `authoringMetadata` from the `AUTHORING_METADATA` variable. |
+| `createStage(identifier, defaultPrimName, upAxis, linearUnits, authoringMetadata, [fileFormatArgs], [massUnits])` | Create a stage with required metadata authored explicitly. Default prim is created as `Scope` if missing — for placeable assets, immediately overwrite it with `defineXform`. `defaultPrimName` must come from `usdex.core.getValidPrimName(asset.name)`; `authoringMetadata` from the `AUTHORING_METADATA` variable. |
 | `configureStage(stage, defaultPrimName, upAxis, linearUnits, [massUnits], [authoringMetadata])` | Apply the same metadata to an opened stage without overwriting an existing `creator` key. |
 | `saveStage(stage, authoringMetadata, [comment])` | Save every dirty layer; layers without a `creator` key get one. Always pass `AUTHORING_METADATA`. |
 | `saveLayer(layer, authoringMetadata, [comment])` / `exportLayer(layer, identifier, authoringMetadata, [comment], [fileFormatArgs])` | Save / export a single `SdfLayer`; export does not modify the source layer. |
@@ -17,7 +17,7 @@
 | `getUsdLayerEncoding(layer)` | Returns `"usda"`, `"usdc"`, `"usd"`, or empty. Use instead of inspecting the file extension. |
 | `isEditablePrimLocation(stage, path) / (prim, name) / (prim)` | Validate that opinions can be authored. Used inside the `define*` helpers; call directly when authoring without one. Returns `false` for instance proxies, invalid paths, missing stage. |
 
-`upAxis` should be `UsdGeom.GetFallbackUpAxis()` unless source data dictates otherwise. `linearUnits` is meters per unit (`UsdGeom.LinearUnits.meters` = `1.0`, `centimeters` = `0.01`). `massUnits` is kilograms per unit.
+`upAxis` should be `UsdGeom.GetFallbackUpAxis()` unless source data dictates otherwise. `linearUnits` is meters per unit (`UsdGeom.LinearUnits.meters` = `1.0`, `centimeters` = `0.01`). `massUnits` is kilograms per unit — pass it by keyword, since the argument orders differ: Python `createStage` takes it last, C++ `createStage` and both `configureStage` bindings take it between `linearUnits` and `authoringMetadata`.
 
 ## Encoding
 

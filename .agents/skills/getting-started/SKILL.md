@@ -1,7 +1,7 @@
 ---
 name: getting-started
 description: Bootstrap a project using the OpenUSD Exchange SDK (install via wheel or install_usdex; project layout; smoke test). Do NOT use for authoring.
-version: "2.3.0"
+version: "3.0.0"
 license: Apache-2.0
 tools: [Read, Shell]
 metadata:
@@ -28,10 +28,10 @@ Two recurring failures must be prevented before any other work happens.
 
 | Path | Use when | Mechanism |
 | --- | --- | --- |
-| Python wheel | Pure-Python converter, scripting, prototyping, CI. No C++ to compile. | `pip install usd-exchange` (add `[test]` for `usdex.test` + Asset Validator). |
+| Python wheel | Pure-Python converter, scripting, prototyping, CI. No C++ to compile. | `pip install usd-exchange` (add `[test]` for `usdex.test` + `usd-validation-nvidia`). |
 | Native (C++) install | C++ application, plugin, or mixed C++/Python with a controlled OpenUSD version. | `repo install_usdex` from a clone of `usd-exchange` *or* the [Exchange Samples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples). |
 
-Pick the wheel unless the user explicitly needs C++, a non-default OpenUSD version, or a non-default Python version. The wheel locks the OpenUSD version per release; only `install_usdex` exposes `--usd-version`, `--usd-flavor`, `--python-version`, `--install-rtx`, `--install-test`, `--install-extra-plugins`.
+Pick the wheel unless the user explicitly needs C++, a non-default OpenUSD version, or a non-default Python version. The wheel locks the OpenUSD version per release; only `install_usdex` exposes `--usd-version`, `--usd-flavor`, `--python-version`, `--install-rtx`, `--install-test`, `--install-extra-plugins`. Supported flavors are OpenUSD 26.08 (default), 25.11, and 25.05, against Python 3.13, 3.12 (default), 3.11, or 3.10.
 
 ## Project layout
 
@@ -43,7 +43,7 @@ Create a fresh directory anywhere *outside* the `usd-exchange` clone. Recommende
 - `output/` — generated USD assets and textures.
 - `pyproject.toml` or `requirements.txt` — dependencies.
 
-For a native C++ project, follow the layout in [`docs/native-application.md`](../../../docs/native-application.md): a project root with the SDK installed under `usdex/` (alongside `target-deps/usd`, `target-deps/python`, and `<platform>/<config>/lib`).
+For a native C++ project, follow the layout in [`docs/native-application.md`](../../../docs/native-application.md): a project root with the SDK installed under `usdex/` (alongside `target-deps/usd`, `target-deps/python`, and `<platform>/<config>/`, whose shared libraries are in `lib` on Linux and `bin` on Windows).
 
 ## Python install (wheel)
 
@@ -51,7 +51,7 @@ Linux (bash):
 
 - `python -m venv .venv`
 - `source .venv/bin/activate`
-- `pip install "usd-exchange[test]"` — drop `[test]` if you do not need `usdex.test` / Asset Validator
+- `pip install "usd-exchange[test]"` — drop `[test]` if you do not need `usdex.test` / USD Validation
 
 Windows (PowerShell):
 
@@ -63,23 +63,23 @@ Verify: `python -c "import usdex.core; print(usdex.core.version())"` should prin
 
 ## Native (C++) install via `install_usdex`
 
-Run from a clone of either `usd-exchange` *or* the [Exchange Samples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples). When run from the Samples repo, run `./repo.sh build --fetch-only` (or `.\repo.bat build --fetch-only`) first.
+Run from a clone of either `usd-exchange` *or* the [Exchange Samples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples). When run from the Samples repo, run `./repo.sh fetch_deps` (or `.\repo.bat fetch_deps`) first to pull the SDK package that provides the tool.
 
 - Release: `./repo.sh install_usdex --config release --install-python-libs`
 - Debug: `./repo.sh install_usdex --config debug --install-python-libs`
-- Pin OpenUSD: add `--usd-version 25.05` (and `--python-version 3.11` if needed)
+- Pin OpenUSD: add `--usd-version 25.11` (and `--python-version 3.11` if needed)
 - RTX MDL helpers (`usdex_rtx`): add `--install-rtx`
-- Test helpers + Asset Validator: add `--install-test`
+- Test helpers + USD Validation (including OpenUSD's native validator plugins): add `--install-test`
 - Monolithic / no-Python OpenUSD: `--usd-flavor usd-minimal --python-version 0`
 
-The output goes to `_install/`. Deep-copy it (preserving symlinks/junctions) into the project's `usdex/` folder:
+The output goes to `_install/`. Deep copy it into the project's `usdex/` folder — `target-deps/` holds packman soft links on Linux and junctions on Windows, and a link-preserving copy produces a project that breaks the moment it moves machines:
 
-- Linux: `cp -Lr _install $project_root/usdex`
-- Windows: `robocopy /s _install $project_root\usdex > NUL`
+- Linux: `cp -LrT _install "$project_root/usdex"` (`-L` dereferences the links, `-T` keeps a re-run from nesting `usdex/_install`)
+- Windows: `robocopy /E "_install" "$project_root\usdex" > NUL` (`/E` includes empty directories; robocopy follows links unless `/SL` or `/SJ` is given)
 
-Do **not** copy without preserving links — `target-deps/` contains soft links on Linux and junctions on Windows.
+For build configuration, follow [`docs/native-application.md`](../../../docs/native-application.md) — it covers include paths, libraries, preprocessor defines, and runtime path setup for both a Makefile and a Visual Studio project. Prefer CMake for a new project: the SDK package ships a relocatable config, so `find_package(usd-exchange REQUIRED)` plus the imported `usdex::usdex_core` / `usdex::usdex_rtx` targets carry those settings for you. Point `CMAKE_PREFIX_PATH` at the fetched package (`_build/target-deps/usd-exchange/<config>`, not `_install/`, which is the runtime tree you deploy) and set `USDEX_USD_ROOT` plus its sibling `USDEX_TBB_ROOT` / `USDEX_MATERIALX_ROOT`.
 
-For include paths, libraries, preprocessor defines, and runtime path setup, follow `docs/native-application.md` (Makefile and Visual Studio settings included). The `Makefile` and `repo.toml` snippets there are the canonical reference; do not invent build flags.
+Those imported targets supply the OpenUSD include paths and compile settings, but not the OpenUSD libraries. Any target that calls `pxr` directly must also link them through the helper the same config provides — `usdex_target_link_usd(<target> <modules...>)`, e.g. `usdex_target_link_usd(myApp arch gf sdf tf usd usdGeom usdShade)`. Pass bare module names; the helper resolves each against the installed flavor, covering the `usd_`-prefixed library names, the monolithic `usd_ms` case of `usd-minimal`, and the oneTBB that OpenUSD's headers pull in. Skipping it compiles cleanly and fails at link. It links the USD Python bindings and interpreter only when `USDEX_WITH_PYTHON` is set — otherwise link `usd_python` and the Python runtime yourself, as the Samples do. The Samples repo's `CMakeLists.txt` and `build.sh` are the working reference. Do not invent build flags.
 
 ## Smoke test
 
