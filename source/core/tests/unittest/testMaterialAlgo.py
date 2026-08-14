@@ -9,7 +9,7 @@ from typing import Any, List, Tuple
 
 import usdex.core
 import usdex.test
-from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
+from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdMtlx, UsdShade, UsdUtils, Vt
 
 
 def assertMetadataValueEqual(testCase: usdex.test.TestCase, actual: Any, expected: Any):
@@ -820,7 +820,15 @@ class PreviewMaterialHelpersMixin:
         self.assertTrue(surfaceOutput)
         self.assertTrue(surfaceOutput.HasConnectedSource())
         surface = surfaceOutput.GetConnectedSource()[0]
-        self.assertEqual(surface.GetOutput(UsdShade.Tokens.surface).GetAttr(), shader.GetOutput(UsdShade.Tokens.surface).GetAttr())
+        self.assertEqual(surface.GetOutput("out").GetAttr(), shader.GetOutput("out").GetAttr())
+
+    def assertMaterialXVersion(self, material: UsdShade.Material):
+        config = UsdMtlx.MaterialXConfigAPI(material.GetPrim())
+        self.assertTrue(config)
+        self.assertIn("MaterialXConfigAPI", material.GetPrim().GetAppliedSchemas())
+        version = config.GetConfigMtlxVersionAttr()
+        self.assertTrue(version.HasAuthoredValue())
+        self.assertEqual(version.Get(), "1.39")
 
 
 class DefinePreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFunctionTestCase):
@@ -1980,6 +1988,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
         self.assertEqual(shader.GetPrim().GetName(), "OpenPBR")
         self.assertEqual(shader.GetShaderId(), "ND_open_pbr_surface_surfaceshader")
         self.assertIsSurfaceShader(material, shader)
+        self.assertMaterialXVersion(material)
 
         # base_color
         shaderInput = shader.GetInput("base_color")
@@ -2070,6 +2079,52 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                     assertMetadataValueIsClose(limits["soft"]["minimum"], expectedValue)
                 elif key == "uisoftmax":
                     assertMetadataValueIsClose(limits["soft"]["maximum"], expectedValue)
+
+        self.assertIsValidUsd(stage)
+
+    def testPbrMaterialXNodeDefinitions(self):
+        if self.isUsdOlderThan("0.25.08"):
+            self.skipTest("Skipping until the MaterialX OpenPBR standard library is available to Sdr")
+
+        def getSdfType(shaderProperty):
+            typeIndicator = shaderProperty.GetTypeAsSdfType()
+            if isinstance(typeIndicator, tuple):
+                return typeIndicator[0]
+            return typeIndicator.GetSdfType()
+
+        def assertShaderMatchesNodeDefinition(shader):
+            shaderId = shader.GetShaderId()
+            nodeDefinition = Sdr.Registry().GetShaderNodeByIdentifier(shaderId)
+            self.assertTrue(nodeDefinition, msg=f"Missing node definition for {shaderId}")
+
+            for shaderInput in shader.GetInputs():
+                inputDefinition = nodeDefinition.GetShaderInput(shaderInput.GetBaseName())
+                self.assertTrue(inputDefinition, msg=f"Missing {shaderId} input {shaderInput.GetBaseName()}")
+                self.assertEqual(shaderInput.GetTypeName(), getSdfType(inputDefinition))
+
+            for shaderOutput in shader.GetOutputs():
+                outputDefinition = nodeDefinition.GetShaderOutput(shaderOutput.GetBaseName())
+                self.assertTrue(outputDefinition, msg=f"Missing {shaderId} output {shaderOutput.GetBaseName()}")
+                self.assertEqual(shaderOutput.GetTypeName(), getSdfType(outputDefinition))
+
+        stage = Usd.Stage.CreateInMemory()
+        usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)
+        materials = UsdGeom.Scope.Define(stage, stage.GetDefaultPrim().GetPath().AppendChild(UsdUtils.GetMaterialsScopeName())).GetPrim()
+
+        material = usdex.core.definePbrMaterial(materials, "Compatibility", Gf.Vec3f(0.2, 0.4, 0.6))
+        self.assertTrue(usdex.core.addColorTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Color", ext="png"))))
+        self.assertTrue(usdex.core.addNormalTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Normal", ext="png"))))
+        self.assertTrue(usdex.core.addOrmTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="ORM", ext="png"))))
+        self.assertTrue(usdex.core.addOpacityTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Opacity", ext="png"))))
+        self.assertTrue(usdex.core.addEmissiveTextureToPbrMaterial(material, Sdf.AssetPath(self.tmpFile(name="Emissive", ext="png"))))
+        glassMaterial = usdex.core.defineGlassPbrMaterial(materials, "GlassCompatibility", Gf.Vec3f(0.8, 0.9, 1.0))
+
+        for testedMaterial in (material, glassMaterial):
+            self.assertMaterialXVersion(testedMaterial)
+            for prim in Usd.PrimRange(testedMaterial.GetPrim()):
+                shader = UsdShade.Shader(prim)
+                if shader and shader.GetShaderId().startswith("ND_"):
+                    assertShaderMatchesNodeDefinition(shader)
 
         self.assertIsValidUsd(stage)
 
@@ -2269,7 +2324,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
 
             normalMap = UsdShade.Shader(material.GetPrim().GetChild("MtlxNormalMap"))
             self.assertTrue(normalMap)
-            self.assertEqual(normalMap.GetShaderId(), "ND_normalmap")
+            self.assertEqual(normalMap.GetShaderId(), "ND_normalmap_float")
             self.assertTrue(normalMap.GetInput("in").HasConnectedSource())
             self.assertEqual(normalMap.GetInput("in").GetConnectedSource()[0].GetOutputs()[0].GetAttr(), texShader.GetOutput("out").GetAttr())
 
@@ -3334,6 +3389,7 @@ class DefineGlassMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFunc
         self.assertEqual(mtlxShader.GetPrim().GetName(), "OpenPBR")
         self.assertEqual(mtlxShader.GetShaderId(), "ND_open_pbr_surface_surfaceshader")
         self.assertIsSurfaceShader(material, mtlxShader)
+        self.assertMaterialXVersion(material)
 
         # base_color and geometry_opacity are deliberately omitted on the OpenPBR shader -- glass uses transmission, not diffuse/opacity
         self.assertFalse(mtlxShader.GetInput("base_color"))
@@ -3857,7 +3913,7 @@ class ConnectMtlxPrimvarShaderTest(usdex.test.TestCase):
         self.material = UsdShade.Material.Define(self.stage, self.materials.GetPath().AppendChild("TestMaterial"))
         surfaceShader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestSurfaceShader"))
         surfaceShader.SetShaderId("ND_test_surface_shader")
-        self.material.CreateSurfaceOutput("mtlx").ConnectToSource(surfaceShader.CreateOutput("surface", Sdf.ValueTypeNames.Token))
+        self.material.CreateSurfaceOutput("mtlx").ConnectToSource(surfaceShader.CreateOutput("out", Sdf.ValueTypeNames.Token))
 
         self.shader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestShader"))
         self.shader.SetShaderId("ND_test_shader")

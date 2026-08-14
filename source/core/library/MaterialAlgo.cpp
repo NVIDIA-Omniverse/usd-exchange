@@ -14,6 +14,8 @@
 #include <pxr/usd/sdf/attributeSpec.h>
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usdGeom/tokens.h>
+#include <pxr/usd/usdMtlx/materialXConfigAPI.h>
+#include <pxr/usd/usdMtlx/tokens.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 #include <pxr/usd/usdShade/nodeGraph.h>
 #include <pxr/usd/usdShade/tokens.h>
@@ -29,6 +31,8 @@ using namespace pxr;
 
 namespace
 {
+
+constexpr const char* g_materialXVersionStr = "1.39";
 
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
@@ -96,11 +100,10 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((tiledImageFloatId, "ND_tiledimage_float"))
     ((tiledImageColor3Id, "ND_tiledimage_color3"))
     ((tiledImageVector3Id, "ND_tiledimage_vector3"))
-    ((normalMapNodeId, "ND_normalmap"))
+    ((normalMapNodeId, "ND_normalmap_float"))
     ((separate3Vector3Id, "ND_separate3_vector3"))
     // MaterialX common I/O
     ((mtlxDefault, "default"))
-    ((mtlxOut, "out"))
     ((mtlxIn, "in"))
     ((texcoord, "texcoord"))
     ((uvtiling, "uvtiling"))
@@ -142,6 +145,25 @@ bool isShaderType(const UsdShadeShader& shader, const TfToken& shaderId)
 {
     TfToken test;
     return shader && shader.GetShaderId(&test) && test == shaderId;
+}
+
+bool configureMaterialXVersion(const UsdShadeMaterial& material)
+{
+    UsdPrim prim = material.GetPrim();
+    UsdMtlxMaterialXConfigAPI config = UsdMtlxMaterialXConfigAPI::Apply(prim);
+    if (!config)
+    {
+        TF_WARN("Failed to apply MaterialXConfigAPI to material <%s>", prim.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    if (!config.GetConfigMtlxVersionAttr().Set(g_materialXVersionStr))
+    {
+        TF_WARN("Failed to set the MaterialX version on material <%s>", prim.GetPath().GetAsString().c_str());
+        return false;
+    }
+
+    return true;
 }
 
 //! Find or create the appropriate TextureReader
@@ -586,7 +608,7 @@ UsdShadeShader addPbrTiledImageShader(
         return UsdShadeShader();
     }
 
-    texShader.CreateOutput(_tokens->mtlxOut, outputType);
+    texShader.CreateOutput(UsdMtlxTokens->DefaultOutputName, outputType);
     return texShader;
 }
 
@@ -722,7 +744,7 @@ bool addFloatTextureToPbrMaterial(
     {
         return false;
     }
-    input.ConnectToSource(texShader.GetOutput(_tokens->mtlxOut));
+    input.ConnectToSource(texShader.GetOutput(UsdMtlxTokens->DefaultOutputName));
 
     UsdShadeInput matTextureInput = ::finalizePbrTextureInterface(
         material, // material
@@ -847,7 +869,7 @@ PrimvarReaderResult addMtlxPrimvarReader(
 
     pvr.reader.SetShaderId(shaderId);
     pvr.reader.CreateInput(_tokens->geomprop, SdfValueTypeNames->String).Set(primvarName);
-    pvr.output = pvr.reader.CreateOutput(_tokens->mtlxOut, pvr.outputTypeName);
+    pvr.output = pvr.reader.CreateOutput(UsdMtlxTokens->DefaultOutputName, pvr.outputTypeName);
 
     if (!fallbackValue.IsEmpty())
     {
@@ -1920,12 +1942,16 @@ UsdShadeMaterial usdex::core::definePbrMaterial(
         );
         return UsdShadeMaterial();
     }
+    if (!configureMaterialXVersion(material))
+    {
+        return UsdShadeMaterial();
+    }
 
     // Define the OpenPBR surface shader for the mtlx rendering context
     SdfPath shaderPath = path.AppendChild(_tokens->openPbrName);
     UsdShadeShader shader = UsdShadeShader::Define(stage, shaderPath);
     shader.SetShaderId(_tokens->openPbrSurfaceId);
-    material.CreateSurfaceOutput(_tokens->mtlx).ConnectToSource(shader.CreateOutput(UsdShadeTokens->surface, SdfValueTypeNames->Token));
+    material.CreateSurfaceOutput(_tokens->mtlx).ConnectToSource(shader.CreateOutput(UsdMtlxTokens->DefaultOutputName, SdfValueTypeNames->Token));
 
     // Create the shared material interface inputs (names match UPS / RTX conventions).
     // definePreviewMaterial authored values directly on the UPS shader inputs; we now create
@@ -2048,12 +2074,17 @@ UsdShadeMaterial usdex::core::defineGlassPbrMaterial(
         );
         return UsdShadeMaterial();
     }
+    if (!configureMaterialXVersion(material))
+    {
+        return UsdShadeMaterial();
+    }
 
     // Define the OpenPBR surface shader for the MaterialX render context
     SdfPath openPbrPath = path.AppendChild(_tokens->openPbrName);
     UsdShadeShader openPbrShader = UsdShadeShader::Define(stage, openPbrPath);
     openPbrShader.SetShaderId(_tokens->openPbrSurfaceId);
-    material.CreateSurfaceOutput(_tokens->mtlx).ConnectToSource(openPbrShader.CreateOutput(UsdShadeTokens->surface, SdfValueTypeNames->Token));
+    material.CreateSurfaceOutput(_tokens->mtlx)
+        .ConnectToSource(openPbrShader.CreateOutput(UsdMtlxTokens->DefaultOutputName, SdfValueTypeNames->Token));
 
     // Create Material Interface inputs
     UsdShadeInput materialColorInput = material.CreateInput(_tokens->materialColor, SdfValueTypeNames->Color3f);
@@ -2259,7 +2290,7 @@ bool usdex::core::addColorTextureToPbrMaterial(pxr::UsdShadeMaterial& material, 
     {
         return false;
     }
-    colorInput.ConnectToSource(texShader.GetOutput(_tokens->mtlxOut));
+    colorInput.ConnectToSource(texShader.GetOutput(UsdMtlxTokens->DefaultOutputName));
 
     // Create a shared material interface input for the texture file, removing the scalar color input.
     // Both the Mtlx and UPS texture shaders connect their file inputs to this.
@@ -2320,10 +2351,10 @@ bool usdex::core::addNormalTextureToPbrMaterial(pxr::UsdShadeMaterial& material,
     SdfPath shaderPath = material.GetPath().AppendChild(_tokens->mtlxNormalMapName);
     UsdShadeShader normalMapShader = UsdShadeShader::Define(material.GetPrim().GetStage(), shaderPath);
     normalMapShader.SetShaderId(_tokens->normalMapNodeId);
-    normalMapShader.CreateInput(_tokens->mtlxIn, SdfValueTypeNames->Float3).ConnectToSource(texShader.GetOutput(_tokens->mtlxOut));
+    normalMapShader.CreateInput(_tokens->mtlxIn, SdfValueTypeNames->Float3).ConnectToSource(texShader.GetOutput(UsdMtlxTokens->DefaultOutputName));
     normalMapShader.CreateInput(_tokens->scale, SdfValueTypeNames->Float).Set(1.0f);
 
-    normalInput.ConnectToSource(normalMapShader.CreateOutput(_tokens->mtlxOut, SdfValueTypeNames->Float3));
+    normalInput.ConnectToSource(normalMapShader.CreateOutput(UsdMtlxTokens->DefaultOutputName, SdfValueTypeNames->Float3));
 
     UsdShadeInput matTextureInput = ::finalizePbrTextureInterface(
         material, // material
@@ -2381,7 +2412,7 @@ bool usdex::core::addOrmTextureToPbrMaterial(UsdShadeMaterial& material, const S
     SdfPath shaderPath = material.GetPath().AppendChild(_tokens->mtlxSeparateOrmName);
     UsdShadeShader vectorSepShader = UsdShadeShader::Define(material.GetPrim().GetStage(), shaderPath);
     vectorSepShader.SetShaderId(_tokens->separate3Vector3Id);
-    vectorSepShader.CreateInput(_tokens->mtlxIn, SdfValueTypeNames->Float3).ConnectToSource(texShader.GetOutput(_tokens->mtlxOut));
+    vectorSepShader.CreateInput(_tokens->mtlxIn, SdfValueTypeNames->Float3).ConnectToSource(texShader.GetOutput(UsdMtlxTokens->DefaultOutputName));
 
     // The occlusion channel is not used by the OpenPBR definition, but conceptually outx = outputs[0], outy = outputs[1], outz = outputs[2]
     vectorSepShader.CreateOutput(_tokens->outx, SdfValueTypeNames->Float);
@@ -2493,7 +2524,7 @@ bool usdex::core::addEmissiveTextureToPbrMaterial(pxr::UsdShadeMaterial& materia
     {
         return false;
     }
-    emissionColorInput.ConnectToSource(texShader.GetOutput(_tokens->mtlxOut));
+    emissionColorInput.ConnectToSource(texShader.GetOutput(UsdMtlxTokens->DefaultOutputName));
 
     // Create a shared material interface input for the texture file, removing the scalar emissive color input.
     // Both the Mtlx and UPS texture shaders connect their file inputs to this.

@@ -39,6 +39,7 @@ These licenses pertain to the `usdex_core` shared library.
 - OpenUSD Exchange :ref:`(jump to license) <usdexlicense>`
 - OpenUSD `(jump to license) <openusd LICENSE_>`_
 - TBB `(jump to license) <onetbb LICENSE_>`_
+- MaterialX `(jump to license) <materialx LICENSE_>`_
 ```
 
 **Optional Runtime Dependencies**
@@ -53,14 +54,6 @@ These licenses are optional in that the python-less flavors of `usdex_core` do n
 ```{eval-rst}
 - Python `(jump to license) <python LICENSE_>`_
 - zlib :ref:`(jump to license) <zliblicense>`
-```
-
-MaterialX is optional in a different sense: the default runtime ships the `usdMtlx` OpenUSD schema and its MaterialX libraries
-so downstream code can resolve MaterialX shader definitions. No OpenUSD Exchange module links MaterialX directly, but it ships
-in every flavor whose OpenUSD build includes `usdMtlx`:
-
-```{eval-rst}
-- MaterialX `(jump to license) <materialx LICENSE_>`_
 ```
 
 ### Core Python Module

@@ -310,6 +310,7 @@ def __install(
         "usd",
         "usdGeom",
         "usdLux",
+        "usdMtlx",
         "usdPhysics",
         "usdShade",
         "usdShaders",
@@ -335,6 +336,7 @@ def __install(
             "usd",
             "usdGeom",
             "usdLux",
+            "usdMtlx",
             "usdPhysics",
             "usdShade",
             "usdUtils",
@@ -354,7 +356,6 @@ def __install(
     # schemas we ship for downstream authoring but do not link ourselves
     shippedSchemas = [
         "usdMedia",
-        "usdMtlx",
         "usdProc",
         "usdRender",
         "usdSemantics",
@@ -426,7 +427,7 @@ def __install(
             ]
         )
 
-    # usdMtlx is a mandatory shipped schema, so its MaterialX libraries from the standalone MaterialX package always ship too
+    # usdex_core requires usdMtlx, so its MaterialX libraries from the standalone MaterialX package always ship too
     mtlxLibraryDir = f"{libInstallDir}/usd/usdMtlx/resources/libraries"
     prebuild_dict["copy"].extend(
         [
