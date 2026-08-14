@@ -149,10 +149,12 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             data = toml.load(f)
         data["project"]["version"] = packageVersion
         # inject the specific USD flavor we are building against
+        # the validator floor is the version we test against, the major ceiling guards the APIs usdex.test calls at import time
+        validatorCeiling = int(validatorVersion.split(".")[0]) + 1
         data["project"]["optional-dependencies"].update(
             {
                 usdIdentifier: [],
-                "test": [f"usd-validation-nvidia=={validatorVersion}"],
+                "test": [f"usd-validation-nvidia>={validatorVersion},<{validatorCeiling}"],
             }
         )
         with open(pyproject_target, "w") as f:
