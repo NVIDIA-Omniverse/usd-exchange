@@ -15,6 +15,8 @@
             │   ├── libpython3.12.so.1.0
             │   ├── libpython3.so
             │   ├── libtbb.so.12
+            │   ├── libMaterialXCore.so
+            │   ├── libMaterialXFormat.so
             │   ├── libusd_ar.so
             │   ├── libusd_arch.so
             │   ├── libusd_gf.so
@@ -32,6 +34,7 @@
             │   ├── libusd_usd.so
             │   ├── libusd_usdGeom.so
             │   ├── libusd_usdLux.so
+            │   ├── libusd_usdMtlx.so
             │   ├── libusd_usdPhysics.so
             │   ├── libusd_usdShade.so
             │   ├── libusd_usdUI.so
@@ -40,15 +43,12 @@
             │   ├── libusd_work.so
             │   ├── libusd_usdLod.so                                        <-- optional (USD 26.08+)
             │   ├── libusd_usdMedia.so                                      <-- optional
-            │   ├── libusd_usdMtlx.so                                       <-- optional
             │   ├── libusd_usdProc.so                                       <-- optional
             │   ├── libusd_usdProfiles.so                                   <-- optional (USD 26.08+)
             │   ├── libusd_usdRender.so                                     <-- optional
             │   ├── libusd_usdSemantics.so                                  <-- optional
             │   ├── libusd_usdSkel.so                                       <-- optional
             │   ├── libusd_usdVol.so                                        <-- optional
-            │   ├── libMaterialXCore.so                                     <-- optional (ships with usdMtlx)
-            │   ├── libMaterialXFormat.so                                   <-- optional (ships with usdMtlx)
             │   ├── libusd_usdGeomValidators.so                             <-- [test] only
             │   ├── libusd_usdLuxValidators.so                              <-- [test] only (USD 26.08+)
             │   ├── libusd_usdPhysicsValidators.so                          <-- [test] only
@@ -110,6 +110,8 @@
             │   ├── python3.dll
             │   ├── python312.dll
             │   ├── tbb12.dll
+            │   ├── MaterialXCore.dll
+            │   ├── MaterialXFormat.dll
             │   ├── usd_ar.dll
             │   ├── usd_arch.dll
             │   ├── usd_gf.dll
@@ -127,6 +129,7 @@
             │   ├── usd_usd.dll
             │   ├── usd_usdGeom.dll
             │   ├── usd_usdLux.dll
+            │   ├── usd_usdMtlx.dll
             │   ├── usd_usdPhysics.dll
             │   ├── usd_usdShade.dll
             │   ├── usd_usdUI.dll
@@ -135,15 +138,12 @@
             │   ├── usd_work.dll
             │   ├── usd_usdLod.dll                          <-- optional (USD 26.08+)
             │   ├── usd_usdMedia.dll                        <-- optional
-            │   ├── usd_usdMtlx.dll                         <-- optional
             │   ├── usd_usdProc.dll                         <-- optional
             │   ├── usd_usdProfiles.dll                     <-- optional (USD 26.08+)
             │   ├── usd_usdRender.dll                       <-- optional
             │   ├── usd_usdSemantics.dll                    <-- optional
             │   ├── usd_usdSkel.dll                         <-- optional
             │   ├── usd_usdVol.dll                          <-- optional
-            │   ├── MaterialXCore.dll                       <-- optional (ships with usdMtlx)
-            │   ├── MaterialXFormat.dll                     <-- optional (ships with usdMtlx)
             │   ├── usd_usdGeomValidators.dll               <-- [test] only
             │   ├── usd_usdLuxValidators.dll                <-- [test] only (USD 26.08+)
             │   ├── usd_usdPhysicsValidators.dll            <-- [test] only
