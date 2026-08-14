@@ -47,3 +47,20 @@ class PxrTest(unittest.TestCase):
         adapters = [r for r in engine.rules if issubclass(r, usd_validation_nvidia.UsdValidatorAdapter)]
         self.assertTrue(adapters, "no UsdValidatorAdapter rules registered")
         self.assertTrue(all(r.is_implemented() for r in adapters))
+
+    def testNativeValidatorsAdapted(self):
+        try:
+            import usd_validation_nvidia
+            import usdex.test  # noqa: F401 imported for the rules it registers
+            from pxr import Usd
+            from usdex.test.ValidationRules import _nativeValidators
+        except ImportError:
+            self.skipTest("usd_validation_nvidia / pxr.UsdValidation not available")
+        expected = {name for names in _nativeValidators.values() for name in names}
+        if Usd.GetVersion()[:2] < (26, 8):
+            # OpenUSD 26.08 added these two, the other six exist in every supported flavor
+            expected -= {"usdShadeValidators:EncapsulationMaterialValidator", "usdValidation:AttributeTypeMismatch"}
+        engine = usd_validation_nvidia.ValidationEngine(init_rules=True)
+        registered = {r.validator_name() for r in engine.rules if issubclass(r, usd_validation_nvidia.UsdValidatorAdapter)}
+        # an unregistered rule means its validator plugin was not loadable, which silently disables the checks
+        self.assertFalse(expected - registered)

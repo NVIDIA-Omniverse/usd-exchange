@@ -35,6 +35,11 @@ if platform.system().lower() == "windows":
             __import__("usd_validation_nvidia")
 import usd_validation_nvidia
 
+from .ValidationRules import registerNativeValidators
+
+# rules must be registered before any ValidationEngine is constructed
+registerNativeValidators()
+
 
 class TestCase(unittest.TestCase):
     """
