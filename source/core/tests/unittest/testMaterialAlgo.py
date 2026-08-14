@@ -1883,7 +1883,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
         texShaderName: str,
         expectedShaderId: str,
         texture: Sdf.AssetPath,
-        expectedFileColorSpace: usdex.core.ColorSpace,
+        expectedFileColorSpace: str,
     ) -> UsdShade.Shader:
         texCoord = self.assertValidPbrTexCoordNetwork(material)
 
@@ -1897,7 +1897,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
         self.assertTrue(fileInput.HasConnectedSource())
         materialFileInput = fileInput.GetValueProducingAttributes()[0]
         self.assertEqual(materialFileInput.Get().path, texture)
-        self._assertFileColorSpace(materialFileInput, usdex.core.getColorSpaceToken(expectedFileColorSpace))
+        self._assertFileColorSpace(materialFileInput, expectedFileColorSpace)
 
         # texcoord is connected to TexCoord.out
         tcInput = texShader.GetInput("texcoord")
@@ -2125,7 +2125,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxBaseColorTexture",
                 expectedShaderId="ND_tiledimage_color3",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eSrgb,
+                expectedFileColorSpace="srgb_texture",
             )
             self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.1, 0.2, 0.3))
 
@@ -2161,7 +2161,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxRoughnessTexture",
                 expectedShaderId="ND_tiledimage_float",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+                expectedFileColorSpace=Gf.ColorSpaceNames.Data,
             )
             self.assertAlmostEqual(texShader.GetInput("default").GetAttr().Get(), 0.1)
             surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
@@ -2195,7 +2195,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxMetallicTexture",
                 expectedShaderId="ND_tiledimage_float",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+                expectedFileColorSpace=Gf.ColorSpaceNames.Data,
             )
             self.assertAlmostEqual(texShader.GetInput("default").GetAttr().Get(), 0.9)
             surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
@@ -2229,7 +2229,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxOpacityTexture",
                 expectedShaderId="ND_tiledimage_float",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+                expectedFileColorSpace=Gf.ColorSpaceNames.Data,
             )
             self.assertAlmostEqual(texShader.GetInput("default").GetAttr().Get(), 0.25)
             surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
@@ -2263,7 +2263,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxNormalTexture",
                 expectedShaderId="ND_tiledimage_vector3",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+                expectedFileColorSpace=Gf.ColorSpaceNames.Data,
             )
             self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.5, 0.5, 1.0))
 
@@ -2307,7 +2307,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxORMTexture",
                 expectedShaderId="ND_tiledimage_vector3",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eRaw,
+                expectedFileColorSpace=Gf.ColorSpaceNames.Data,
             )
             self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.0, 0.25, 0.9))
 
@@ -2502,7 +2502,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
             texShaderName="MtlxEmissiveTexture",
             expectedShaderId="ND_tiledimage_color3",
             texture=textures[0],
-            expectedFileColorSpace=usdex.core.ColorSpace.eAuto,
+            expectedFileColorSpace="srgb_texture",
         )
         self.assertEqual(texShader.GetInput("default").GetAttr().Get(), Gf.Vec3f(0.0, 0.0, 0.0))
         surface = usdex.core.computeEffectiveMtlxSurfaceShader(material)
@@ -2549,7 +2549,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 texShaderName="MtlxEmissiveTexture",
                 expectedShaderId="ND_tiledimage_color3",
                 texture=texture,
-                expectedFileColorSpace=usdex.core.ColorSpace.eAuto,
+                expectedFileColorSpace="srgb_texture",
             )
             # The fallback default was set to the previously authored emissive color on the first call and persists across subsequent calls.
             self.assertTrue(Gf.IsClose(texShader.GetInput("default").GetAttr().Get(), emissiveColor, 1e-6))
@@ -2811,12 +2811,12 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
         self.assertTrue(material)
 
         class TextureInfo:
-            def __init__(self, texture, func, shaderName, shaderId, colorSpace):
+            def __init__(self, texture, func, shaderName, shaderId, colorSpaceName):
                 self.texture = texture
                 self.func = func
                 self.shaderName = shaderName
                 self.shaderId = shaderId
-                self.colorSpace = colorSpace
+                self.colorSpaceName = colorSpaceName
 
             def add(self, material):
                 return self.func(material, self.texture)
@@ -2827,42 +2827,42 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
                 usdex.core.addColorTextureToPbrMaterial,
                 "MtlxBaseColorTexture",
                 "ND_tiledimage_color3",
-                usdex.core.ColorSpace.eSrgb,
+                "srgb_texture",
             ),
             TextureInfo(
                 Sdf.AssetPath(self.tmpFile(name="Normal", ext="png")),
                 usdex.core.addNormalTextureToPbrMaterial,
                 "MtlxNormalTexture",
                 "ND_tiledimage_vector3",
-                usdex.core.ColorSpace.eRaw,
+                Gf.ColorSpaceNames.Data,
             ),
             TextureInfo(
                 Sdf.AssetPath(self.tmpFile(name="Metallic", ext="png")),
                 usdex.core.addMetallicTextureToPbrMaterial,
                 "MtlxMetallicTexture",
                 "ND_tiledimage_float",
-                usdex.core.ColorSpace.eRaw,
+                Gf.ColorSpaceNames.Data,
             ),
             TextureInfo(
                 Sdf.AssetPath(self.tmpFile(name="Opacity", ext="png")),
                 usdex.core.addOpacityTextureToPbrMaterial,
                 "MtlxOpacityTexture",
                 "ND_tiledimage_float",
-                usdex.core.ColorSpace.eRaw,
+                Gf.ColorSpaceNames.Data,
             ),
             TextureInfo(
                 Sdf.AssetPath(self.tmpFile(name="Roughness", ext="png")),
                 usdex.core.addRoughnessTextureToPbrMaterial,
                 "MtlxRoughnessTexture",
                 "ND_tiledimage_float",
-                usdex.core.ColorSpace.eRaw,
+                Gf.ColorSpaceNames.Data,
             ),
             TextureInfo(
                 Sdf.AssetPath(self.tmpFile(name="Emissive", ext="png")),
                 usdex.core.addEmissiveTextureToPbrMaterial,
                 "MtlxEmissiveTexture",
                 "ND_tiledimage_color3",
-                usdex.core.ColorSpace.eAuto,
+                "srgb_texture",
             ),
         ]
         for textureInfo in textureInfos:
@@ -2884,7 +2884,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
             self.assertTrue(fileInput.GetAttr().HasAuthoredValue())
             self.assertFalse(fileInput.HasConnectedSource())
             self.assertEqual(fileInput.Get().path, textureInfo.texture)
-            self._assertFileColorSpace(fileInput.GetAttr(), usdex.core.getColorSpaceToken(textureInfo.colorSpace))
+            self._assertFileColorSpace(fileInput.GetAttr(), textureInfo.colorSpaceName)
 
         self.assertIsValidUsd(stage)
 
@@ -3007,7 +3007,7 @@ class DefinePbrMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFuncti
             texShaderName="MtlxBaseColorTexture",
             expectedShaderId="ND_tiledimage_color3",
             texture=texture,
-            expectedFileColorSpace=usdex.core.ColorSpace.eSrgb,
+            expectedFileColorSpace="srgb_texture",
         )
 
         # The original default value is lost with primvar connections, so it should be zeroed out

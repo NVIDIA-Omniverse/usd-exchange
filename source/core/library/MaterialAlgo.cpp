@@ -35,6 +35,7 @@ TF_DEFINE_PRIVATE_TOKENS(
     ((invalid, ""))
     ((colorSpaceAuto, "auto"))
     ((colorSpaceRaw, "raw"))
+    ((colorSpaceSrgbTexture, "srgb_texture"))
     ((colorSpacesRBG, "sRGB"))
     // Material interface metadata
     ((uiMin, "uimin"))
@@ -619,7 +620,7 @@ void removeProperty(UsdStageRefPtr stage, const SdfPath& primPath, const TfToken
 //! @param texShader The texture reader shader to finalize
 //! @param texturePath The path to the texture to add
 //! @param materialInterfaceName The name of the material interface to connect to the texture reader's file input
-//! @param colorSpace The color space of the texture
+//! @param colorSpaceName The color space name of the texture
 //! @param materialInputsToRemove The names of the material inputs to remove from the material
 //! @returns The material interface input that was created
 UsdShadeInput finalizePbrTextureInterface(
@@ -627,7 +628,7 @@ UsdShadeInput finalizePbrTextureInterface(
     UsdShadeShader& texShader,
     const SdfAssetPath& texturePath,
     const TfToken& materialInterfaceName,
-    usdex::core::ColorSpace colorSpace,
+    const TfToken& colorSpaceName,
     const std::vector<TfToken>& materialInputsToRemove
 )
 {
@@ -642,7 +643,7 @@ UsdShadeInput finalizePbrTextureInterface(
 
     UsdShadeInput matTextureInput = material.CreateInput(materialInterfaceName, SdfValueTypeNames->Asset);
     matTextureInput.Set(texturePath);
-    matTextureInput.GetAttr().SetColorSpace(usdex::core::getColorSpaceToken(colorSpace));
+    matTextureInput.GetAttr().SetColorSpace(colorSpaceName);
     texShader.CreateInput(_tokens->file, SdfValueTypeNames->Asset).ConnectToSource(matTextureInput);
     return matTextureInput;
 }
@@ -728,7 +729,7 @@ bool addFloatTextureToPbrMaterial(
         texShader, // texShader
         texturePath, // texturePath
         textureMaterialInterfaceName, // materialInterfaceName
-        usdex::core::ColorSpace::eRaw, // colorSpace
+        GfColorSpaceNames->Data, // colorSpaceName
         { materialInputNameToRemove } // materialInputsToRemove
     );
 
@@ -2262,12 +2263,14 @@ bool usdex::core::addColorTextureToPbrMaterial(pxr::UsdShadeMaterial& material, 
 
     // Create a shared material interface input for the texture file, removing the scalar color input.
     // Both the Mtlx and UPS texture shaders connect their file inputs to this.
+    // This is using "srgb_texture" to support older MaterialX runtimes (prior to 1.39.4), it should
+    // be changed to GfColorSpaceNames->SRGBRec709 once we drop support for older MaterialX runtimes.
     UsdShadeInput matTextureInput = ::finalizePbrTextureInterface(
         material, // material
         texShader, // texShader
         texturePath, // texturePath
         _tokens->uvTexColorName, // materialInterfaceName
-        ColorSpace::eSrgb, // colorSpace
+        _tokens->colorSpaceSrgbTexture, // colorSpaceName
         { _tokens->materialColor } // materialInputsToRemove
     );
 
@@ -2327,7 +2330,7 @@ bool usdex::core::addNormalTextureToPbrMaterial(pxr::UsdShadeMaterial& material,
         texShader, // texShader
         texturePath, // texturePath
         _tokens->uvTexNormalsName, // materialInterfaceName
-        ColorSpace::eRaw, // colorSpace
+        GfColorSpaceNames->Data, // colorSpaceName
         {} // materialInputsToRemove
     );
 
@@ -2393,7 +2396,7 @@ bool usdex::core::addOrmTextureToPbrMaterial(UsdShadeMaterial& material, const S
         texShader, // texShader
         texturePath, // texturePath
         _tokens->uvTexORMName, // materialInterfaceName
-        ColorSpace::eRaw, // colorSpace
+        GfColorSpaceNames->Data, // colorSpaceName
         { _tokens->roughness, _tokens->metallic } // materialInputsToRemove
     );
 
@@ -2499,7 +2502,7 @@ bool usdex::core::addEmissiveTextureToPbrMaterial(pxr::UsdShadeMaterial& materia
         texShader, // texShader
         texturePath, // texturePath
         _tokens->uvTexEmissiveName, // materialInterfaceName
-        ColorSpace::eAuto, // colorSpace
+        _tokens->colorSpaceSrgbTexture, // colorSpaceName
         { _tokens->materialEmissiveColor } // materialInputsToRemove
     );
 
