@@ -114,7 +114,7 @@
   - The `plugInfo.json` files are patched to account for the hashed library names produced by `auditwheel`
 - Expanded the OpenUSD plugins installed by default
   - Added `sdr`, `usdMedia`, `usdMtlx`, `usdProc`, `usdRender`, `usdSkel`, and `usdVol`, along with `usdLod` and `usdProfiles` on USD 26.08 and newer
-  - `usdMtlx` is required to author MaterialX shaders & the MaterialX libraries ship alongside it
+  - `usdMtlx` resolves the MaterialX shader definitions, whether extending, validating, or rendering them, & the MaterialX libraries ship alongside it
   - The plugin set is now identical for modular and monolithic flavors, only the backing libraries differ
 - Added the native OpenUSD validator plugins to the `--install-test` group
   - `usdValidation`, `usdGeomValidators`, `usdPhysicsValidators`, `usdShadeValidators`, `usdSkelValidators`, and `usdUtilsValidators` install for every

@@ -114,8 +114,8 @@ To learn about each of the "define" functions in more detail, see the specific d
 - [Lights](../api/group__lights.rebreather_rst)
 - [Physics Joints](../api/group__physicsjoints.rebreather_rst)
 - [Physics Materials](../api/group__physicsmaterials.rebreather_rst)
-- [Preview Materials and Shaders](../api/group__materials.rebreather_rst)
-- [RTX Materials and Shaders](../api/group__rtx__materials.rebreather_rst) (optionally included via `usdex_rtx`)
+- [Materials and Shaders](../api/group__materials.rebreather_rst) (OpenPBR via MaterialX, and UsdPreviewSurface)
+- [RTX Materials and Shaders](../api/group__rtx__materials.rebreather_rst) (MDL, optionally included via `usdex_rtx`)
 
 ### Defining Primvars
 
@@ -139,6 +139,35 @@ The [UsdGeomXformable](https://openusd.org/release/api/usd_geom_page_front.html#
 from which a resulting matrix can be computed.
 
 The flexibility of this system adds complexity to the code required for authoring and retrieving transform information. The `usdex_core` library provides the [3D Transformation](../api/group__xformable.rebreather_rst) functions to help with this.
+
+## Materials and Shaders
+
+A renderer can only evaluate the shading language it implements, so OpenUSD allows a single [UsdShadeMaterial](https://openusd.org/release/api/class_usd_shade_material.html) to carry several shader networks, each terminal bound to a [render context](https://openusd.org/release/glossary.html#usdglossary-renderingcontext) that a given renderer opts into. This is what lets one asset shade at high fidelity in one renderer and still shade sensibly everywhere else. Authoring it by hand means building parallel networks, knowing how the inputs of each shading model correspond, and keeping their values from drifting apart over the life of the asset.
+
+The `usdex_core` library provides [Materials and Shaders](../api/group__materials.rebreather_rst) functions for two shading models, along with context-agnostic utilities that apply to either: `createMaterial`, `bindMaterial` and `bindMaterialSubsets` for binding to geometry or geometry subsets, `sRgbToLinear` / `linearToSrgb` / `getColorSpaceToken` for color space handling, and `connectPrimvarShader` for driving shader inputs from primvars.
+
+Where these functions make assumptions about the source data that do not suit your use case, `computeEffectivePreviewSurfaceShader` and `computeEffectiveMtlxSurfaceShader` locate the surface shader driving either context, so you can author its `UsdShadeInputs` directly.
+
+### PBR Materials (MaterialX and Universal Render Contexts)
+
+`definePbrMaterial` and `defineGlassPbrMaterial` author a dual-context Material: an [OpenPBR Surface](https://academysoftwarefoundation.github.io/OpenPBR/) network for the MaterialX (`mtlx`) render context, and a [UsdPreviewSurface](https://openusd.org/release/spec_usdpreviewsurface.html) network for the universal render context. Renderers that support MaterialX (such as Pixar's Storm and the [RTX Renderer](https://docs.omniverse.nvidia.com/materials-and-rendering/latest/templates/OpenPBR.html)) shade with OpenPBR, while other renderers fall back to the Preview Surface, all from one Material prim.
+
+Both networks are driven from a shared Material Interface authored on the Material prim, so editing a material-level input like `inputs:roughness` drives both networks at once and they cannot fall out of sync. The `add*TextureToPbrMaterial` functions (for color, normal, roughness, metallic, opacity, ORM, and emissive) each author texture shaders for *both* contexts in a single call and maintain that shared interface.
+
+```{eval-rst}
+.. note::
+  Authoring with these functions does not require the ``usdMtlx`` OpenUSD plugin, as they author the shader IDs and inputs directly. However, extending them might; authoring a MaterialX shader, or discovering the inputs an existing shader declares, is easiest using the ``Sdr`` registry. The plugin and the MaterialX libraries ship in the default runtime for every supported flavor, so no extra install arguments are required to use ``Sdr``. See `Runtime Requirements <./runtime-requirements.html>`_.
+```
+
+### Preview Materials (Universal Render Context)
+
+When the universal render context is sufficient, `definePreviewMaterial` and `defineGlassPreviewMaterial` author only the `UsdPreviewSurface` network, with a matching set of `add*TextureToPreviewMaterial` functions. `UsdPreviewSurface` should be supported by all renderers, and while it is typically used as a fallback it is still a relatively advanced PBR model that may be suitable as a final quality material. This is the lightest and most broadly portable choice, and the right one when a second shader network would go unused.
+
+Preview Materials do not author a Material Interface by default. Call `addPreviewMaterialInterface` to generate one from the shader network when you do want it.
+
+### RTX (MDL) Materials
+
+If you are targeting the RTX Renderer, the optional `usdex_rtx` library provides [RTX Materials and Shaders](../api/group__rtx__materials.rebreather_rst) functions that author [MDL](https://www.nvidia.com/en-us/design-visualization/technologies/material-definition-language) shader networks using the Core MDL Materials (OmniPBR and OmniGlass), which are the most performant and photorealistic option in that renderer. Like their OpenPBR counterparts, `usdex::rtx::definePbrMaterial` and `usdex::rtx::defineGlassMaterial` also author a Preview Surface network behind a shared Material Interface, so the result still renders in any USD capable renderer.
 
 ## Physics
 
