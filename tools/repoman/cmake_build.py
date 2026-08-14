@@ -129,7 +129,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             configure += [f"-DPython3_ROOT_DIR={python_root}", "-DPython3_FIND_STRATEGY=LOCATION"]
         if platform.startswith("windows"):
             # on windows the abi is the MSVC toolset (e.g. v143); pin it so our binaries match the toolset of the openusd packages we link
-            configure += ["-T", abi]
+            # the generator is explicit as only the VS generators accept a toolset & cmake defaults to NMake Makefiles when it cannot find VS
+            configure += ["-G", "Visual Studio 17 2022", "-A", "x64", "-T", abi]
 
         omni.repo.man.logger.info(" ".join(configure))
         omni.repo.man.run_process(configure, exit_on_error=True)
