@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from typing import Any, List, Tuple
 
+import usd_validation_nvidia
 import usdex.core
 import usdex.test
 from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdMtlx, UsdShade, UsdUtils, Vt
@@ -867,7 +868,7 @@ class DefinePreviewMaterialTest(PreviewMaterialHelpersMixin, usdex.test.DefineFu
         self.assertFalse(result)
 
         # an surface shader that is not a UPS will error gracefully
-        otherShader.SetShaderId("UsdUvTexture")
+        otherShader.SetShaderId("UsdUVTexture")
         with usdex.test.ScopedDiagnosticChecker(self, [(Tf.TF_DIAGNOSTIC_WARNING_TYPE, ".*first be defined using definePreviewMaterial")]):
             result = usdex.core.addColorTextureToPreviewMaterial(badMaterial, texture)
         self.assertFalse(result)
@@ -3715,11 +3716,20 @@ class ConnectPreviewSurfacePrimvarShaderTest(usdex.test.TestCase):
         # don't use definePbrMaterial() to show that it's not a prerequisite
         self.material = UsdShade.Material.Define(self.stage, self.materials.GetPath().AppendChild("TestMaterial"))
         surfaceShader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestSurfaceShader"))
-        surfaceShader.SetShaderId("UsdTestSurfaceShader")
+        surfaceShader.SetShaderId("UsdPreviewSurface")
         self.material.CreateSurfaceOutput().ConnectToSource(surfaceShader.CreateOutput("surface", Sdf.ValueTypeNames.Token))
 
+        # this shader id is invented so the tests can declare arbitrary input names and types without depending on a real Sdr node,
+        # so `Sdr` cannot resolve it, but the generated primvar reader shaders must still validate
         self.shader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestShader"))
         self.shader.SetShaderId("UsdTestShader")
+        shaderPath = self.shader.GetPath()
+        self.defaultValidationIssuePredicates = [
+            usd_validation_nvidia.IssuePredicates.And(
+                usd_validation_nvidia.IssuePredicates.IsRule("ShaderSdrCompliance"),
+                lambda issue: getattr(issue.at, "prim_id", None) is not None and issue.at.prim_id.path == shaderPath,
+            )
+        ]
 
     def assertValidShaderPrimvarNetwork(
         self,
@@ -3912,11 +3922,20 @@ class ConnectMtlxPrimvarShaderTest(usdex.test.TestCase):
         # don't use definePbrMaterial() to show that it's not a prerequisite
         self.material = UsdShade.Material.Define(self.stage, self.materials.GetPath().AppendChild("TestMaterial"))
         surfaceShader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestSurfaceShader"))
-        surfaceShader.SetShaderId("ND_test_surface_shader")
+        surfaceShader.SetShaderId("ND_surface_unlit")
         self.material.CreateSurfaceOutput("mtlx").ConnectToSource(surfaceShader.CreateOutput("out", Sdf.ValueTypeNames.Token))
 
+        # this shader id is invented so `isMtlxNetworkShader` selects the MaterialX branch for arbitrary input names and types, without
+        # depending on a real Sdr node, so `Sdr` cannot resolve it, but the generated primvar reader shaders must still validate
         self.shader = UsdShade.Shader.Define(self.stage, self.material.GetPath().AppendChild("TestShader"))
         self.shader.SetShaderId("ND_test_shader")
+        shaderPath = self.shader.GetPath()
+        self.defaultValidationIssuePredicates = [
+            usd_validation_nvidia.IssuePredicates.And(
+                usd_validation_nvidia.IssuePredicates.IsRule("ShaderSdrCompliance"),
+                lambda issue: getattr(issue.at, "prim_id", None) is not None and issue.at.prim_id.path == shaderPath,
+            )
+        ]
 
     def assertValidMtlxShaderPrimvarNetwork(
         self,
