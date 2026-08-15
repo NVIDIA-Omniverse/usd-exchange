@@ -4,13 +4,18 @@
 import os
 import pathlib
 import tempfile
-import unittest
 from typing import Any, List, Tuple
 
 import usd_validation_nvidia
 import usdex.core
 import usdex.test
-from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdMtlx, UsdShade, UsdUtils, Vt
+from pxr import Gf, Plug, Sdf, Sdr, Tf, Usd, UsdGeom, UsdMtlx, UsdShade, UsdUtils, Vt
+
+# USD 25.08 made the MaterialX standard library relocatable. Older runtimes locate it only via this variable, so no MaterialX node
+# resolves through `Sdr` and every shader authored below fails `ShaderSdrCompliance`. Point it at the libraries we install with the
+# usdMtlx plugin, at import time, as the registry caches these paths the first time it is used.
+if Usd.GetVersion()[:2] < (25, 8) and "PXR_MTLX_STDLIB_SEARCH_PATHS" not in os.environ:
+    os.environ["PXR_MTLX_STDLIB_SEARCH_PATHS"] = os.path.join(Plug.Registry().GetPluginWithName("usdMtlx").resourcePath, "libraries")
 
 
 def assertMetadataValueEqual(testCase: usdex.test.TestCase, actual: Any, expected: Any):
@@ -4032,17 +4037,6 @@ class ConnectMtlxPrimvarShaderTest(usdex.test.TestCase):
         self.assertIsValidUsd(self.stage)
 
     def testAllInputTypesWithSdrRegistry(self):
-        # @TODO: Remove this once we move away from 25.05, just keeping this around in case we need it
-        # This test requires the MaterialX standard library to be relocatable in USD 25.08, until then if this
-        # is the only test run (-f testMaterialAlgo.ConnectMtlxPrimvarShaderTest.testAllInputTypesWithSdrRegistry)
-        # the standard library will be found by the environment variable PXR_MTLX_STDLIB_SEARCH_PATHS.
-        # import omni.repo.man
-        # test_root = omni.repo.man.resolve_tokens("$test_root")
-        # os.environ["PXR_MTLX_STDLIB_SEARCH_PATHS"] = f"{test_root}/lib/usd/usdMtlx/resources/libraries"
-
-        if self.isUsdOlderThan("0.25.08"):
-            self.skipTest("Skipping until the MaterialX standard library is relocatable in USD 25.08")
-
         #  Run the test that creates all of the currently supported USD Preview Surface input types
         self.testAllInputTypes()
 
