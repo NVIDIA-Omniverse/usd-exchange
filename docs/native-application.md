@@ -34,8 +34,8 @@ The copy flags matter, as the `target-deps` folders contain packman links (soft 
 
         .. code-block:: bash
 
-          # only fetch dependencies first when running from usd-exchange-samples
-          ./repo.sh fetch_deps
+          # from usd-exchange-samples, fetch the SDK package (which provides install_usdex) without compiling the samples
+          ./build.sh --generate
 
           ./repo.sh install_usdex --config release --install-python-libs
           ./repo.sh install_usdex --config debug --install-python-libs
@@ -47,8 +47,8 @@ The copy flags matter, as the `target-deps` folders contain packman links (soft 
 
         .. code-block:: batch
 
-          # only fetch dependencies first when running from usd-exchange-samples
-          .\repo.bat fetch_deps
+          @rem from usd-exchange-samples, fetch the SDK package (which provides install_usdex) without compiling the samples
+          .\build.bat --generate
 
           .\repo.bat install_usdex --config release --install-python-libs
           .\repo.bat install_usdex --config debug --install-python-libs
@@ -58,7 +58,7 @@ The copy flags matter, as the `target-deps` folders contain packman links (soft 
 
 ```{eval-rst}
 .. note::
-  The ``install_usdex`` script may be run from either the Exchange Samples or the Exchange SDK root directory, it is provided with both repositories.  If ``repo.bat|sh install_usdex`` is run from within the usd-exchange repository root, there is no need to run ``repo.bat|sh fetch_deps`` first. The version of OpenUSD Exchange that is downloaded will match the top line of the USD Exchange repository's CHANGELOG.md if no ``--version`` argument is provided.
+  The ``install_usdex`` script may be run from either the Exchange Samples or the Exchange SDK root directory. From the usd-exchange repository it works on a fresh clone. The Samples do not ship it, they consume it from the SDK package, so ``build.sh|bat --generate`` must download that package before ``repo.bat|sh install_usdex`` is available there. The version of OpenUSD Exchange that is downloaded will match the top line of the USD Exchange repository's CHANGELOG.md if no ``--version`` argument is provided.
 ```
 
 This tree describes the proposed file layout for the project:
