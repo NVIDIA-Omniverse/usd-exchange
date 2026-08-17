@@ -714,8 +714,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         self,
         stage: Usd.Stage,
         define_subset_func=usdex.core.definePartitionedSubsets,
+        familyName=UsdShade.Tokens.materialBind,
     ):
         prefix = self._SUBSET_ERROR_PREFIX[define_subset_func]
+        # defineUnrestrictedSubsets requires both, so every variant is called the same way
+        kwargs = {"elementType": UsdGeom.Tokens.face, "familyName": familyName}
 
         # define mesh.
         plane_mesh = self.define4faceMesh(stage, "error_check_mesh")
@@ -732,11 +735,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(plane_mesh, names, indices)
+            subsets = define_subset_func(plane_mesh, names, indices, **kwargs)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = plane_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
@@ -752,11 +755,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(plane_mesh, names, indices)
+            subsets = define_subset_func(plane_mesh, names, indices, **kwargs)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = plane_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
@@ -772,11 +775,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(plane_mesh, names, indices)
+            subsets = define_subset_func(plane_mesh, names, indices, **kwargs)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = plane_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
@@ -792,11 +795,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(plane_mesh, names, indices)
+            subsets = define_subset_func(plane_mesh, names, indices, **kwargs)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = plane_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
@@ -812,11 +815,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(plane_mesh, names, indices)
+            subsets = define_subset_func(plane_mesh, names, indices, **kwargs)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = plane_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
@@ -832,11 +835,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(plane_mesh, names, indices)
+            subsets = define_subset_func(plane_mesh, names, indices, **kwargs)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = plane_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
@@ -849,7 +852,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         # When the family name is valid.
         family_name = "foo"
         family_name_mesh = self.define4faceMesh(stage, "family_name_mesh")
-        subsets = define_subset_func(family_name_mesh, names, indices, familyName=family_name)
+        subsets = define_subset_func(family_name_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=family_name)
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -866,7 +869,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         # Empty family names are permitted.
         family_name = ""
         empty_family_name_mesh = self.define4faceMesh(stage, "empty_family_name_mesh")
-        subsets = define_subset_func(empty_family_name_mesh, names, indices, familyName=family_name)
+        subsets = define_subset_func(empty_family_name_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=family_name)
         self.assertEqual(len(subsets), 2)
 
         for i in range(2):
@@ -892,7 +895,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(invalid_family_name_mesh, names, indices, familyName=family_name)
+            subsets = define_subset_func(invalid_family_name_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=family_name)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
@@ -900,7 +903,12 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         prop = invalid_family_name_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
-    def checkDefineGeomSubsets_elementType_invalid(self, stage: Usd.Stage, define_subset_func=usdex.core.definePartitionedSubsets):
+    def checkDefineGeomSubsets_elementType_invalid(
+        self,
+        stage: Usd.Stage,
+        define_subset_func=usdex.core.definePartitionedSubsets,
+        familyName=UsdShade.Tokens.materialBind,
+    ):
         prefix = self._SUBSET_ERROR_PREFIX[define_subset_func]
         default_prim = stage.GetDefaultPrim()
 
@@ -918,15 +926,20 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
                 )
             ],
         ):
-            subsets = define_subset_func(invalid_element_type_mesh, names, indices, elementType=element_type)
+            subsets = define_subset_func(invalid_element_type_mesh, names, indices, elementType=element_type, familyName=familyName)
         self.assertEqual(len(subsets), 0)
 
         # Check if the parent prim's subset attribute has been removed in case of failure.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = invalid_element_type_mesh.GetPrim().GetProperty(propName)
         self.assertFalse(prop.IsValid())
 
-    def checkDefineGeomSubsets_elementType_valid_all(self, stage: Usd.Stage, define_subset_func=usdex.core.definePartitionedSubsets):
+    def checkDefineGeomSubsets_elementType_valid_all(
+        self,
+        stage: Usd.Stage,
+        define_subset_func=usdex.core.definePartitionedSubsets,
+        familyName=UsdShade.Tokens.materialBind,
+    ):
         # Verification of combinations that function correctly.
         default_prim = stage.GetDefaultPrim()
         looks_prim = UsdGeom.Scope.Define(stage, default_prim.GetPath().AppendChild("Looks"))
@@ -938,7 +951,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
 
         # elementType: face.
         # indices specify face indices.
-        # Bind the material.
+        # Bind the material, which only the materialBind family may carry.
         element_type = UsdGeom.Tokens.face
         face_mesh = self.define4faceMesh(stage, "face_mesh")
         names = ["subset1", "subset2"]
@@ -946,17 +959,18 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1]),
             Vt.IntArray([2, 3]),
         ]
-        subsets = define_subset_func(face_mesh, names, indices, elementType=element_type)
+        subsets = define_subset_func(face_mesh, names, indices, elementType=element_type, familyName=familyName)
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
             self.assertEqual(subsets[i].GetPrim().GetName(), names[i])
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
-            self.assertTrue(usdex.core.bindMaterial(subsets[i].GetPrim(), material))
+            if familyName == UsdShade.Tokens.materialBind:
+                self.assertTrue(usdex.core.bindMaterial(subsets[i].GetPrim(), material))
 
         # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = face_mesh.GetPrim().GetProperty(propName)
         self.assertTrue(prop.IsValid())
 
@@ -969,7 +983,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1, 1, 2]),
             Vt.IntArray([2, 3, 3, 0]),
         ]
-        subsets = define_subset_func(edge_mesh, names, indices, elementType=element_type)
+        subsets = define_subset_func(edge_mesh, names, indices, elementType=element_type, familyName=familyName)
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -978,7 +992,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
 
         # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = edge_mesh.GetPrim().GetProperty(propName)
         self.assertTrue(prop.IsValid())
 
@@ -991,7 +1005,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1]),
             Vt.IntArray([2, 3]),
         ]
-        subsets = define_subset_func(point_mesh, names, indices, elementType=element_type)
+        subsets = define_subset_func(point_mesh, names, indices, elementType=element_type, familyName=familyName)
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1000,11 +1014,16 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
 
         # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = point_mesh.GetPrim().GetProperty(propName)
         self.assertTrue(prop.IsValid())
 
-    def checkDefineGeomSubsets_existingSubsets(self, stage: Usd.Stage, define_subset_func=usdex.core.definePartitionedSubsets):
+    def checkDefineGeomSubsets_existingSubsets(
+        self,
+        stage: Usd.Stage,
+        define_subset_func=usdex.core.definePartitionedSubsets,
+        familyName=UsdShade.Tokens.materialBind,
+    ):
         prefix = self._SUBSET_ERROR_PREFIX[define_subset_func]
 
         # Storing the first subsets
@@ -1014,11 +1033,11 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1]),
             Vt.IntArray([2, 3]),
         ]
-        subsets = define_subset_func(check_existing_subsets_mesh, names, indices)
+        subsets = define_subset_func(check_existing_subsets_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=familyName)
         self.assertEqual(len(subsets), 2)
 
         # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = check_existing_subsets_mesh.GetPrim().GetProperty(propName)
         self.assertTrue(prop.IsValid())
 
@@ -1035,21 +1054,21 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             [
                 (
                     Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
-                    f".*Failed to define {prefix}.*: Unable to define subsets due to existing subsets with the same family name: materialBind",
+                    f".*Failed to define {prefix}.*: Unable to define subsets due to existing subsets with the same family name: {familyName}",
                 )
             ],
         ):
-            subsets = define_subset_func(check_existing_subsets_mesh, names, indices)
+            subsets = define_subset_func(check_existing_subsets_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=familyName)
         self.assertEqual(len(subsets), 0)
 
         # Since there is already a familyName with the same value, this returns True.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        propName = f"subsetFamily:{familyName}:familyType"
         prop = check_existing_subsets_mesh.GetPrim().GetProperty(propName)
         self.assertTrue(prop.IsValid())
 
         # If a different family name is specified.
         other_family_name = "foo"
-        subsets = define_subset_func(check_existing_subsets_mesh, names, indices, familyName=other_family_name)
+        subsets = define_subset_func(check_existing_subsets_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=other_family_name)
         self.assertEqual(len(subsets), 3)
         for i in range(3):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1421,19 +1440,44 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         stage = self.createTestStage()
 
         # Check error cases.
-        self.checkErrorDefineGeomSubsets(stage, usdex.core.defineUnrestrictedSubsets)
+        self.checkErrorDefineGeomSubsets(stage, usdex.core.defineUnrestrictedSubsets, familyName="overlapping")
 
         # Check family name cases.
         self.checkDefineGeomSubsets_familyName(stage, usdex.core.defineUnrestrictedSubsets)
 
         # Check element type invalid cases.
-        self.checkDefineGeomSubsets_elementType_invalid(stage, usdex.core.defineUnrestrictedSubsets)
+        self.checkDefineGeomSubsets_elementType_invalid(stage, usdex.core.defineUnrestrictedSubsets, familyName="overlapping")
 
-        # Check element type valid all cases.
-        self.checkDefineGeomSubsets_elementType_valid_all(stage, usdex.core.defineUnrestrictedSubsets)
+        # Check element type valid all cases, in a family of our own since materialBind cannot be unrestricted.
+        self.checkDefineGeomSubsets_elementType_valid_all(stage, usdex.core.defineUnrestrictedSubsets, familyName="overlapping")
 
         # Check existing subsets cases.
-        self.checkDefineGeomSubsets_existingSubsets(stage, usdex.core.defineUnrestrictedSubsets)
+        self.checkDefineGeomSubsets_existingSubsets(stage, usdex.core.defineUnrestrictedSubsets, familyName="overlapping")
+
+        self.assertIsValidUsd(stage)
+
+    def testDefineUnrestrictedSubsets_materialBindFamily(self):
+        stage = self.createTestStage()
+
+        # The materialBind family must be a partition or non-overlapping, so it cannot be unrestricted.
+        mesh = self.define4faceMesh(stage, "material_bind_mesh")
+        names = ["subset1", "subset2"]
+        indices = [Vt.IntArray([0, 1]), Vt.IntArray([1, 2])]
+        with usdex.test.ScopedDiagnosticChecker(
+            self,
+            [
+                (
+                    Tf.TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
+                    ".*Failed to define unrestricted subsets.*: Unable to define unrestricted subsets in the .* family, "
+                    "which must be partitioned or non-overlapping.*",
+                )
+            ],
+        ):
+            subsets = usdex.core.defineUnrestrictedSubsets(
+                mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName=UsdShade.Tokens.materialBind
+            )
+        self.assertEqual(len(subsets), 0)
+        self.assertFalse(mesh.GetPrim().GetChildren())
 
         self.assertIsValidUsd(stage)
 
@@ -1445,7 +1489,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
         index_check_mesh = self.define4faceMesh(stage, "index_check_mesh")
         names = ["subset1", "subset2"]
         indices = [Vt.IntArray([0, 1]), Vt.IntArray([1, 2])]
-        subsets = usdex.core.defineUnrestrictedSubsets(index_check_mesh, names, indices)
+        subsets = usdex.core.defineUnrestrictedSubsets(index_check_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName="")
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1453,17 +1497,17 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), UsdGeom.Tokens.face)
 
-        # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        # No family name was given, so no family type is authored.
+        propName = "subsetFamily:familyType"
         prop = index_check_mesh.GetPrim().GetProperty(propName)
-        self.assertTrue(prop.IsValid())
+        self.assertFalse(prop.IsValid())
 
         # There is an index for an unassigned face.
         # However, in the case of Unrestricted, this is permitted.
         unassigned_face_mesh = self.define4faceMesh(stage, "unassigned_face_mesh")
         names = ["subset1", "subset2"]
         indices = [Vt.IntArray([0, 1]), Vt.IntArray([2])]
-        subsets = usdex.core.defineUnrestrictedSubsets(unassigned_face_mesh, names, indices)
+        subsets = usdex.core.defineUnrestrictedSubsets(unassigned_face_mesh, names, indices, elementType=UsdGeom.Tokens.face, familyName="")
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1471,10 +1515,10 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), UsdGeom.Tokens.face)
 
-        # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        # No family name was given, so no family type is authored.
+        propName = "subsetFamily:familyType"
         prop = unassigned_face_mesh.GetPrim().GetProperty(propName)
-        self.assertTrue(prop.IsValid())
+        self.assertFalse(prop.IsValid())
 
         self.assertIsValidUsd(stage)
 
@@ -1491,7 +1535,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1, 1, 2]),
             Vt.IntArray([2, 3]),  # The edge [3, 0] is missing.
         ]
-        subsets = usdex.core.defineUnrestrictedSubsets(error_edge_mesh, names, indices, elementType=element_type)
+        subsets = usdex.core.defineUnrestrictedSubsets(error_edge_mesh, names, indices, elementType=element_type, familyName="")
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1499,10 +1543,10 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
 
-        # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        # No family name was given, so no family type is authored.
+        propName = "subsetFamily:familyType"
         prop = error_edge_mesh.GetPrim().GetProperty(propName)
-        self.assertTrue(prop.IsValid())
+        self.assertFalse(prop.IsValid())
 
         # elementType: edge.
         # When there are duplicate pairs of edge indices.
@@ -1514,7 +1558,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1, 1, 2]),
             Vt.IntArray([2, 3, 2, 1]),
         ]
-        subsets = usdex.core.defineUnrestrictedSubsets(error_duplicate_edge_mesh, names, indices, elementType=element_type)
+        subsets = usdex.core.defineUnrestrictedSubsets(error_duplicate_edge_mesh, names, indices, elementType=element_type, familyName="")
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1522,10 +1566,10 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
 
-        # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        # No family name was given, so no family type is authored.
+        propName = "subsetFamily:familyType"
         prop = error_duplicate_edge_mesh.GetPrim().GetProperty(propName)
-        self.assertTrue(prop.IsValid())
+        self.assertFalse(prop.IsValid())
 
         self.assertIsValidUsd(stage)
 
@@ -1542,7 +1586,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1]),
             Vt.IntArray([2]),  # The point [3] is missing.
         ]
-        subsets = usdex.core.defineUnrestrictedSubsets(error_point_mesh, names, indices, elementType=element_type)
+        subsets = usdex.core.defineUnrestrictedSubsets(error_point_mesh, names, indices, elementType=element_type, familyName="")
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1550,10 +1594,10 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
 
-        # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        # No family name was given, so no family type is authored.
+        propName = "subsetFamily:familyType"
         prop = error_point_mesh.GetPrim().GetProperty(propName)
-        self.assertTrue(prop.IsValid())
+        self.assertFalse(prop.IsValid())
 
         # elementType: point.
         # When there are duplicate of point indices.
@@ -1565,7 +1609,7 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             Vt.IntArray([0, 1]),
             Vt.IntArray([2, 3, 2]),
         ]
-        subsets = usdex.core.defineUnrestrictedSubsets(error_duplicate_point_mesh, names, indices, elementType=element_type)
+        subsets = usdex.core.defineUnrestrictedSubsets(error_duplicate_point_mesh, names, indices, elementType=element_type, familyName="")
         self.assertEqual(len(subsets), 2)
         for i in range(2):
             self.assertTrue(subsets[i].GetPrim().IsValid())
@@ -1573,10 +1617,10 @@ class DefineMeshTestCase(DefinePointBasedTestCaseMixin, usdex.test.DefineFunctio
             self.assertTrue(subsets[i].GetElementTypeAttr().IsAuthored())
             self.assertEqual(subsets[i].GetElementTypeAttr().Get(), element_type)
 
-        # Check if the parent prim's subset attribute is authored.
-        propName = f"subsetFamily:{UsdShade.Tokens.materialBind}:familyType"
+        # No family name was given, so no family type is authored.
+        propName = "subsetFamily:familyType"
         prop = error_duplicate_point_mesh.GetPrim().GetProperty(propName)
-        self.assertTrue(prop.IsValid())
+        self.assertFalse(prop.IsValid())
 
         self.assertIsValidUsd(stage)
 

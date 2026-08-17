@@ -283,8 +283,8 @@ void bindMeshAlgo(module& m)
         arg("prim"),
         arg("names"),
         arg("indices"),
-        arg("elementType") = UsdGeomTokens->face,
-        arg("familyName") = UsdShadeTokens->materialBind,
+        arg("elementType"),
+        arg("familyName"),
         R"(
             Partially partitions a geometry prim into multiple, possibly overlapping, subsets.
 
@@ -292,15 +292,19 @@ void bindMeshAlgo(module& m)
             need not represent the whole geometry. Use when overlapping or partial subsets are needed.
 
             The prim must be a geometry that supports subsets (e.g. ``UsdGeom.Mesh`` from ``usdex.core.definePolyMesh``).
-            Use ``usdex.core.bindMaterial`` to bind materials to each subset.
+
+            Unlike the partition variants, elementType and familyName are both required, as there is no sensible default family for overlapping
+            subsets. Pass an empty token for subsets that belong to no family. ``UsdShade.Tokens.MaterialBind`` is not accepted, as that family
+            must be a partition or non-overlapping. Use ``usdex.core.definePartitionedSubsets`` or ``usdex.core.defineNonOverlappingSubsets``
+            to bind materials to subsets.
 
             Args:
                 mesh: The mesh prim to add the subsets to
                 names: The names of the subsets (length must equal len(indices))
                 indices: Per-subset element indices; list of index arrays. len(indices) is the number of subsets,
                     indices[i] is the index list for subset i.
-                elementType: The element type of the subsets. Valid values are ``UsdGeom.Tokens.Face``, ``UsdGeom.Tokens.Edge``, and ``UsdGeom.Tokens.Point`` (default: ``UsdGeom.Tokens.Face``)
-                familyName: The family name of the subsets (default: ``UsdShade.Tokens.MaterialBind``)
+                elementType: The element type of the subsets. Valid values are ``UsdGeom.Tokens.Face``, ``UsdGeom.Tokens.Edge``, and ``UsdGeom.Tokens.Point``
+                familyName: The family name of the subsets, or an empty token for subsets that belong to no family
 
             Returns:
                 The list of subsets created. Empty list on failure.

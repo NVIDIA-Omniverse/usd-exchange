@@ -9,7 +9,7 @@ import usd_validation_nvidia
 import usdex.core
 import usdex.rtx
 import usdex.test
-from pxr import Gf, Sdf, Tf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
+from pxr import Gf, Sdf, Sdr, Tf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 # Description of a simple plane mesh with connected UVs
 FACE_VERTEX_COUNTS = Vt.IntArray([4])
@@ -64,7 +64,20 @@ def assertLimitMetadata(
             assertMetadataValueEqual(testCase, limits[subDictKey][key], expectedValue)
 
 
+def checkMdlSdrComplianceIssue(issue):
+    """Bypass `ShaderSdrCompliance` issues raised for MDL shaders when the runtime cannot parse them
+
+    That rule resolves each shader id through `Sdr`, and the MDL parser ships with Omniverse rather than OpenUSD, so every MDL
+    shader is reported as non compliant unless the runtime under test provides one.
+    """
+    if "mdl" in Sdr.Registry().GetAllShaderNodeSourceTypes():
+        return False
+    return bool(re.match(r"sourceType 'mdl' specified on shader prim .* not found in sdrRegistry\.", issue.message))
+
+
 class MaterialAlgoTest(usdex.test.TestCase):
+
+    defaultValidationIssuePredicates = [checkMdlSdrComplianceIssue]
 
     def setUp(self):
         super().setUp()
@@ -86,7 +99,7 @@ class MaterialAlgoTest(usdex.test.TestCase):
             usd_validation_nvidia.IssuePredicates.ContainsMessage(".mdl does not exist."),
         )
 
-        return [omniMdlPredicate, checkUnresolvableDependenciesIssue]
+        return [omniMdlPredicate, checkUnresolvableDependenciesIssue, checkMdlSdrComplianceIssue]
 
     @staticmethod
     def getExpectedResolveDiagMsgs(*specs):

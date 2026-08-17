@@ -927,6 +927,18 @@ std::vector<UsdGeomSubset> usdex::core::defineUnrestrictedSubsets(
     const TfToken& familyName
 )
 {
+    // UsdShade requires the "materialBind" family to be a partition or non-overlapping, so an unrestricted family of that name is invalid
+    if (familyName == UsdShadeTokens->materialBind)
+    {
+        TF_RUNTIME_ERROR(
+            "Failed to define unrestricted subsets \"%s\": Unable to define unrestricted subsets in the \"%s\" family, which must be "
+            "partitioned or non-overlapping",
+            mesh.GetPath().GetAsString().c_str(),
+            familyName.GetText()
+        );
+        return std::vector<UsdGeomSubset>();
+    }
+
     std::string reason;
     std::vector<UsdGeomSubset> subsets = ::defineGeomSubsets(mesh, names, indices, elementType, familyName, UsdGeomTokens->unrestricted, reason);
     if (subsets.empty())
