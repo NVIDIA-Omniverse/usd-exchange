@@ -162,11 +162,15 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
 
         # generate the README
         readme_source = omni.repo.man.resolve_tokens("$root/README.md")
+        notice_source = omni.repo.man.resolve_tokens("$root/tools/pyproject/pypi-notice.md")
         readme_target = f"{stagingDir}/README.md"
         with open(readme_source, "r") as f:
             data = f.readlines()
+        with open(notice_source, "r") as f:
+            notice = f.read()
         with open(readme_target, "w") as f:
             f.writelines(data[4:7])
+            f.write(f"\n{notice}")
 
         # gather the license files
         licenses.gather(stagingDir, "release", licenses.WHEEL_NOTICES)

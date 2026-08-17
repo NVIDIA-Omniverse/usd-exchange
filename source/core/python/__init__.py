@@ -163,6 +163,33 @@ __all__ = [
 
 import os
 
+
+def __warnOnConflictingUsdDistribution():
+    """Warn when a ``usd-core`` distribution is installed alongside ``usd-exchange``.
+
+    Both distributions install the top-level ``pxr`` modules to the same paths. Python packaging has no way to declare this conflict,
+    so package managers report success & the failure is silent until the process loads two OpenUSD runtimes.
+    """
+    import importlib.metadata
+    import warnings
+
+    try:
+        conflictingVersion = importlib.metadata.version("usd-core")
+    except Exception:
+        # PackageNotFoundError is the expected result, but no metadata failure should prevent importing usdex.core
+        return
+
+    warnings.warn(
+        f"usd-core {conflictingVersion} is installed alongside usd-exchange, but provides incompatible OpenUSD modules."
+        " Repair with `pip uninstall usd-core` then `pip install --force-reinstall usd-exchange`.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
+
+# this must precede the `pxr` import below, as a mixed installation may not be importable at all
+__warnOnConflictingUsdDistribution()
+
 # we must force import any USD module which defines types used as default values in usdex.core bindings
 # in order for the expected pxr_python symbols to be registered before the usdex function loads
 __import__("pxr.Gf")
