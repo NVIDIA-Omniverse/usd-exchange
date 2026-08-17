@@ -77,9 +77,9 @@ python
 
 ```{eval-rst}
 .. important::
-  You must ensure that the OpenUSD libraries and plugins from the ``usd-exchange`` wheel are the **only** OpenUSD binaries configured in the virtual environment.
+  Ensure the OpenUSD libraries and plugins from ``usd-exchange`` are the **only** OpenUSD binaries configured in the virtual environment.
 
-  If, for example, you had previously run ``pip install usd-core`` in your venv, you will almost certainly have two copies of the OpenUSD binaries configured, and they are very likely to conflict with each other in unpredictable ways.
+  If ``usd-core`` is in your venv, you will have conflicting copies of the OpenUSD binaries configured.
 
   To repair, ``pip uninstall usd-core`` and ``pip install --force-reinstall usd-exchange``
 ```
@@ -154,9 +154,11 @@ OpenUSD Exchange: ${repo_docs_version}
 
 ```{eval-rst}
 .. important::
-  You must ensure that the OpenUSD libraries and plugins from the ``usd-exchange`` wheel are the **only** OpenUSD binaries configured in the container.
+  Ensure the OpenUSD libraries and plugins from ``usd-exchange`` are the **only** OpenUSD binaries configured in the container.
 
-  If, for example, you had previously run ``pip install usd-core`` in your container, you will almost certainly have two copies of the OpenUSD binaries configured, and they are very likely to conflict with each other in unpredictable ways.
+  If ``usd-core`` is in your container, you will have conflicting copies of the OpenUSD binaries configured.
+
+  To repair, uninstall ``usd-core`` and reinstall ``usd-exchange``
 ```
 
 ## Plugin to a DCC
