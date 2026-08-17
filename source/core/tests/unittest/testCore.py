@@ -4,7 +4,9 @@
 import importlib.metadata
 import os
 import pathlib
+import subprocess
 import sys
+import tempfile
 import unittest
 
 import usdex.core
@@ -102,3 +104,40 @@ class CoreTest(unittest.TestCase):
 
         foundLicenses = {x.name for x in licenseDir.iterdir() if x.is_file()}
         self.assertEqual(foundLicenses, set(expectedLicenses), f"Notices in {licenseDir.as_posix()} do not match what we redistribute")
+
+    @unittest.skipUnless(in_virtual_environment(), "Not running from an installed wheel; skipping project description test.")
+    def testProjectDescription(self):
+        # The `pxr` install path collision with `usd-core` cannot be declared in wheel metadata, so the project description must state it.
+        metadata = importlib.metadata.metadata("usd-exchange")
+        description = metadata.get_payload() or metadata.get("Description", "")
+        self.assertIn("usd-core", description)
+        self.assertIn("pip install --force-reinstall usd-exchange", description)
+
+
+class UsdCoreConflictTest(unittest.TestCase):
+    """Verify the import time diagnostic for a `usd-core` distribution installed alongside `usd-exchange`"""
+
+    def importUsdexCore(self, metadataDir: str = None):
+        # A fresh process is required because usdex.core is already imported here, and the check only runs at import.
+        env = os.environ.copy()
+        if metadataDir:
+            env["PYTHONPATH"] = os.pathsep.join([metadataDir, env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
+        return subprocess.run([sys.executable, "-c", "import usdex.core"], capture_output=True, text=True, env=env)
+
+    def testWarnsWhenUsdCoreIsInstalled(self):
+        with tempfile.TemporaryDirectory() as tempDir:
+            # Only the distribution metadata is synthesized, so the `pxr` modules of this environment are left intact
+            distInfo = pathlib.Path(tempDir) / "usd_core-25.5.dist-info"
+            distInfo.mkdir()
+            (distInfo / "METADATA").write_text("Metadata-Version: 2.1\nName: usd-core\nVersion: 25.5\n")
+            result = self.importUsdexCore(tempDir)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("usd-core 25.5 is installed alongside usd-exchange", result.stderr)
+        self.assertIn("pip uninstall usd-core", result.stderr)
+
+    def testSilentWithoutUsdCore(self):
+        result = self.importUsdexCore()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("usd-core", result.stderr)

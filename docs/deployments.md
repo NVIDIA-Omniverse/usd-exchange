@@ -75,6 +75,15 @@ python
 `````
 ``````
 
+```{eval-rst}
+.. important::
+  You must ensure that the OpenUSD libraries and plugins from the ``usd-exchange`` wheel are the **only** OpenUSD binaries configured in the virtual environment.
+
+  If, for example, you had previously run ``pip install usd-core`` in your venv, you will almost certainly have two copies of the OpenUSD binaries configured, and they are very likely to conflict with each other in unpredictable ways.
+
+  To repair, ``pip uninstall usd-core`` and ``pip install --force-reinstall usd-exchange``
+```
+
 ### Production Deployment
 
 For production environments, pin specific versions:
