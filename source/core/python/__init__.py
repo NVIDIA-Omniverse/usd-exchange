@@ -180,10 +180,8 @@ def __warnOnConflictingUsdDistribution():
         return
 
     warnings.warn(
-        f"usd-core {conflictingVersion} is installed alongside usd-exchange. Both provide the `pxr` python modules at the same install paths, so one"
-        " has overwritten files belonging to the other & importing from `pxr` may load two different OpenUSD runtimes into this process."
-        " To repair this environment, remove usd-core & reinstall usd-exchange to restore the shared files, e.g. `pip uninstall usd-core` then"
-        " `pip install --force-reinstall usd-exchange`.",
+        f"usd-core {conflictingVersion} is installed alongside usd-exchange, but provides incompatible OpenUSD modules."
+        " Repair with `pip uninstall usd-core` then `pip install --force-reinstall usd-exchange`.",
         RuntimeWarning,
         stacklevel=2,
     )

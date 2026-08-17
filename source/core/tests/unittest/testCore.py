@@ -133,7 +133,8 @@ class UsdCoreConflictTest(unittest.TestCase):
             result = self.importUsdexCore(tempDir)
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("usd-core 25.5 is installed alongside usd-exchange", result.stderr)
+        # assert the detected distribution & the repair advice, rather than the full wording of the warning
+        self.assertIn("usd-core 25.5", result.stderr)
         self.assertIn("pip uninstall usd-core", result.stderr)
 
     def testSilentWithoutUsdCore(self):
