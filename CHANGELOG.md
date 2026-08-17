@@ -1,4 +1,4 @@
-# 3.0.0-rc2
+# 3.0.0-rc3
 
 ## Core
 
@@ -16,6 +16,7 @@
     - Unlike the texture functions, it only affects the `mtlx` render context. Use `addPrimvarShaderToPreviewMaterial` to drive the same primvar
       into the universal render context
   - `computeEffectiveMtlxSurfaceShader` is the MaterialX counterpart to `computeEffectivePreviewSurfaceShader`
+  - The authored networks are MaterialX 1.39 compatible & each Material records its version via `MaterialXConfigAPI`
 - Added `defineGlassPreviewMaterial` for Preview Surface only glass, with color, index of refraction, roughness, and opacity
 - Added `setEffectiveAttributeValue` to author a value on a defined attribute only when it differs from the schema fallback
   - This enables sparse authoring of layers that only contain opinions differing from schema defaults
@@ -27,6 +28,8 @@
   - Use `PrimvarData::createPrimvar` to create & author a primvar from existing `PrimvarData` in one call
   - Use `createConstantPrimvar` or `setConstantPrimvar` as a shortcut for single scalar values
   - Use `PrimvarData::hasUnindexedValues` to detect values which are never referenced by the indices
+- Added an import time warning when a `usd-core` wheel is installed alongside `usd-exchange`
+  - Both provide the `pxr` modules at the same paths, so package managers report success while leaving an environment that mixes two OpenUSD builds
 
 ### Fixes
 
@@ -51,6 +54,9 @@
 - Changed `definePolyMesh` to emit a `TF_RUNTIME_ERROR` when indexed topology leaves points, normals, uvs, displayColor, or displayOpacity unused
   - This performs verification equivalent to the Validator's `UnusedMeshTopologyChecker`
   - The signature is unchanged, but call sites which previously authored these meshes will now fail & need to correct their topology
+- Changed `defineUnrestrictedSubsets` to require `elementType` and `familyName`, and to reject the `materialBind` family
+  - v2.3.0 defaulted them to `face` and `materialBind`, but that family must be a partition or non-overlapping, so the defaults authored invalid data
+  - Pass an empty token for subsets that belong to no family, or use `definePartitionedSubsets` or `defineNonOverlappingSubsets` to bind materials
 - Removed `ValidChildNameCache`, which has been deprecated since v1.1.0
   - Use `NameCache` instead
 - Deprecated `addDiffuseTextureToPreviewMaterial` in favor of `addColorTextureToPreviewMaterial`
@@ -99,6 +105,11 @@
 
 ## Test
 
+### Features
+
+- Added rules for the native UsdValidation rules that `usd-validation-nvidia` does not adapt yet, so `assertIsValidUsd` runs them
+  - Each is skipped once `usd-validation-nvidia` adapts it, so a newer release supersedes ours rather than reporting the same issue twice
+
 ### Breaking Changes
 
 - Replaced Omni Asset Validator with the `usd-validation-nvidia` package from PyPI
@@ -123,12 +134,14 @@
   - The `plugInfo.json` files are patched to account for the hashed library names produced by `auditwheel`
 - Expanded the OpenUSD plugins installed by default
   - Added `sdr`, `usdMedia`, `usdMtlx`, `usdProc`, `usdRender`, `usdSkel`, and `usdVol`, along with `usdLod` and `usdProfiles` on USD 26.08 and newer
-  - `usdMtlx` resolves the MaterialX shader definitions, whether extending, validating, or rendering them, & the MaterialX libraries ship alongside it
+  - `usdMtlx` resolves the MaterialX shader definitions & `usdex_core` links it to author OpenPBR networks, so it and the MaterialX libraries are required in every flavor
   - The plugin set is now identical for modular and monolithic flavors, only the backing libraries differ
 - Added the native OpenUSD validator plugins to the `--install-test` group
   - `usdValidation`, `usdGeomValidators`, `usdPhysicsValidators`, `usdShadeValidators`, `usdSkelValidators`, and `usdUtilsValidators` install for every
     supported flavor, while `usdLuxValidators` requires USD 26.08 or newer
   - These back the validators that `usd-validation-nvidia` adapts, so they are not installed for runtime-only deployments
+- Relaxed the wheel's `test` extra to accept `usd-validation-nvidia` minor & patch updates, pinning only the major version
+  - Users can adopt a newer validator release without waiting for a matching `usd-exchange` release
 
 ### Fixes
 
@@ -167,6 +180,7 @@
 - Updated License Notices for the dependency changes
 - Updated Agent Skills covering OpenPBR materials, sparse attribute authoring with `setEffectiveAttributeValue`,  `usd-validation-nvidia`,
   and the CMake based install & build flow
+- Added the `usd-core` incompatibility & its repair to the wheel and container sections of the Deployment Guide, and to the PyPI project description
 
 ## Dependencies
 
