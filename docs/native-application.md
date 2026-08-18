@@ -16,7 +16,7 @@ This walkthrough will use these tokens:
 - `$project_root` - the base directory where the project application is located
   - To keep things clean, it is recommended that this is completely separate from either the OpenUSD Exchange SDK or Exchange Samples repo folders
 - `$config` - the build configuration (`debug` or `release`)
-- `$platform` - the platform (`linux-x86_64` or `windows-x86_64`)
+- `$platform` - the platform (`linux-x86_64`, `linux-aarch64`, or `windows-x86_64`)
 
 ## Install the SDK
 
@@ -58,7 +58,12 @@ The copy flags matter, as the `target-deps` folders contain packman links (soft 
 
 ```{eval-rst}
 .. note::
-  The ``install_usdex`` script may be run from either the Exchange Samples or the Exchange SDK root directory. From the usd-exchange repository it works on a fresh clone. The Samples do not ship it, they consume it from the SDK package, so ``build.sh|bat --generate`` must download that package before ``repo.bat|sh install_usdex`` is available there. The version of OpenUSD Exchange that is downloaded will match the top line of the USD Exchange repository's CHANGELOG.md if no ``--version`` argument is provided.
+  Run ``install_usdex`` from either the Exchange Samples or the Exchange SDK root directory. From the SDK repository, it works on a fresh clone. The Samples repository consumes the tool from the SDK package and does not ship it. Therefore, ``build.sh|bat --generate`` must download the package before ``repo.bat|sh install_usdex`` is available. In the SDK repository, the default SDK version matches its ``CHANGELOG.md``. In the Samples repository, the default SDK version matches the package pinned in ``deps/usd-exchange-deps.packman.xml``. Use ``--version`` to override either default.
+```
+
+```{eval-rst}
+.. caution::
+  Each ``install_usdex`` call updates its staging and install directories. Use separate directories or repository clones for different OpenUSD versions. Otherwise, the new runtime conflicts with applications built against the previous runtime.
 ```
 
 This tree describes the proposed file layout for the project:
@@ -70,7 +75,9 @@ $project_root
 │   ...
 └───usdex
     ├───target-deps            <----- build dependencies
+    │   ├───materialx
     │   ├───python
+    │   ├───tbb
     │   ├───usd
     │   └───usd-exchange
     └───$platform/$config      <----- runtime dependencies
@@ -177,7 +184,7 @@ The build configurations below apply to the default flavor of OpenUSD Exchange S
 For Linux, all of the build configuration settings are described in the Makefile included here:
 
 ```makefile
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: MIT
 
 # This makefile is a simple example for an application, or converter for including, linking, and executing with
@@ -238,6 +245,7 @@ USD_LIBS = \
  -lusd_usd \
  -lusd_usdGeom \
  -lusd_usdLux \
+ -lusd_usdMtlx \
  -lusd_usdPhysics \
  -lusd_usdShade \
  -lusd_usdUI \
@@ -261,6 +269,9 @@ USDEX_LIB_DIRS = \
  -L$(DEPSDIR)/usd/$(CONFIG)/lib \
  -L$(DEPSDIR)/tbb/$(CONFIG)/lib
 
+# usdMtlx depends on MaterialX, which lives in a separate dependency directory
+MATERIALX_LIB_DIR = $(DEPSDIR)/materialx/$(CONFIG)/lib
+
 # Python specifics
 ifndef PYTHON_INCLUDE_DIR
 	PYTHON_INCLUDE_DIR = -isystem $(DEPSDIR)/python/include/$(PYTHONVER)
@@ -278,7 +289,7 @@ endif
 CXXFLAGS += $(CONFIG_DEFINES) $(ABI_DEFINES) $(IGNORED_WARNINGS)
 INCLUDES += $(USDEX_INCLUDE_DIRS) $(PYTHON_INCLUDE_DIR)
 LIBS += $(USD_LIBS) $(USDEX_LIBS) $(PYTHON_LIB)
-LDFLAGS += $(USDEX_LIB_DIRS) $(PYTHON_LIB_DIR)
+LDFLAGS += $(USDEX_LIB_DIRS) $(PYTHON_LIB_DIR) -Wl,-rpath-link,$(MATERIALX_LIB_DIR)
 
 OBJS = $(TARGETDIR)/$(PROGRAMNAME).o
 
@@ -300,6 +311,13 @@ $(TARGETDIR):
 
 clean:
 	rm -rf $(TARGETDIR)
+```
+
+Build both configurations from `$project_root`:
+
+```bash
+make
+make CONFIG=debug
 ```
 
 ### Windows
@@ -403,11 +421,12 @@ The application must be able to find the shared libraries, located in `usdex/$pl
 
             set -e
 
+            export CONFIG="${CONFIG:-release}"
             export PLATFORM="linux-$(uname -m)"
-            export RUNTIME_PATH=./usdex/${PLATFORM}/release
+            export RUNTIME_PATH=./usdex/${PLATFORM}/${CONFIG}
             export LD_LIBRARY_PATH=${RUNTIME_PATH}/lib:${LD_LIBRARY_PATH}
 
-            ./release/UsdTraverse "$@"
+            ./${CONFIG}/UsdTraverse "$@"
 
     .. tab-item:: Windows
       :sync: windows
@@ -419,9 +438,10 @@ The application must be able to find the shared libraries, located in `usdex/$pl
             @echo off
             setlocal
 
-            set RUNTIME_PATH=usdex/windows-x86_64/release
+            if not defined CONFIG set CONFIG=release
+            set RUNTIME_PATH=usdex/windows-x86_64/%CONFIG%
             set PATH=%RUNTIME_PATH%/bin;%PATH%
-            x64\release\UsdTraverse.exe %*
+            x64\%CONFIG%\UsdTraverse.exe %*
 ```
 
 ```{eval-rst}
