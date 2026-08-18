@@ -125,14 +125,14 @@ When integrating OpenUSD Exchange libraries and modules into a microservice or o
 Below is an example `Dockerfile` for a microservice that uses the [`usdex.core`](./python-usdex-core.rst) python module:
 
 ```dockerfile
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Install Python dependencies
 RUN python3 -m venv usdex-env && \
     . usdex-env/bin/activate && \
     pip install usd-exchange
 
-CMD . usdex-env/bin/activate && python3 -c 'import pxr.Usd, usdex.core; print(f"OpenUSD: {pxr.Usd.GetVersion()}\nOpenUSD Exchange: {usdex.core.version()}")'
+CMD ["usdex-env/bin/python3", "-c", "import pxr.Usd, usdex.core; print(f'OpenUSD: {pxr.Usd.GetVersion()}\\nOpenUSD Exchange: {usdex.core.version()}')"]
 ```
 
 Build and run with these commands:
@@ -143,13 +143,13 @@ docker run usdex_image
 
 Output:
 ```
-OpenUSD: (0, 25, 5)
+OpenUSD: (0, 26, 8)
 OpenUSD Exchange: ${repo_docs_version}
 ```
 
 ```{eval-rst}
 .. note::
-  The example above is a specific base image with Python 3.10, but neither of these are strict requirements. The precompiled OpenUSD Exchange SDK binaries are ``manylinux_2_35`` compatible and available for multiple python versions.
+  The example above is a specific base image with Python 3.12, but neither of these are strict requirements. The precompiled OpenUSD Exchange SDK binaries are ``manylinux_2_35`` compatible and available for multiple python versions.
 ```
 
 ```{eval-rst}
