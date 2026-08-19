@@ -3,6 +3,16 @@
 # OpenUSD Exchange SDK CMake package config. Provides imported targets `usdex::usdex_core` / `usdex::usdex_rtx`,
 # plus usdex_target_link_usd() + the usdex_usd_headers target for consumers that call OpenUSD directly. Make USD
 # discoverable via USDEX_USD_ROOT or CMAKE_PREFIX_PATH (we don't depend on pxrConfig.cmake).
+set(USDEX_PACKAGE_WITH_PYTHON @USDEX_WITH_PYTHON_INT@)
+set(USDEX_PACKAGE_PYTHON_VERSION "@USDEX_PYTHON_VERSION@")
+if(USDEX_PACKAGE_WITH_PYTHON)
+    if(USDEX_PYTHON_ROOT)
+        set(Python3_ROOT_DIR "${USDEX_PYTHON_ROOT}")
+    endif()
+    include(CMakeFindDependencyMacro)
+    find_dependency(Python3 ${USDEX_PACKAGE_PYTHON_VERSION} EXACT COMPONENTS Development)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/usd-exchange-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexCompilerConfig.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexUSD.cmake")
@@ -17,5 +27,8 @@ endif()
 # propagate the USD includes + compile settings so consumers only need to link usdex::usdex_core / usdex::usdex_rtx
 set_property(TARGET usdex::usdex_core APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
 set_property(TARGET usdex::usdex_rtx APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+if(USDEX_PACKAGE_WITH_PYTHON)
+    target_link_libraries(usdex_usd_headers INTERFACE Python3::Python)
+endif()
 
 check_required_components(usd-exchange)

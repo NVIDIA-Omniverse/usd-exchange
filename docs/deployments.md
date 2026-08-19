@@ -228,7 +228,9 @@ target_link_libraries(my_app PRIVATE usdex::usdex_core usdex::usdex_rtx)
 usdex_target_link_usd(my_app usd usdGeom sdf)
 ```
 
-Add the installed SDK to `CMAKE_PREFIX_PATH`. Applications must also provide the dependencies required by their OpenUSD distribution.
+Add the installed SDK to `CMAKE_PREFIX_PATH`. Provide the dependencies required by the OpenUSD distribution.
+
+For a Python-enabled OpenUSD distribution, set `USDEX_PYTHON_ROOT` to the matching Python development installation. The SDK package records its Python major and minor version. Its imported targets supply `Python.h` and the Python runtime library. The `usdex_target_link_usd` function also links `usd_python` for applications that use the OpenUSD APIs directly.
 
 The OpenUSD Exchange Samples provide a complete [CMake project](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/CMakeLists.txt). The [Linux](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.sh) and [Windows](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.bat) scripts show the dependency roots and configure commands.
 

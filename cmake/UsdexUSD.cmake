@@ -80,7 +80,8 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
 endif()
 
 # Link the named OpenUSD libraries into `target` (handles `usd_`-prefixed and unprefixed names). Monolithic
-# builds ignore the names and link the single usd_ms. With Python, also link the USD python bindings + runtime.
+# builds ignore the names and link the single usd_ms. A Python-enabled installed package records its matching
+# Python version. USDEX_PYTHON_ROOT lets consumers point the helper at that development runtime.
 function(usdex_target_link_usd target)
     if(NOT TARGET usdex_usd_headers)
         message(FATAL_ERROR "usdex_target_link_usd(${target}) needs OpenUSD: set -DUSDEX_USD_ROOT=<usd-install> or add it to CMAKE_PREFIX_PATH.")
@@ -126,11 +127,27 @@ function(usdex_target_link_usd target)
         endif()
     endif()
 
-    if(USDEX_WITH_PYTHON)
-        find_library(USDEX_USDLIB_python NAMES "usd_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
-        if(USDEX_USDLIB_python)
-            target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_python}")
+    # The top-level project sets USDEX_WITH_PYTHON and USDEX_PYTHON_VERSION for an SDK source build. An installed
+    # package restores this information under package-specific names. This keeps the SDK ABI requirements unchanged.
+    set(_usdex_with_python "${USDEX_WITH_PYTHON}")
+    set(_usdex_python_version "${USDEX_PYTHON_VERSION}")
+    if(DEFINED USDEX_PACKAGE_WITH_PYTHON)
+        set(_usdex_with_python "${USDEX_PACKAGE_WITH_PYTHON}")
+        set(_usdex_python_version "${USDEX_PACKAGE_PYTHON_VERSION}")
+    endif()
+
+    if(_usdex_with_python)
+        if(NOT TARGET Python3::Python)
+            if(USDEX_PYTHON_ROOT)
+                set(Python3_ROOT_DIR "${USDEX_PYTHON_ROOT}")
+            endif()
+            find_package(Python3 ${_usdex_python_version} EXACT REQUIRED COMPONENTS Development)
         endif()
-        target_link_libraries(${target} PRIVATE Python3::Python)
+
+        find_library(USDEX_USDLIB_python NAMES "usd_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
+        if(NOT USDEX_USDLIB_python)
+            message(FATAL_ERROR "Python-enabled OpenUSD library 'usd_python' was not found in ${USDEX_USD_LIB_DIR}")
+        endif()
+        target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_python}" Python3::Python)
     endif()
 endfunction()
