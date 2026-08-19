@@ -21,7 +21,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # A "flavor" with python_ver "0" is the usd-minimal build with no Python.
-set(USDEX_PYTHON_VERSION "3.10" CACHE STRING "Python version for bindings; '0' disables Python")
+set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for bindings; '0' disables Python")
 if(USDEX_PYTHON_VERSION STREQUAL "0")
     set(USDEX_WITH_PYTHON OFF)
 else()

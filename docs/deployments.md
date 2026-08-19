@@ -177,7 +177,7 @@ If it does, you will likely want to match the exact OpenUSD binaries. You _might
 
 However, the more likely outcome is that you should re-compile the OpenUSD Exchange SDK from source code, making sure to compile & link against your application's USD distribution.
 
-Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works. Point it at your USD distro via `USDEX_USD_ROOT`. Because some OpenUSD's public headers inline public TBB symbols, oneTBB must also be discoverable. Put your oneTBB on `CMAKE_PREFIX_PATH` (the SDK calls `find_package(TBB)`) or pass `USDEX_TBB_ROOT`. For the default build that includes the Python bindings, also provide pybind11 headers via `USDEX_PYBIND11_INCLUDE_DIR`. Then build:
+Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it. The SDK is a single, standard CMake project, so any recent CMake works. Point it at your USD distro via `USDEX_USD_ROOT`. Because some OpenUSD public headers inline TBB symbols, oneTBB must also be discoverable. Put oneTBB on `CMAKE_PREFIX_PATH` (the SDK calls `find_package(TBB)`) or pass `USDEX_TBB_ROOT`. Pass `USDEX_MATERIALX_ROOT` for a separate MaterialX distribution. For Python bindings, select the Python version that matches OpenUSD and make its development installation discoverable. Also provide the pybind11 headers. The following example uses explicit roots for OpenUSD, TBB, MaterialX, and pybind11. It uses `CMAKE_PREFIX_PATH` for Python:
 
 ``````{card}
 `````{tab-set}
@@ -188,7 +188,11 @@ Once you have a USD distro assembled, build the OpenUSD Exchange SDK against it.
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
 cmake -S . -B build \
+  -DCMAKE_PREFIX_PATH=/path/to/your/python \
   -DUSDEX_USD_ROOT=/path/to/your/usd \
+  -DUSDEX_TBB_ROOT=/path/to/your/tbb \
+  -DUSDEX_MATERIALX_ROOT=/path/to/your/materialx \
+  -DUSDEX_PYTHON_VERSION=3.12 \
   -DUSDEX_PYBIND11_INCLUDE_DIR=/path/to/pybind11/include
 cmake --build build --config Release
 ```
@@ -200,7 +204,11 @@ cmake --build build --config Release
 git clone https://github.com/NVIDIA-Omniverse/usd-exchange.git
 cd usd-exchange
 cmake -S . -B build ^
+  -DCMAKE_PREFIX_PATH=C:\path\to\your\python ^
   -DUSDEX_USD_ROOT=C:\path\to\your\usd ^
+  -DUSDEX_TBB_ROOT=C:\path\to\your\tbb ^
+  -DUSDEX_MATERIALX_ROOT=C:\path\to\your\materialx ^
+  -DUSDEX_PYTHON_VERSION=3.12 ^
   -DUSDEX_PYBIND11_INCLUDE_DIR=C:\path\to\pybind11\include
 cmake --build build --config Release
 ```
@@ -211,12 +219,18 @@ cmake --build build --config Release
 The build tree contains generator-specific compiler outputs. Run `cmake --install build --prefix <dir>` to assemble
 the relocatable SDK tree that your own project should consume, including `lib/`, `bin/`, `python/`, and `include/`.
 
-When you consume that installed tree via `find_package(usd-exchange)`, linking the imported targets is all a typical project needs:
+Consume the installed tree through `find_package(usd-exchange)`. Link the imported targets, then list each OpenUSD module that the application calls directly:
 
 ```cmake
 find_package(usd-exchange REQUIRED)
+add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE usdex::usdex_core usdex::usdex_rtx)
+usdex_target_link_usd(my_app usd usdGeom sdf)
 ```
+
+Add the installed SDK to `CMAKE_PREFIX_PATH`. Applications must also provide the dependencies required by their OpenUSD distribution.
+
+The OpenUSD Exchange Samples provide a complete [CMake project](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/CMakeLists.txt). The [Linux](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.sh) and [Windows](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.bat) scripts show the dependency roots and configure commands.
 
 `usdex::usdex_core` / `usdex::usdex_rtx` propagate the OpenUSD include paths and the C++ compatibility settings (language standard, ABI, and platform defines) required to compile against the SDK's public headers. Only call `usdex_target_link_usd(my_app <modules...>)` for the OpenUSD modules your own code calls directly (e.g. `usd usdGeom sdf`). The SDK's build-time hygiene (strict warnings, hidden visibility) is *not* imposed on your project.
 
