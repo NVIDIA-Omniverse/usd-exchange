@@ -81,13 +81,13 @@ For build configuration, follow [`docs/native-application.md`](../../../docs/nat
 
 Prefer CMake for new projects. The SDK package supplies a relocatable configuration file and the imported `usdex::usdex_core` and `usdex::usdex_rtx` targets. These targets supply the required include paths and build settings.
 
-Set `CMAKE_PREFIX_PATH` to the fetched package at `_build/target-deps/usd-exchange/<config>`. Do not use `_install/`. It contains the runtime files for deployment. Set `USDEX_USD_ROOT`, `USDEX_TBB_ROOT`, and `USDEX_MATERIALX_ROOT`.
+Set `CMAKE_PREFIX_PATH` to `$project_root/usdex/target-deps/usd-exchange/<config>`. Set `USDEX_USD_ROOT`, `USDEX_TBB_ROOT`, and `USDEX_MATERIALX_ROOT` to the matching packages under `$project_root/usdex/target-deps`.
 
 The imported targets do not supply the OpenUSD libraries. Use `usdex_target_link_usd(<target> <modules...>)` for each target that uses the `pxr` APIs directly. For example, use `usdex_target_link_usd(myApp arch gf sdf tf usd usdGeom usdShade)`.
 
 Pass module names without prefixes. The helper finds prefixed libraries, unprefixed libraries, or the monolithic `usd_ms` library. It also links the oneTBB library required by the OpenUSD headers. Without the helper, compilation succeeds, but the link fails.
 
-A Python-enabled SDK package records its Python version. Set `USDEX_PYTHON_ROOT` to the matching Python development installation. The imported targets then supply `Python.h` and the Python runtime. The helper also links `usd_python`.
+A Python-enabled SDK package records its Python version. Set `USDEX_PYTHON_ROOT` to `$project_root/usdex/target-deps/python`. The imported targets then supply `Python.h` and the Python runtime. The helper also links `usd_python`.
 
 The Samples repository contains working references in `CMakeLists.txt` and `build.sh`. Do not invent build flags.
 
