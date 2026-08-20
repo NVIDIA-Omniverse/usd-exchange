@@ -229,7 +229,12 @@ install(FILES cmake/UsdexUSD.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd
 # shipped so consumers inherit the shared compile settings (usdex_build_options) rather than replicating them
 install(FILES cmake/UsdexCompilerConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
 # dev/ tooling consumers use to run install_usdex (not part of the find_package contract)
-install(DIRECTORY tools/repoman tools/vscode tools/packman DESTINATION dev/tools)
+install(
+    DIRECTORY tools/repoman tools/vscode tools/packman
+    DESTINATION dev/tools
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "*.pyc" EXCLUDE
+)
 install(FILES "${CMAKE_BINARY_DIR}/config.packman.xml" DESTINATION dev/tools/packman)
 if(TARGET test_usdex_core)
     install(TARGETS test_usdex_core RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
