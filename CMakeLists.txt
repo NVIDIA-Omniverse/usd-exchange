@@ -37,14 +37,24 @@ option(USDEX_BUILD_TESTS "Build the OpenUSD Exchange SDK C++ tests (requires cxx
 # These are #included by the C++ sources (and the Windows VERSIONINFO resource). It is recommended to provide an
 # exact -DUSDEX_VERSION_STRING / -DUSDEX_BUILD_STRING (with build number + git sha) for local builds; If none is provided, it will be
 # derived from the top CHANGELOG.md heading.
+# the cache entries are declared before the fallbacks fill them, because setting an existing cache variable
+# drops the normal variable of the same name, which would discard whatever the fallback had just derived
+set(USDEX_VERSION_STRING "" CACHE STRING "OpenUSD Exchange SDK version string (e.g. 3.0.0-dev)")
+set(USDEX_BUILD_STRING "" CACHE STRING "OpenUSD Exchange SDK unique build string")
+set(USDEX_COMPANY_NAME "" CACHE STRING "Company name embedded in the Windows VERSIONINFO resource")
 if(NOT USDEX_VERSION_STRING)
     file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md" _usdex_changelog_head LIMIT_COUNT 1)
-    string(REGEX REPLACE "^#[ \t]*" "" USDEX_VERSION_STRING "${_usdex_changelog_head}")
+    string(REGEX REPLACE "^#[ \t]*" "" _usdex_changelog_version "${_usdex_changelog_head}")
+    set(USDEX_VERSION_STRING "${_usdex_changelog_version}" CACHE STRING "" FORCE)
 endif()
-set(USDEX_VERSION_STRING "${USDEX_VERSION_STRING}" CACHE STRING "OpenUSD Exchange SDK version string (e.g. 3.0.0-dev)")
-set(USDEX_BUILD_STRING "${USDEX_VERSION_STRING}" CACHE STRING "OpenUSD Exchange SDK unique build string")
-set(USDEX_COMPANY_NAME "" CACHE STRING "Company name embedded in the Windows VERSIONINFO resource")
+if(NOT USDEX_BUILD_STRING)
+    set(USDEX_BUILD_STRING "${USDEX_VERSION_STRING}" CACHE STRING "" FORCE)
+endif()
 string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _usdex_version_match "${USDEX_VERSION_STRING}")
+if(NOT _usdex_version_match)
+    # otherwise this surfaces much later, as a Windows resource compiler error about the generated version.rc
+    message(FATAL_ERROR "USDEX_VERSION_STRING '${USDEX_VERSION_STRING}' must begin with <major>.<minor>.<patch>")
+endif()
 set(USDEX_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(USDEX_VERSION_MINOR "${CMAKE_MATCH_2}")
 set(USDEX_VERSION_PATCH "${CMAKE_MATCH_3}")
