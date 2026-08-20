@@ -1,4 +1,4 @@
-# 3.0.0-rc3
+# 3.0.0-rc4
 
 ## Core
 
@@ -28,8 +28,10 @@
   - Use `PrimvarData::createPrimvar` to create & author a primvar from existing `PrimvarData` in one call
   - Use `createConstantPrimvar` or `setConstantPrimvar` as a shortcut for single scalar values
   - Use `PrimvarData::hasUnindexedValues` to detect values which are never referenced by the indices
-- Added an import time warning when a `usd-core` wheel is installed alongside `usd-exchange`
-  - Both provide the `pxr` modules at the same paths, so package managers report success while leaving an environment that mixes two OpenUSD builds
+- Added an import time warning when a second OpenUSD is installed alongside `usd-exchange`
+  - The `usd-core` and `usd-exchange` wheels both provide the `pxr` modules at the same paths, so package managers report success while leaving
+    an environment that mixes two OpenUSD builds
+  - The warning names whichever distribution supplied the duplicate modules, as that is the one to remove
 
 ### Fixes
 
