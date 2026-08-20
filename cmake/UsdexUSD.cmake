@@ -96,6 +96,20 @@ endif()
 # Find the Python development files. A macro rather than a function so the results land in the caller's scope.
 # An empty or "0" `version` accepts whatever Python is discoverable.
 macro(usdex_find_python version)
+    # a caller that selected Python before us bypasses the find_package below, so the requested version has to
+    # be enforced here: linking a different libpython than OpenUSD and the bindings were built against is an
+    # ABI conflict that otherwise surfaces as a crash on import
+    if(TARGET Python3::Python
+        AND NOT "${version}" STREQUAL ""
+        AND NOT "${version}" STREQUAL "0"
+        AND NOT "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}" STREQUAL "${version}")
+        message(FATAL_ERROR
+            "usd-exchange requires Python ${version}, but Python "
+            "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR} was already found by this project. "
+            "Configure against Python ${version}, or point USDEX_PYTHON_ROOT at it."
+        )
+    endif()
+
     if(NOT TARGET Python3::Python)
         # a macro has no scope of its own, so restore the caller's values: a later find_package(Python3) in
         # consumer code must not be steered at our Python
