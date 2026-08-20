@@ -35,7 +35,21 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
 
     file(STRINGS "${USDEX_USD_INCLUDE_DIR}/pxr/pxr.h" _pxr_ver_line REGEX "#define[ \t]+PXR_VERSION[ \t]+[0-9]+")
     string(REGEX MATCH "[0-9]+" PXR_VERSION "${_pxr_ver_line}")
-    message(STATUS "usdex: OpenUSD at ${USDEX_USD_ROOT} (PXR_VERSION=${PXR_VERSION})")
+
+    # pxr.h carries the PXR_PYTHON_SUPPORT_ENABLED `#define` in every build and only flips the `#if` around it,
+    # so unlike PXR_VERSION it cannot be read as a string.
+    include(CheckCXXSourceCompiles)
+    set(CMAKE_REQUIRED_INCLUDES "${USDEX_USD_INCLUDE_DIR}")
+    check_cxx_source_compiles("
+        #include <pxr/pxr.h>
+        #ifndef PXR_PYTHON_SUPPORT_ENABLED
+        #error OpenUSD was built without python support
+        #endif
+        int main() { return 0; }
+    " USDEX_USD_WITH_PYTHON)
+    unset(CMAKE_REQUIRED_INCLUDES)
+
+    message(STATUS "usdex: OpenUSD at ${USDEX_USD_ROOT} (PXR_VERSION=${PXR_VERSION}, python=${USDEX_USD_WITH_PYTHON})")
 
     # SYSTEM include + link search dir; rpath-link resolves USD's inter-library deps at link time
     add_library(usdex_usd_headers INTERFACE)
@@ -79,9 +93,53 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
     endif()
 endif()
 
+# Find the Python development files. A macro rather than a function so the results land in the caller's scope.
+# An empty or "0" `version` accepts whatever Python is discoverable.
+macro(usdex_find_python version)
+    if(NOT TARGET Python3::Python)
+        # a macro has no scope of its own, so restore the caller's values: a later find_package(Python3) in
+        # consumer code must not be steered at our Python
+        unset(_usdex_had_python_root)
+        unset(_usdex_had_python_strategy)
+        if(DEFINED Python3_ROOT_DIR)
+            set(_usdex_had_python_root "${Python3_ROOT_DIR}")
+        endif()
+        if(DEFINED Python3_FIND_STRATEGY)
+            set(_usdex_had_python_strategy "${Python3_FIND_STRATEGY}")
+        endif()
+
+        if(USDEX_PYTHON_ROOT)
+            set(Python3_ROOT_DIR "${USDEX_PYTHON_ROOT}")
+            # a bare root is ambiguous when a newer Python is also installed; a caller's own strategy wins
+            if(NOT DEFINED Python3_FIND_STRATEGY)
+                set(Python3_FIND_STRATEGY LOCATION)
+            endif()
+        endif()
+
+        if("${version}" STREQUAL "" OR "${version}" STREQUAL "0")
+            find_package(Python3 REQUIRED COMPONENTS Development ${ARGN})
+        else()
+            find_package(Python3 ${version} EXACT REQUIRED COMPONENTS Development ${ARGN})
+        endif()
+
+        if(DEFINED _usdex_had_python_root)
+            set(Python3_ROOT_DIR "${_usdex_had_python_root}")
+        else()
+            unset(Python3_ROOT_DIR)
+        endif()
+        if(DEFINED _usdex_had_python_strategy)
+            set(Python3_FIND_STRATEGY "${_usdex_had_python_strategy}")
+        else()
+            unset(Python3_FIND_STRATEGY)
+        endif()
+        unset(_usdex_had_python_root)
+        unset(_usdex_had_python_strategy)
+    endif()
+endmacro()
+
 # Link the named OpenUSD libraries into `target` (handles `usd_`-prefixed and unprefixed names). Monolithic
-# builds ignore the names and link the single usd_ms. A Python-enabled installed package records its matching
-# Python version. USDEX_PYTHON_ROOT lets consumers point the helper at that development runtime.
+# builds ignore the names and link the single usd_ms. A Python-enabled OpenUSD additionally requires the Python
+# development files; USDEX_PYTHON_ROOT lets consumers point the helper at that runtime.
 function(usdex_target_link_usd target)
     if(NOT TARGET usdex_usd_headers)
         message(FATAL_ERROR "usdex_target_link_usd(${target}) needs OpenUSD: set -DUSDEX_USD_ROOT=<usd-install> or add it to CMAKE_PREFIX_PATH.")
@@ -127,27 +185,27 @@ function(usdex_target_link_usd target)
         endif()
     endif()
 
-    # The top-level project sets USDEX_WITH_PYTHON and USDEX_PYTHON_VERSION for an SDK source build. An installed
-    # package restores this information under package-specific names. This keeps the SDK ABI requirements unchanged.
-    set(_usdex_with_python "${USDEX_WITH_PYTHON}")
-    set(_usdex_python_version "${USDEX_PYTHON_VERSION}")
-    if(DEFINED USDEX_PACKAGE_WITH_PYTHON)
-        set(_usdex_with_python "${USDEX_PACKAGE_WITH_PYTHON}")
-        set(_usdex_python_version "${USDEX_PACKAGE_PYTHON_VERSION}")
-    endif()
-
-    if(_usdex_with_python)
-        if(NOT TARGET Python3::Python)
-            if(USDEX_PYTHON_ROOT)
-                set(Python3_ROOT_DIR "${USDEX_PYTHON_ROOT}")
-            endif()
-            find_package(Python3 ${_usdex_python_version} EXACT REQUIRED COMPONENTS Development)
+    # a Python-enabled OpenUSD reaches Python.h from its public headers (VtValue -> TfPyObjWrapper), so consumers
+    # of those headers need the development files whether or not they build bindings
+    if(USDEX_USD_WITH_PYTHON)
+        set(_usdex_python_version "${USDEX_PYTHON_VERSION}")
+        if(DEFINED USDEX_PACKAGE_PYTHON_VERSION)
+            set(_usdex_python_version "${USDEX_PACKAGE_PYTHON_VERSION}")
         endif()
+        usdex_find_python("${_usdex_python_version}")
 
+        # monolithic builds embed the bindings in usd_ms, so there is no separate library to link there
         find_library(USDEX_USDLIB_python NAMES "usd_python" PATHS "${USDEX_USD_LIB_DIR}" NO_DEFAULT_PATH)
-        if(NOT USDEX_USDLIB_python)
-            message(FATAL_ERROR "Python-enabled OpenUSD library 'usd_python' was not found in ${USDEX_USD_LIB_DIR}")
+        if(USDEX_USDLIB_python)
+            target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_python}")
         endif()
-        target_link_libraries(${target} PRIVATE "${USDEX_USDLIB_python}" Python3::Python)
+
+        # an extension module resolves libpython from the interpreter that loads it and must not link its own
+        get_target_property(_usdex_target_type ${target} TYPE)
+        if(_usdex_target_type STREQUAL "MODULE_LIBRARY")
+            target_link_libraries(${target} PRIVATE Python3::Module)
+        else()
+            target_link_libraries(${target} PRIVATE Python3::Python)
+        endif()
     endif()
 endfunction()

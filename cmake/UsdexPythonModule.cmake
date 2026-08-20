@@ -5,6 +5,7 @@
 #   - output named `_<module>` with the interpreter SOABI tag and no `lib` prefix, e.g.
 #     `_usdex_core.cpython-310-x86_64-linux-gnu.so` / `_usdex_core.cp310-win_amd64.pyd`
 #   - links Python + USD + the usdex library; NO `-Wl,--no-undefined`; no `_DEBUG` define
+#     Python arrives as Python3::Module via Python3_add_library(MODULE); a module must not link libpython
 #   - installed to `python/usdex/<subdir>` next to its pure-python sources
 
 include_guard(GLOBAL)
@@ -21,7 +22,7 @@ function(usdex_add_python_module target)
     target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/include")
     # pybind11 is third-party: SYSTEM so its headers don't trip our -Werror
     target_include_directories(${target} SYSTEM PRIVATE "${USDEX_PYBIND11_INCLUDE_DIR}")
-    target_link_libraries(${target} PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers Python3::Python ${ARG_LINK})
+    target_link_libraries(${target} PRIVATE usdex_build_options usdex_sdk_build_options usdex_usd_headers ${ARG_LINK})
     usdex_target_link_usd(${target} ${ARG_USD_LIBS})
 
     # install the compiled module beside its pure-python sources (RUNTIME covers the Windows .pyd)

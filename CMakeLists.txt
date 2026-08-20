@@ -20,6 +20,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build configuration" FORCE)
 endif()
 
+# must precede USDEX_WITH_PYTHON_INT below, which reads USDEX_USD_WITH_PYTHON
+include(UsdexUSD)
+
+# Bindings only; whether OpenUSD itself has Python is USDEX_USD_WITH_PYTHON.
 # A "flavor" with python_ver "0" is the usd-minimal build with no Python.
 set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for bindings; '0' disables Python")
 if(USDEX_PYTHON_VERSION STREQUAL "0")
@@ -46,7 +50,8 @@ string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _usdex_version_match "${USD
 set(USDEX_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(USDEX_VERSION_MINOR "${CMAKE_MATCH_2}")
 set(USDEX_VERSION_PATCH "${CMAKE_MATCH_3}")
-if(USDEX_WITH_PYTHON)
+# withPython() reports the runtime libpython requirement, which comes from OpenUSD, not from the bindings
+if(USDEX_USD_WITH_PYTHON)
     set(USDEX_WITH_PYTHON_INT 1)
 else()
     set(USDEX_WITH_PYTHON_INT 0)
@@ -91,7 +96,7 @@ target_link_options(usdex_sdk_build_options INTERFACE
 )
 
 if(USDEX_WITH_PYTHON)
-    find_package(Python3 ${USDEX_PYTHON_VERSION} EXACT REQUIRED COMPONENTS Interpreter Development Development.Module)
+    usdex_find_python(${USDEX_PYTHON_VERSION} Interpreter)
     if(NOT USDEX_PYBIND11_INCLUDE_DIR)
         find_path(USDEX_PYBIND11_INCLUDE_DIR pybind11/pybind11.h)
     endif()
@@ -100,7 +105,6 @@ if(USDEX_WITH_PYTHON)
     endif()
 endif()
 
-include(UsdexUSD)
 include(UsdexPythonModule)
 
 # ---------------------------------------------------------------------------- usdex_core
@@ -176,6 +180,9 @@ file(WRITE "${CMAKE_BINARY_DIR}/config.packman.xml" [==[<config remotes="cloudfr
 # The internal driver installs into `_build/$platform/$config`; external consumers pick their own prefix.
 include(CMakePackageConfigHelpers)
 
+# build target names keep the usdex_ prefix so artifact filenames are unchanged
+set_target_properties(usdex_core PROPERTIES EXPORT_NAME core)
+set_target_properties(usdex_rtx PROPERTIES EXPORT_NAME rtx)
 install(TARGETS usdex_core usdex_rtx EXPORT usdex-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

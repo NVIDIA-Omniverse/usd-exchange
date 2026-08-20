@@ -126,7 +126,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         ]
         if python_ver != "0":
             # locate the target python, not a system interpreter
-            configure += [f"-DPython3_ROOT_DIR={python_root}", "-DPython3_FIND_STRATEGY=LOCATION"]
+            configure += [f"-DUSDEX_PYTHON_ROOT={python_root}"]
         if platform.startswith("windows"):
             # on windows the abi is the MSVC toolset (e.g. v143); pin it so our binaries match the toolset of the openusd packages we link
             # the generator is explicit as only the VS generators accept a toolset & cmake defaults to NMake Makefiles when it cannot find VS

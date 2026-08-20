@@ -79,15 +79,15 @@ The output goes to `_install/`. Deep copy it into the project's `usdex/` folder 
 
 For build configuration, follow [`docs/native-application.md`](../../../docs/native-application.md). It covers include paths, libraries, preprocessor definitions, and runtime paths for Makefiles and Visual Studio projects.
 
-Prefer CMake for new projects. The SDK package supplies a relocatable configuration file and the imported `usdex::usdex_core` and `usdex::usdex_rtx` targets. These targets supply the required include paths and build settings.
+Prefer CMake for new projects. The SDK package supplies a relocatable configuration file, so `find_package(usd-exchange REQUIRED)` provides the imported `usdex::core` and `usdex::rtx` targets. These targets supply the required include paths and build settings.
 
-Set `CMAKE_PREFIX_PATH` to `$project_root/usdex/target-deps/usd-exchange/<config>`. Set `USDEX_USD_ROOT`, `USDEX_TBB_ROOT`, and `USDEX_MATERIALX_ROOT` to the matching packages under `$project_root/usdex/target-deps`.
+Set `CMAKE_PREFIX_PATH` to `$project_root/usdex/target-deps/usd-exchange/<config>`, where `<config>` is `release` or `debug`. Set `USDEX_USD_ROOT`, `USDEX_TBB_ROOT`, and `USDEX_MATERIALX_ROOT` to the matching packages under `$project_root/usdex/target-deps`. Those three take the same `<config>` suffix, while `python` does not.
 
 The imported targets do not supply the OpenUSD libraries. Use `usdex_target_link_usd(<target> <modules...>)` for each target that uses the `pxr` APIs directly. For example, use `usdex_target_link_usd(myApp arch gf sdf tf usd usdGeom usdShade)`.
 
 Pass module names without prefixes. The helper finds prefixed libraries, unprefixed libraries, or the monolithic `usd_ms` library. It also links the oneTBB library required by the OpenUSD headers. Without the helper, compilation succeeds, but the link fails.
 
-A Python-enabled SDK package records its Python version. Set `USDEX_PYTHON_ROOT` to `$project_root/usdex/target-deps/python`. The imported targets then supply `Python.h` and the Python runtime. The helper also links `usd_python`.
+A Python-enabled OpenUSD reaches `Python.h` from its own public headers, so the imported targets supply it and the helper links `usd_python`. Set `USDEX_PYTHON_ROOT` to `$project_root/usdex/target-deps/python` when that Python is not already discoverable, or to override which one is used.
 
 The Samples repository contains working references in `CMakeLists.txt` and `build.sh`. Do not invent build flags.
 

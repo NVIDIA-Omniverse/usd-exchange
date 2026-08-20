@@ -176,7 +176,7 @@
 - Re-wrote Native Application Development around CMake and `find_package(usd-exchange)`
 - Updated Try the Samples for the CMake based `build.sh` & `build.bat` scripts, which assemble the runtime via `install_usdex`
 - Re-wrote the source build section of the Deployment Guide around CMake, covering the `USDEX_*` configure options, the install step, the
-  `usdex::usdex_core` & `usdex::usdex_rtx` imported targets, and how oneTBB is discovered
+  `usdex::core` & `usdex::rtx` imported targets, and how oneTBB is discovered
 - Updated License Notices for the dependency changes
 - Updated Agent Skills covering OpenPBR materials, sparse attribute authoring with `setEffectiveAttributeValue`,  `usd-validation-nvidia`,
   and the CMake based install & build flow
