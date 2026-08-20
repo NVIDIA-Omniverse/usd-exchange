@@ -5,19 +5,18 @@
 # calls require configs the package does not bundle and Imath has no skip toggle).
 # Instead we add `<usd_root>/include` as a SYSTEM include and link the individual USD libraries by full path out of `<usd_root>/lib`.
 #
-# Reusable by external consumers via find_package(usd-exchange). Inputs: USDEX_USD_ROOT or a CMAKE_PREFIX_PATH
-# entry with include/pxr/pxr.h. When USD is located it provides the `usdex_usd_headers` target, PXR_VERSION, and
+# Reusable by external consumers via find_package(usd-exchange). Inputs: USDEX_USD_ROOT, or any prefix CMake
+# searches (CMAKE_PREFIX_PATH as a variable or an environment variable, CMAKE_INCLUDE_PATH, the system paths)
+# containing include/pxr/pxr.h. When USD is located it provides the `usdex_usd_headers` target, PXR_VERSION, and
 # `usdex_target_link_usd()`; absent USD is not an error (usdex links USD privately) until that function is called.
 
 include_guard(GLOBAL)
 
 if(NOT USDEX_USD_ROOT)
-    foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
-        if(EXISTS "${_prefix}/include/pxr/pxr.h")
-            set(USDEX_USD_ROOT "${_prefix}")
-            break()
-        endif()
-    endforeach()
+    find_path(USDEX_USD_PXR_HEADER_DIR "pxr/pxr.h")
+    if(USDEX_USD_PXR_HEADER_DIR)
+        get_filename_component(USDEX_USD_ROOT "${USDEX_USD_PXR_HEADER_DIR}" DIRECTORY)
+    endif()
 endif()
 # set up USD only when located; absent USD is not an error (see header)
 if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
