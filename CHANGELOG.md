@@ -1,4 +1,4 @@
-# 3.0.0-rc3
+# 3.0.0-rc4
 
 ## Core
 
@@ -28,8 +28,10 @@
   - Use `PrimvarData::createPrimvar` to create & author a primvar from existing `PrimvarData` in one call
   - Use `createConstantPrimvar` or `setConstantPrimvar` as a shortcut for single scalar values
   - Use `PrimvarData::hasUnindexedValues` to detect values which are never referenced by the indices
-- Added an import time warning when a `usd-core` wheel is installed alongside `usd-exchange`
-  - Both provide the `pxr` modules at the same paths, so package managers report success while leaving an environment that mixes two OpenUSD builds
+- Added an import time warning when a second OpenUSD is installed alongside `usd-exchange`
+  - The `usd-core` and `usd-exchange` wheels both provide the `pxr` modules at the same paths, so package managers report success while leaving
+    an environment that mixes two OpenUSD builds
+  - The warning names whichever distribution supplied the duplicate modules, as that is the one to remove
 
 ### Fixes
 
@@ -176,7 +178,7 @@
 - Re-wrote Native Application Development around CMake and `find_package(usd-exchange)`
 - Updated Try the Samples for the CMake based `build.sh` & `build.bat` scripts, which assemble the runtime via `install_usdex`
 - Re-wrote the source build section of the Deployment Guide around CMake, covering the `USDEX_*` configure options, the install step, the
-  `usdex::usdex_core` & `usdex::usdex_rtx` imported targets, and how oneTBB is discovered
+  `usdex::core` & `usdex::rtx` imported targets, and how oneTBB is discovered
 - Updated License Notices for the dependency changes
 - Updated Agent Skills covering OpenPBR materials, sparse attribute authoring with `setEffectiveAttributeValue`,  `usd-validation-nvidia`,
   and the CMake based install & build flow

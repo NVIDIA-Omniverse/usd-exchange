@@ -20,13 +20,18 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build configuration" FORCE)
 endif()
 
-# A "flavor" with python_ver "0" is the usd-minimal build with no Python.
-set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for bindings; '0' disables Python")
-if(USDEX_PYTHON_VERSION STREQUAL "0")
-    set(USDEX_WITH_PYTHON OFF)
-else()
-    set(USDEX_WITH_PYTHON ON)
-endif()
+# must precede USDEX_WITH_PYTHON_INT below, which reads USDEX_USD_WITH_PYTHON
+include(UsdexUSD)
+
+# Whether OpenUSD itself has Python is the separate USDEX_USD_WITH_PYTHON: a Python-enabled OpenUSD still
+# requires the Python development files here even with the bindings off.
+option(USDEX_BUILD_PYTHON_BINDINGS "Build the OpenUSD Exchange SDK Python bindings" ON)
+# Pins the ABI for the bindings. With the bindings off the version is unconstrained, because only the
+# OpenUSD distribution knows which Python it was built against.
+set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for the bindings")
+# Relative to the install prefix, or absolute. Left empty here & defaulted to the interpreter's site-packages
+# once one is found, so that installing into a prefix makes the modules importable from it.
+set(USDEX_INSTALL_PYTHONDIR "" CACHE STRING "Install location for the usdex Python modules")
 
 # OFF by default so a build doesn't require the test-only cxxopts + doctest headers.
 option(USDEX_BUILD_TESTS "Build the OpenUSD Exchange SDK C++ tests (requires cxxopts + doctest)" OFF)
@@ -35,18 +40,29 @@ option(USDEX_BUILD_TESTS "Build the OpenUSD Exchange SDK C++ tests (requires cxx
 # These are #included by the C++ sources (and the Windows VERSIONINFO resource). It is recommended to provide an
 # exact -DUSDEX_VERSION_STRING / -DUSDEX_BUILD_STRING (with build number + git sha) for local builds; If none is provided, it will be
 # derived from the top CHANGELOG.md heading.
+# the cache entries are declared before the fallbacks fill them, because setting an existing cache variable
+# drops the normal variable of the same name, which would discard whatever the fallback had just derived
+set(USDEX_VERSION_STRING "" CACHE STRING "OpenUSD Exchange SDK version string (e.g. 3.0.0-dev)")
+set(USDEX_BUILD_STRING "" CACHE STRING "OpenUSD Exchange SDK unique build string")
+set(USDEX_COMPANY_NAME "" CACHE STRING "Company name embedded in the Windows VERSIONINFO resource")
 if(NOT USDEX_VERSION_STRING)
     file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md" _usdex_changelog_head LIMIT_COUNT 1)
-    string(REGEX REPLACE "^#[ \t]*" "" USDEX_VERSION_STRING "${_usdex_changelog_head}")
+    string(REGEX REPLACE "^#[ \t]*" "" _usdex_changelog_version "${_usdex_changelog_head}")
+    set(USDEX_VERSION_STRING "${_usdex_changelog_version}" CACHE STRING "" FORCE)
 endif()
-set(USDEX_VERSION_STRING "${USDEX_VERSION_STRING}" CACHE STRING "OpenUSD Exchange SDK version string (e.g. 3.0.0-dev)")
-set(USDEX_BUILD_STRING "${USDEX_VERSION_STRING}" CACHE STRING "OpenUSD Exchange SDK unique build string")
-set(USDEX_COMPANY_NAME "" CACHE STRING "Company name embedded in the Windows VERSIONINFO resource")
+if(NOT USDEX_BUILD_STRING)
+    set(USDEX_BUILD_STRING "${USDEX_VERSION_STRING}" CACHE STRING "" FORCE)
+endif()
 string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _usdex_version_match "${USDEX_VERSION_STRING}")
+if(NOT _usdex_version_match)
+    # otherwise this surfaces much later, as a Windows resource compiler error about the generated version.rc
+    message(FATAL_ERROR "USDEX_VERSION_STRING '${USDEX_VERSION_STRING}' must begin with <major>.<minor>.<patch>")
+endif()
 set(USDEX_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(USDEX_VERSION_MINOR "${CMAKE_MATCH_2}")
 set(USDEX_VERSION_PATCH "${CMAKE_MATCH_3}")
-if(USDEX_WITH_PYTHON)
+# withPython() reports the runtime libpython requirement, which comes from OpenUSD, not from the bindings
+if(USDEX_USD_WITH_PYTHON)
     set(USDEX_WITH_PYTHON_INT 1)
 else()
     set(USDEX_WITH_PYTHON_INT 0)
@@ -90,17 +106,28 @@ target_link_options(usdex_sdk_build_options INTERFACE
     "$<${_msvc}:/guard:cf>"
 )
 
-if(USDEX_WITH_PYTHON)
-    find_package(Python3 ${USDEX_PYTHON_VERSION} EXACT REQUIRED COMPONENTS Interpreter Development Development.Module)
+if(USDEX_BUILD_PYTHON_BINDINGS)
+    usdex_find_python(${USDEX_PYTHON_VERSION} Interpreter)
     if(NOT USDEX_PYBIND11_INCLUDE_DIR)
         find_path(USDEX_PYBIND11_INCLUDE_DIR pybind11/pybind11.h)
     endif()
     if(NOT USDEX_PYBIND11_INCLUDE_DIR)
-        message(FATAL_ERROR "pybind11 headers not found. Set -DUSDEX_PYBIND11_INCLUDE_DIR=<dir> or add pybind11 to CMAKE_PREFIX_PATH (or configure without Python bindings via -DUSDEX_PYTHON_VERSION=0).")
+        message(FATAL_ERROR "pybind11 headers not found. Set -DUSDEX_PYBIND11_INCLUDE_DIR=<dir> or add pybind11 to CMAKE_PREFIX_PATH (or configure without Python bindings via -DUSDEX_BUILD_PYTHON_BINDINGS=OFF).")
     endif()
+    if(NOT USDEX_INSTALL_PYTHONDIR)
+        # site-packages as the interpreter lays it out, but under our own prefix rather than the interpreter's
+        if(WIN32)
+            set(_usdex_pythondir "Lib/site-packages")
+        else()
+            set(_usdex_pythondir "lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
+        endif()
+        set(USDEX_INSTALL_PYTHONDIR "${_usdex_pythondir}" CACHE STRING "" FORCE)
+    endif()
+elseif(USDEX_USD_WITH_PYTHON)
+    # found here rather than on demand in usdex_target_link_usd() so the version lands in this scope for the package config
+    usdex_find_python("")
 endif()
 
-include(UsdexUSD)
 include(UsdexPythonModule)
 
 # ---------------------------------------------------------------------------- usdex_core
@@ -124,7 +151,7 @@ if(WIN32)
 endif()
 
 # ---------------------------------------------------------------------------- python bindings
-if(USDEX_WITH_PYTHON)
+if(USDEX_BUILD_PYTHON_BINDINGS)
     file(GLOB USDEX_CORE_BINDINGS CONFIGURE_DEPENDS source/core/python/bindings/*.cpp)
     file(GLOB USDEX_CORE_PY CONFIGURE_DEPENDS source/core/python/*.py)
     usdex_add_python_module(usdex_core_python
@@ -145,7 +172,7 @@ if(USDEX_WITH_PYTHON)
 
     # pure-python usdex.test module (no compiled component)
     file(GLOB USDEX_TEST_PY CONFIGURE_DEPENDS source/test/python/*.py)
-    install(FILES ${USDEX_TEST_PY} DESTINATION python/usdex/test)
+    install(FILES ${USDEX_TEST_PY} DESTINATION ${USDEX_INSTALL_PYTHONDIR}/usdex/test)
 endif()
 
 # ---------------------------------------------------------------------------- test_usdex_core (doctest)
@@ -176,6 +203,9 @@ file(WRITE "${CMAKE_BINARY_DIR}/config.packman.xml" [==[<config remotes="cloudfr
 # The internal driver installs into `_build/$platform/$config`; external consumers pick their own prefix.
 include(CMakePackageConfigHelpers)
 
+# build target names keep the usdex_ prefix so artifact filenames are unchanged
+set_target_properties(usdex_core PROPERTIES EXPORT_NAME core)
+set_target_properties(usdex_rtx PROPERTIES EXPORT_NAME rtx)
 install(TARGETS usdex_core usdex_rtx EXPORT usdex-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -184,6 +214,11 @@ install(TARGETS usdex_core usdex_rtx EXPORT usdex-targets
 install(DIRECTORY include/usdex DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT usdex-targets NAMESPACE usdex:: FILE usd-exchange-targets.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
+# the ABI consumers must match is the Python that was linked, not the one the bindings asked for
+set(USDEX_PACKAGE_PYTHON_VERSION "")
+if(USDEX_USD_WITH_PYTHON)
+    set(USDEX_PACKAGE_PYTHON_VERSION "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+endif()
 configure_package_config_file(cmake/usd-exchange-config.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/usd-exchange-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
@@ -194,7 +229,12 @@ install(FILES cmake/UsdexUSD.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd
 # shipped so consumers inherit the shared compile settings (usdex_build_options) rather than replicating them
 install(FILES cmake/UsdexCompilerConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
 # dev/ tooling consumers use to run install_usdex (not part of the find_package contract)
-install(DIRECTORY tools/repoman tools/vscode tools/packman DESTINATION dev/tools)
+install(
+    DIRECTORY tools/repoman tools/vscode tools/packman
+    DESTINATION dev/tools
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "*.pyc" EXCLUDE
+)
 install(FILES "${CMAKE_BINARY_DIR}/config.packman.xml" DESTINATION dev/tools/packman)
 if(TARGET test_usdex_core)
     install(TARGETS test_usdex_core RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

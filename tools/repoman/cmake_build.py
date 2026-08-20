@@ -112,10 +112,10 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             build_dir,
             f"-DCMAKE_BUILD_TYPE={cmake_config}",
             "-DCMAKE_INSTALL_LIBDIR=lib",  # our package layout uses lib/, not lib64
+            "-DUSDEX_INSTALL_PYTHONDIR=python",  # likewise python/, which repo.toml packages and install_usdex expects
             f"-DUSDEX_USD_ROOT={usd_root}",
             f"-DUSDEX_TBB_ROOT={target_deps}/tbb/{repo_config}",
             f"-DUSDEX_MATERIALX_ROOT={target_deps}/materialx/{repo_config}",
-            f"-DUSDEX_PYTHON_VERSION={python_ver}",
             f"-DUSDEX_VERSION_STRING={version_string}",
             f"-DUSDEX_BUILD_STRING={build_string}",
             "-DUSDEX_COMPANY_NAME=NVIDIA",  # this is an official NVIDIA build; external builds leave CompanyName empty
@@ -124,9 +124,12 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             f"-DUSDEX_CXXOPTS_INCLUDE_DIR={target_deps}/cxxopts/include",
             f"-DUSDEX_DOCTEST_INCLUDE_DIR={target_deps}/doctest/include",
         ]
-        if python_ver != "0":
+        # the "0" flavor is usd-minimal, whose OpenUSD has no Python either
+        if python_ver == "0":
+            configure += ["-DUSDEX_BUILD_PYTHON_BINDINGS=OFF"]
+        else:
             # locate the target python, not a system interpreter
-            configure += [f"-DPython3_ROOT_DIR={python_root}", "-DPython3_FIND_STRATEGY=LOCATION"]
+            configure += [f"-DUSDEX_PYTHON_VERSION={python_ver}", f"-DUSDEX_PYTHON_ROOT={python_root}"]
         if platform.startswith("windows"):
             # on windows the abi is the MSVC toolset (e.g. v143); pin it so our binaries match the toolset of the openusd packages we link
             # the generator is explicit as only the VS generators accept a toolset & cmake defaults to NMake Makefiles when it cannot find VS

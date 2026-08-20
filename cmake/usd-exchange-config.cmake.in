@@ -1,8 +1,13 @@
 @PACKAGE_INIT@
 
-# OpenUSD Exchange SDK CMake package config. Provides imported targets `usdex::usdex_core` / `usdex::usdex_rtx`,
+# OpenUSD Exchange SDK CMake package config. Provides imported targets `usdex::core` / `usdex::rtx`,
 # plus usdex_target_link_usd() + the usdex_usd_headers target for consumers that call OpenUSD directly. Make USD
 # discoverable via USDEX_USD_ROOT or CMAKE_PREFIX_PATH (we don't depend on pxrConfig.cmake).
+
+# what this package was built against, for consumers to inspect
+set(USDEX_PACKAGE_WITH_PYTHON @USDEX_WITH_PYTHON_INT@)
+set(USDEX_PACKAGE_PYTHON_VERSION "@USDEX_PACKAGE_PYTHON_VERSION@")
+
 include("${CMAKE_CURRENT_LIST_DIR}/usd-exchange-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexCompilerConfig.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexUSD.cmake")
@@ -14,8 +19,19 @@ if(NOT TARGET usdex_usd_headers)
     return()
 endif()
 
-# propagate the USD includes + compile settings so consumers only need to link usdex::usdex_core / usdex::usdex_rtx
-set_property(TARGET usdex::usdex_core APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
-set_property(TARGET usdex::usdex_rtx APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+# a Python-enabled OpenUSD reaches Python.h from its public headers, so consumers need the development files
+# even when this package ships no bindings
+if(USDEX_USD_WITH_PYTHON)
+    usdex_find_python("${USDEX_PACKAGE_PYTHON_VERSION}")
+endif()
+
+# propagate the USD includes + compile settings so consumers only need to link usdex::core / usdex::rtx
+set_property(TARGET usdex::core APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+set_property(TARGET usdex::rtx APPEND PROPERTY INTERFACE_LINK_LIBRARIES usdex_usd_headers usdex_build_options)
+# Python3::Module carries the include directory without libpython; usdex_target_link_usd() adds Python3::Python
+# for targets that embed the interpreter
+if(USDEX_USD_WITH_PYTHON)
+    target_link_libraries(usdex_usd_headers INTERFACE Python3::Module)
+endif()
 
 check_required_components(usd-exchange)

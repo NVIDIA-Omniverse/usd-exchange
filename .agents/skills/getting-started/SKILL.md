@@ -77,9 +77,21 @@ The output goes to `_install/`. Deep copy it into the project's `usdex/` folder 
 - Linux: `cp -LrT _install "$project_root/usdex"` (`-L` dereferences the links, `-T` keeps a re-run from nesting `usdex/_install`)
 - Windows: `robocopy /E "_install" "$project_root\usdex" > NUL` (`/E` includes empty directories; robocopy follows links unless `/SL` or `/SJ` is given)
 
-For build configuration, follow [`docs/native-application.md`](../../../docs/native-application.md) — it covers include paths, libraries, preprocessor defines, and runtime path setup for both a Makefile and a Visual Studio project. Prefer CMake for a new project: the SDK package ships a relocatable config, so `find_package(usd-exchange REQUIRED)` plus the imported `usdex::usdex_core` / `usdex::usdex_rtx` targets carry those settings for you. Point `CMAKE_PREFIX_PATH` at the fetched package (`_build/target-deps/usd-exchange/<config>`, not `_install/`, which is the runtime tree you deploy) and set `USDEX_USD_ROOT` plus its sibling `USDEX_TBB_ROOT` / `USDEX_MATERIALX_ROOT`.
+For build configuration, follow [`docs/native-application.md`](../../../docs/native-application.md). It covers include paths, libraries, preprocessor definitions, and runtime paths for Makefiles and Visual Studio projects.
 
-Those imported targets supply the OpenUSD include paths and compile settings, but not the OpenUSD libraries. Any target that calls `pxr` directly must also link them through the helper the same config provides — `usdex_target_link_usd(<target> <modules...>)`, e.g. `usdex_target_link_usd(myApp arch gf sdf tf usd usdGeom usdShade)`. Pass bare module names; the helper resolves each against the installed flavor, covering the `usd_`-prefixed library names, the monolithic `usd_ms` case of `usd-minimal`, and the oneTBB that OpenUSD's headers pull in. Skipping it compiles cleanly and fails at link. It links the USD Python bindings and interpreter only when `USDEX_WITH_PYTHON` is set — otherwise link `usd_python` and the Python runtime yourself, as the Samples do. The Samples repo's `CMakeLists.txt` and `build.sh` are the working reference. Do not invent build flags.
+Prefer CMake for new projects. The SDK package supplies a relocatable configuration file, so `find_package(usd-exchange REQUIRED)` provides the imported `usdex::core` and `usdex::rtx` targets. These targets supply the required include paths and build settings.
+
+Set `CMAKE_PREFIX_PATH` to `$project_root/usdex/target-deps/usd-exchange/<config>`, where `<config>` is `release` or `debug`. Set `USDEX_USD_ROOT`, `USDEX_TBB_ROOT`, and `USDEX_MATERIALX_ROOT` to the matching packages under `$project_root/usdex/target-deps`. Those three take the same `<config>` suffix, while `python` does not.
+
+The imported targets do not supply the OpenUSD libraries. Use `usdex_target_link_usd(<target> <modules...>)` for each target that uses the `pxr` APIs directly. For example, use `usdex_target_link_usd(myApp arch gf sdf tf usd usdGeom usdShade)`.
+
+Pass module names without prefixes. The helper finds prefixed libraries, unprefixed libraries, or the monolithic `usd_ms` library. It also links the oneTBB library required by the OpenUSD headers. Without the helper, compilation succeeds, but the link fails.
+
+A Python-enabled OpenUSD reaches `Python.h` from its own public headers, so the imported targets supply it and the helper links `usd_python`. Set `USDEX_PYTHON_ROOT` to `$project_root/usdex/target-deps/python` when that Python is not already discoverable, or to override which one is used.
+
+The Python that `install_usdex` installs is independent of any wheel venv. It defaults to 3.12 and changes only with `--python-version`. Use that same major.minor both to configure CMake and to run any Python module built against it, not whatever `python --version` reports from the host or an activated venv. A host 3.11 on `PATH` beside a 3.12 `target-deps/python` is a common mismatch, and the module it produces cannot be imported.
+
+The Samples repository contains working references in `CMakeLists.txt` and `build.sh`. Do not invent build flags.
 
 ## Smoke test
 

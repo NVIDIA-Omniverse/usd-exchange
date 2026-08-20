@@ -115,7 +115,7 @@ class CoreTest(unittest.TestCase):
 
 
 class UsdCoreConflictTest(unittest.TestCase):
-    """Verify the import time diagnostic for a `usd-core` distribution installed alongside `usd-exchange`"""
+    """Verify the import time diagnostic for a second OpenUSD installed alongside `usd-exchange`"""
 
     def importUsdexCore(self, metadataDir: str = None):
         # A fresh process is required because usdex.core is already imported here, and the check only runs at import.
@@ -124,18 +124,52 @@ class UsdCoreConflictTest(unittest.TestCase):
             env["PYTHONPATH"] = os.pathsep.join([metadataDir, env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
         return subprocess.run([sys.executable, "-c", "import usdex.core"], capture_output=True, text=True, env=env)
 
-    def testWarnsWhenUsdCoreIsInstalled(self):
+    def writeDistInfo(self, metadataDir: str, name: str, installedUsdModules: bool):
+        # Only the distribution metadata is synthesized, so the `pxr` modules of this environment are left intact.
+        # It precedes the real metadata on PYTHONPATH, so these tests describe the environment rather than observing it.
+        distInfo = pathlib.Path(metadataDir) / f"{name.replace('-', '_')}-25.5.dist-info"
+        distInfo.mkdir()
+        (distInfo / "METADATA").write_text(f"Metadata-Version: 2.1\nName: {name}\nVersion: 25.5\n")
+        if installedUsdModules:
+            # a wheel's RECORD lists what it installed; the hash & size columns are unused here
+            (distInfo / "RECORD").write_text("pxr/__init__.py,,\npxr/Usd/__init__.py,,\n")
+
+    def testWarnsWhenBothWheelsInstallUsd(self):
         with tempfile.TemporaryDirectory() as tempDir:
-            # Only the distribution metadata is synthesized, so the `pxr` modules of this environment are left intact
-            distInfo = pathlib.Path(tempDir) / "usd_core-25.5.dist-info"
-            distInfo.mkdir()
-            (distInfo / "METADATA").write_text("Metadata-Version: 2.1\nName: usd-core\nVersion: 25.5\n")
+            self.writeDistInfo(tempDir, "usd-core", installedUsdModules=True)
+            self.writeDistInfo(tempDir, "usd-exchange", installedUsdModules=True)
             result = self.importUsdexCore(tempDir)
 
         self.assertEqual(result.returncode, 0, result.stderr)
         # assert the detected distribution & the repair advice, rather than the full wording of the warning
         self.assertIn("usd-core 25.5", result.stderr)
         self.assertIn("pip uninstall usd-core", result.stderr)
+        # usd-exchange is what the environment should keep, so it must not be the one named for removal
+        self.assertNotIn("pip uninstall usd-exchange", result.stderr)
+
+    def testWarnsWhenTheWheelIsInstalledOverAnExistingOpenUsd(self):
+        # a package manager that supplies `pxr` reserves the `usd-core` name without installing it (conda's `openusd`
+        # does this), so the wheel that brought its own modules is what has to be removed
+        with tempfile.TemporaryDirectory() as tempDir:
+            self.writeDistInfo(tempDir, "usd-core", installedUsdModules=False)
+            self.writeDistInfo(tempDir, "usd-exchange", installedUsdModules=True)
+            result = self.importUsdexCore(tempDir)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("usd-core 25.5", result.stderr)
+        self.assertIn("pip uninstall usd-exchange", result.stderr)
+        # uninstalling the reservation would remove no modules & leave the conflict in place
+        self.assertNotIn("pip uninstall usd-core", result.stderr)
+
+    def testSilentWhenNeitherDistributionInstalledUsd(self):
+        # `pxr` comes from another package manager & this `usd-exchange` links it rather than bundling one
+        with tempfile.TemporaryDirectory() as tempDir:
+            self.writeDistInfo(tempDir, "usd-core", installedUsdModules=False)
+            self.writeDistInfo(tempDir, "usd-exchange", installedUsdModules=False)
+            result = self.importUsdexCore(tempDir)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("usd-core", result.stderr)
 
     def testSilentWithoutUsdCore(self):
         result = self.importUsdexCore()
