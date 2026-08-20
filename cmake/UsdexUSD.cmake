@@ -106,7 +106,8 @@ macro(usdex_find_python version)
         message(FATAL_ERROR
             "usd-exchange requires Python ${version}, but Python "
             "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR} was already found by this project. "
-            "Configure against Python ${version}, or point USDEX_PYTHON_ROOT at it."
+            "Select Python ${version} before configuring usd-exchange; USDEX_PYTHON_ROOT cannot "
+            "change a Python that is already found."
         )
     endif()
 
