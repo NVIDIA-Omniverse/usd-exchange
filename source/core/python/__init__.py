@@ -165,15 +165,15 @@ import os
 
 
 def __warnOnConflictingUsdDistribution():
-    """Warn when a ``usd-core`` distribution supplies a second OpenUSD alongside ``usd-exchange``.
+    """Warn when a second OpenUSD is installed alongside ``usd-exchange``.
 
     The ``usd-core`` and ``usd-exchange`` wheels both install the top-level ``pxr`` modules to the same paths. Python packaging has no
     way to declare this conflict, so package managers report success & the failure is silent until the process loads two OpenUSD runtimes.
 
-    Conda arranges this differently: its ``openusd`` package reserves the ``usd-core`` name with metadata that installs no files, so that
-    a later ``pip install`` cannot overwrite the ``pxr`` modules it supplies, & its ``usd-exchange`` links that OpenUSD rather than
-    bundling one. Two runtimes are therefore only present when one of the two distributions installed ``pxr`` itself, which also catches
-    a ``usd-exchange`` wheel dropped into a conda environment.
+    A package manager other than pip may supply ``pxr`` itself & register ``usd-core`` metadata that installs no files, reserving the name
+    so a later ``pip install`` cannot overwrite those modules, & ship a ``usd-exchange`` that links them rather than bundling its own. The
+    presence of ``usd-core`` therefore proves nothing on its own: a second runtime exists only when one of the two distributions installed
+    ``pxr``, & which one did determines what has to be removed to repair it.
     """
     import importlib.metadata
     import warnings
@@ -181,7 +181,7 @@ def __warnOnConflictingUsdDistribution():
     def installedUsdModules(distributionName):
         try:
             # the RECORD manifest is read directly rather than via `Distribution.files`, which filters to paths that exist on disk;
-            # what matters is which modules the distribution installed, & conda's name reservations install none
+            # what matters is which modules the distribution installed, & a name reservation installs none
             record = importlib.metadata.distribution(distributionName).read_text("RECORD") or ""
         except Exception:
             # PackageNotFoundError is expected when running from a build tree, but no metadata failure should prevent importing usdex.core
@@ -194,15 +194,22 @@ def __warnOnConflictingUsdDistribution():
         # PackageNotFoundError is the expected result, but no metadata failure should prevent importing usdex.core
         return
 
-    if not installedUsdModules("usd-core") and not installedUsdModules("usd-exchange"):
+    if installedUsdModules("usd-core"):
+        message = (
+            f"usd-core {conflictingVersion} is installed alongside usd-exchange, but provides incompatible OpenUSD modules."
+            " Repair with `pip uninstall usd-core` then `pip install --force-reinstall usd-exchange`."
+        )
+    elif installedUsdModules("usd-exchange"):
+        # usd-core installed no modules, so another package manager supplies the OpenUSD this wheel has overwritten
+        message = (
+            "The usd-exchange wheel installed OpenUSD modules over the ones this environment already provides as usd-core"
+            f" {conflictingVersion}. Repair with `pip uninstall usd-exchange` then install usd-exchange from the package manager"
+            " that provides OpenUSD in this environment."
+        )
+    else:
         return
 
-    warnings.warn(
-        f"usd-core {conflictingVersion} is installed alongside usd-exchange, but provides incompatible OpenUSD modules."
-        " Repair with `pip uninstall usd-core` then `pip install --force-reinstall usd-exchange`.",
-        RuntimeWarning,
-        stacklevel=2,
-    )
+    warnings.warn(message, RuntimeWarning, stacklevel=2)
 
 
 # this must precede the `pxr` import below, as a mixed installation may not be importable at all

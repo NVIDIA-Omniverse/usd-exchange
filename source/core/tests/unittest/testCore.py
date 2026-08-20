@@ -144,9 +144,12 @@ class UsdCoreConflictTest(unittest.TestCase):
         # assert the detected distribution & the repair advice, rather than the full wording of the warning
         self.assertIn("usd-core 25.5", result.stderr)
         self.assertIn("pip uninstall usd-core", result.stderr)
+        # usd-exchange is what the environment should keep, so it must not be the one named for removal
+        self.assertNotIn("pip uninstall usd-exchange", result.stderr)
 
-    def testWarnsWhenTheWheelIsInstalledOverACondaOpenUsd(self):
-        # conda's `openusd` reserves the `usd-core` name without installing `pxr`, but the wheel brings its own
+    def testWarnsWhenTheWheelIsInstalledOverAnExistingOpenUsd(self):
+        # a package manager that supplies `pxr` reserves the `usd-core` name without installing it (conda's `openusd`
+        # does this), so the wheel that brought its own modules is what has to be removed
         with tempfile.TemporaryDirectory() as tempDir:
             self.writeDistInfo(tempDir, "usd-core", installedUsdModules=False)
             self.writeDistInfo(tempDir, "usd-exchange", installedUsdModules=True)
@@ -154,9 +157,12 @@ class UsdCoreConflictTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("usd-core 25.5", result.stderr)
+        self.assertIn("pip uninstall usd-exchange", result.stderr)
+        # uninstalling the reservation would remove no modules & leave the conflict in place
+        self.assertNotIn("pip uninstall usd-core", result.stderr)
 
     def testSilentWhenNeitherDistributionInstalledUsd(self):
-        # the conda arrangement: `openusd` supplies `pxr` & this `usd-exchange` links it
+        # `pxr` comes from another package manager & this `usd-exchange` links it rather than bundling one
         with tempfile.TemporaryDirectory() as tempDir:
             self.writeDistInfo(tempDir, "usd-core", installedUsdModules=False)
             self.writeDistInfo(tempDir, "usd-exchange", installedUsdModules=False)
