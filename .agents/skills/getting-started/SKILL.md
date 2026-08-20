@@ -89,6 +89,8 @@ Pass module names without prefixes. The helper finds prefixed libraries, unprefi
 
 A Python-enabled OpenUSD reaches `Python.h` from its own public headers, so the imported targets supply it and the helper links `usd_python`. Set `USDEX_PYTHON_ROOT` to `$project_root/usdex/target-deps/python` when that Python is not already discoverable, or to override which one is used.
 
+The Python that `install_usdex` installs is independent of any wheel venv. It defaults to 3.12 and changes only with `--python-version`. Use that same major.minor both to configure CMake and to run any Python module built against it, not whatever `python --version` reports from the host or an activated venv. A host 3.11 on `PATH` beside a 3.12 `target-deps/python` is a common mismatch, and the module it produces cannot be imported.
+
 The Samples repository contains working references in `CMakeLists.txt` and `build.sh`. Do not invent build flags.
 
 ## Smoke test
