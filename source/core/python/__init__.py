@@ -165,18 +165,36 @@ import os
 
 
 def __warnOnConflictingUsdDistribution():
-    """Warn when a ``usd-core`` distribution is installed alongside ``usd-exchange``.
+    """Warn when a ``usd-core`` distribution supplies a second OpenUSD alongside ``usd-exchange``.
 
-    Both distributions install the top-level ``pxr`` modules to the same paths. Python packaging has no way to declare this conflict,
-    so package managers report success & the failure is silent until the process loads two OpenUSD runtimes.
+    The ``usd-core`` and ``usd-exchange`` wheels both install the top-level ``pxr`` modules to the same paths. Python packaging has no
+    way to declare this conflict, so package managers report success & the failure is silent until the process loads two OpenUSD runtimes.
+
+    Conda arranges this differently: its ``openusd`` package reserves the ``usd-core`` name with metadata that installs no files, so that
+    a later ``pip install`` cannot overwrite the ``pxr`` modules it supplies, & its ``usd-exchange`` links that OpenUSD rather than
+    bundling one. Two runtimes are therefore only present when one of the two distributions installed ``pxr`` itself, which also catches
+    a ``usd-exchange`` wheel dropped into a conda environment.
     """
     import importlib.metadata
     import warnings
+
+    def installedUsdModules(distributionName):
+        try:
+            # the RECORD manifest is read directly rather than via `Distribution.files`, which filters to paths that exist on disk;
+            # what matters is which modules the distribution installed, & conda's name reservations install none
+            record = importlib.metadata.distribution(distributionName).read_text("RECORD") or ""
+        except Exception:
+            # PackageNotFoundError is expected when running from a build tree, but no metadata failure should prevent importing usdex.core
+            return False
+        return any(x.startswith("pxr/") for x in record.splitlines())
 
     try:
         conflictingVersion = importlib.metadata.version("usd-core")
     except Exception:
         # PackageNotFoundError is the expected result, but no metadata failure should prevent importing usdex.core
+        return
+
+    if not installedUsdModules("usd-core") and not installedUsdModules("usd-exchange"):
         return
 
     warnings.warn(
