@@ -225,7 +225,7 @@ Consume the installed tree through `find_package(usd-exchange)`. Link the import
 find_package(usd-exchange REQUIRED)
 add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE usdex::core usdex::rtx)
-usdex_target_link_usd(my_app usd usdGeom sdf)
+usdex_target_link_usd(my_app arch gf sdf tf usd usdGeom)
 ```
 
 Add the installed SDK to `CMAKE_PREFIX_PATH`. Provide the dependencies required by the OpenUSD distribution.
@@ -236,7 +236,7 @@ Set `USDEX_PYTHON_ROOT` to a Python development installation when the matching o
 
 The OpenUSD Exchange Samples provide a complete [CMake project](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/CMakeLists.txt). The [Linux](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.sh) and [Windows](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.bat) scripts show the dependency roots and configure commands.
 
-`usdex::core` / `usdex::rtx` propagate the OpenUSD include paths and the C++ compatibility settings (language standard, ABI, and platform defines) required to compile against the SDK's public headers. Only call `usdex_target_link_usd(my_app <modules...>)` for the OpenUSD modules your own code calls directly (e.g. `usd usdGeom sdf`). The SDK's build-time hygiene (strict warnings, hidden visibility) is *not* imposed on your project.
+`usdex::core` / `usdex::rtx` propagate the OpenUSD include paths and the C++ compatibility settings (language standard, ABI, and platform defines) required to compile against the SDK's public headers. Only call `usdex_target_link_usd(my_app <modules...>)` for the OpenUSD modules your own code calls directly (e.g. `arch gf sdf tf usd usdGeom`). The SDK's build-time hygiene (strict warnings, hidden visibility) is *not* imposed on your project.
 
 ```{eval-rst}
 .. note::
