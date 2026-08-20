@@ -78,8 +78,9 @@ if(USDEX_USD_ROOT AND EXISTS "${USDEX_USD_ROOT}/include/pxr/pxr.h")
         endif()
     endif()
 
-    # MaterialX is a sibling package too, but neither usdex nor OpenUSD's core headers #include it.
-    # Only consumers that use the UsdMtlx schemas require it.
+    # usdex_core links usdMtlx, which links the MaterialX libraries, so Linux must resolve them at link time
+    # even though nothing here includes a MaterialX header. NVIDIA ships MaterialX as a separate package with
+    # no CMake config, so USDEX_MATERIALX_ROOT points at it explicitly.
     if(USDEX_MATERIALX_ROOT)
         if(NOT EXISTS "${USDEX_MATERIALX_ROOT}/include")
             message(FATAL_ERROR "USDEX_MATERIALX_ROOT='${USDEX_MATERIALX_ROOT}' has no include/ directory; ensure the dependency was fetched.")
