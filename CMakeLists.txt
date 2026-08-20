@@ -29,6 +29,9 @@ option(USDEX_BUILD_PYTHON_BINDINGS "Build the OpenUSD Exchange SDK Python bindin
 # Pins the ABI for the bindings. With the bindings off the version is unconstrained, because only the
 # OpenUSD distribution knows which Python it was built against.
 set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for the bindings")
+# Relative to the install prefix, or absolute. Left empty here & defaulted to the interpreter's site-packages
+# once one is found, so that installing into a prefix makes the modules importable from it.
+set(USDEX_INSTALL_PYTHONDIR "" CACHE STRING "Install location for the usdex Python modules")
 
 # OFF by default so a build doesn't require the test-only cxxopts + doctest headers.
 option(USDEX_BUILD_TESTS "Build the OpenUSD Exchange SDK C++ tests (requires cxxopts + doctest)" OFF)
@@ -111,6 +114,15 @@ if(USDEX_BUILD_PYTHON_BINDINGS)
     if(NOT USDEX_PYBIND11_INCLUDE_DIR)
         message(FATAL_ERROR "pybind11 headers not found. Set -DUSDEX_PYBIND11_INCLUDE_DIR=<dir> or add pybind11 to CMAKE_PREFIX_PATH (or configure without Python bindings via -DUSDEX_BUILD_PYTHON_BINDINGS=OFF).")
     endif()
+    if(NOT USDEX_INSTALL_PYTHONDIR)
+        # site-packages as the interpreter lays it out, but under our own prefix rather than the interpreter's
+        if(WIN32)
+            set(_usdex_pythondir "Lib/site-packages")
+        else()
+            set(_usdex_pythondir "lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
+        endif()
+        set(USDEX_INSTALL_PYTHONDIR "${_usdex_pythondir}" CACHE STRING "" FORCE)
+    endif()
 elseif(USDEX_USD_WITH_PYTHON)
     # found here rather than on demand in usdex_target_link_usd() so the version lands in this scope for the package config
     usdex_find_python("")
@@ -160,7 +172,7 @@ if(USDEX_BUILD_PYTHON_BINDINGS)
 
     # pure-python usdex.test module (no compiled component)
     file(GLOB USDEX_TEST_PY CONFIGURE_DEPENDS source/test/python/*.py)
-    install(FILES ${USDEX_TEST_PY} DESTINATION python/usdex/test)
+    install(FILES ${USDEX_TEST_PY} DESTINATION ${USDEX_INSTALL_PYTHONDIR}/usdex/test)
 endif()
 
 # ---------------------------------------------------------------------------- test_usdex_core (doctest)

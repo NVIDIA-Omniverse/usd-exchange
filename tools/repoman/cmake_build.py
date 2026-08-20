@@ -112,6 +112,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             build_dir,
             f"-DCMAKE_BUILD_TYPE={cmake_config}",
             "-DCMAKE_INSTALL_LIBDIR=lib",  # our package layout uses lib/, not lib64
+            "-DUSDEX_INSTALL_PYTHONDIR=python",  # likewise python/, which repo.toml packages and install_usdex expects
             f"-DUSDEX_USD_ROOT={usd_root}",
             f"-DUSDEX_TBB_ROOT={target_deps}/tbb/{repo_config}",
             f"-DUSDEX_MATERIALX_ROOT={target_deps}/materialx/{repo_config}",
