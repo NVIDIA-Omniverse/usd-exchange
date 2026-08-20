@@ -23,14 +23,12 @@ endif()
 # must precede USDEX_WITH_PYTHON_INT below, which reads USDEX_USD_WITH_PYTHON
 include(UsdexUSD)
 
-# Bindings only; whether OpenUSD itself has Python is USDEX_USD_WITH_PYTHON.
-# A "flavor" with python_ver "0" is the usd-minimal build with no Python.
-set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for bindings; '0' disables Python")
-if(USDEX_PYTHON_VERSION STREQUAL "0")
-    set(USDEX_WITH_PYTHON OFF)
-else()
-    set(USDEX_WITH_PYTHON ON)
-endif()
+# Whether OpenUSD itself has Python is the separate USDEX_USD_WITH_PYTHON: a Python-enabled OpenUSD still
+# requires the Python development files here even with the bindings off.
+option(USDEX_BUILD_PYTHON_BINDINGS "Build the OpenUSD Exchange SDK Python bindings" ON)
+# Pins the ABI for the bindings. With the bindings off the version is unconstrained, because only the
+# OpenUSD distribution knows which Python it was built against.
+set(USDEX_PYTHON_VERSION "3.12" CACHE STRING "Python version for the bindings")
 
 # OFF by default so a build doesn't require the test-only cxxopts + doctest headers.
 option(USDEX_BUILD_TESTS "Build the OpenUSD Exchange SDK C++ tests (requires cxxopts + doctest)" OFF)
@@ -95,14 +93,17 @@ target_link_options(usdex_sdk_build_options INTERFACE
     "$<${_msvc}:/guard:cf>"
 )
 
-if(USDEX_WITH_PYTHON)
+if(USDEX_BUILD_PYTHON_BINDINGS)
     usdex_find_python(${USDEX_PYTHON_VERSION} Interpreter)
     if(NOT USDEX_PYBIND11_INCLUDE_DIR)
         find_path(USDEX_PYBIND11_INCLUDE_DIR pybind11/pybind11.h)
     endif()
     if(NOT USDEX_PYBIND11_INCLUDE_DIR)
-        message(FATAL_ERROR "pybind11 headers not found. Set -DUSDEX_PYBIND11_INCLUDE_DIR=<dir> or add pybind11 to CMAKE_PREFIX_PATH (or configure without Python bindings via -DUSDEX_PYTHON_VERSION=0).")
+        message(FATAL_ERROR "pybind11 headers not found. Set -DUSDEX_PYBIND11_INCLUDE_DIR=<dir> or add pybind11 to CMAKE_PREFIX_PATH (or configure without Python bindings via -DUSDEX_BUILD_PYTHON_BINDINGS=OFF).")
     endif()
+elseif(USDEX_USD_WITH_PYTHON)
+    # found here rather than on demand in usdex_target_link_usd() so the version lands in this scope for the package config
+    usdex_find_python("")
 endif()
 
 include(UsdexPythonModule)
@@ -128,7 +129,7 @@ if(WIN32)
 endif()
 
 # ---------------------------------------------------------------------------- python bindings
-if(USDEX_WITH_PYTHON)
+if(USDEX_BUILD_PYTHON_BINDINGS)
     file(GLOB USDEX_CORE_BINDINGS CONFIGURE_DEPENDS source/core/python/bindings/*.cpp)
     file(GLOB USDEX_CORE_PY CONFIGURE_DEPENDS source/core/python/*.py)
     usdex_add_python_module(usdex_core_python
@@ -191,6 +192,11 @@ install(TARGETS usdex_core usdex_rtx EXPORT usdex-targets
 install(DIRECTORY include/usdex DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT usdex-targets NAMESPACE usdex:: FILE usd-exchange-targets.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)
+# the ABI consumers must match is the Python that was linked, not the one the bindings asked for
+set(USDEX_PACKAGE_PYTHON_VERSION "")
+if(USDEX_USD_WITH_PYTHON)
+    set(USDEX_PACKAGE_PYTHON_VERSION "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+endif()
 configure_package_config_file(cmake/usd-exchange-config.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/usd-exchange-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usd-exchange)

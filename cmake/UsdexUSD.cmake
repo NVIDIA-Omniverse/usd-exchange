@@ -188,7 +188,11 @@ function(usdex_target_link_usd target)
     # a Python-enabled OpenUSD reaches Python.h from its public headers (VtValue -> TfPyObjWrapper), so consumers
     # of those headers need the development files whether or not they build bindings
     if(USDEX_USD_WITH_PYTHON)
-        set(_usdex_python_version "${USDEX_PYTHON_VERSION}")
+        # the bindings pin an ABI; without them any Python the OpenUSD distribution accepts will do
+        set(_usdex_python_version "")
+        if(USDEX_BUILD_PYTHON_BINDINGS)
+            set(_usdex_python_version "${USDEX_PYTHON_VERSION}")
+        endif()
         if(DEFINED USDEX_PACKAGE_PYTHON_VERSION)
             set(_usdex_python_version "${USDEX_PACKAGE_PYTHON_VERSION}")
         endif()

@@ -6,7 +6,7 @@
 
 # what this package was built against, for consumers to inspect
 set(USDEX_PACKAGE_WITH_PYTHON @USDEX_WITH_PYTHON_INT@)
-set(USDEX_PACKAGE_PYTHON_VERSION "@USDEX_PYTHON_VERSION@")
+set(USDEX_PACKAGE_PYTHON_VERSION "@USDEX_PACKAGE_PYTHON_VERSION@")
 
 include("${CMAKE_CURRENT_LIST_DIR}/usd-exchange-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/UsdexCompilerConfig.cmake")
