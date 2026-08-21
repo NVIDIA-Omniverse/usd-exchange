@@ -171,6 +171,12 @@ config = "release"
 enable_dark_theme_switcher = true
 copybutton_enabled = true
 sphinx_conf_py_extra = """
+import tomllib
+from pathlib import Path
+
+with (Path(__file__).parent / "tools/pyproject/pyproject.toml").open("rb") as project_file:
+    source_substitutions["python_requires"] = tomllib.load(project_file)["project"]["requires-python"]
+
 autodoc_member_order = 'bysource'
 extensions += ["autodocsumm"] # enables :autosummary: flag in automodule directives
 """

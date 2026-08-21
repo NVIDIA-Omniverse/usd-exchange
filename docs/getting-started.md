@@ -13,6 +13,8 @@ Many USD authoring workflows can be accomplished entirely in Python with the whe
 
 ## Installation
 
+The Python wheels require Python `${python_requires}`.
+
 The recommended way to install the OpenUSD Exchange SDK for Python development is using a virtual environment:
 
 ``````{card}
