@@ -100,11 +100,11 @@ print(json.dumps({
         pxr_root = os.path.abspath(os.path.join(dll_root, "../pxr"))
 
         with tempfile.TemporaryDirectory(dir=os.path.dirname(dll_root), prefix="_usdex_dll_test_") as staging_root:
-            # Hard links create an isolated wheel layout without copying every large binary.
+            # Create an isolated wheel layout with independent files.
             staged_pxr_root = os.path.join(staging_root, "pxr")
             staged_dll_root = os.path.join(staging_root, "usd_exchange.libs")
-            shutil.copytree(pxr_root, staged_pxr_root, copy_function=os.link)
-            shutil.copytree(dll_root, staged_dll_root, copy_function=os.link)
+            shutil.copytree(pxr_root, staged_pxr_root)
+            shutil.copytree(dll_root, staged_dll_root)
 
             # Remove usd_tf.dll from the wheel directory and expose it only through the caller path.
             fallback_root = os.path.join(staging_root, "fallback")
