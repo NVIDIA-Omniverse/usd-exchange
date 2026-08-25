@@ -42,9 +42,10 @@ def _check_windows_usd_plugins() -> list[str]:
         return []
 
     failures = []
-    dll_root = os.environ.get("PXR_USD_WINDOWS_DLL_PATH")
-    if not dll_root:
+    dll_paths = [entry for entry in os.environ.get("PXR_USD_WINDOWS_DLL_PATH", "").split(os.pathsep) if entry]
+    if not dll_paths:
         return ["PXR_USD_WINDOWS_DLL_PATH was not set by pxr import"]
+    dll_root = dll_paths[0]
 
     path_entries = [entry for entry in os.environ.get("PATH", "").split(os.pathsep) if entry]
     if not any(_realpath(entry) == _realpath(dll_root) for entry in path_entries):
@@ -57,7 +58,8 @@ def _check_windows_usd_plugins() -> list[str]:
 
     registry = Plug.Registry()
     registry.RegisterPlugins(os.path.join(dll_root, "usd"))
-    for name in ("usdMtlx", "usdShaders"):
+    # Load the shader and validator plugins named in the Windows DLL-path regression criteria.
+    for name in ("usdGeomValidators", "usdMtlx", "usdPhysicsValidators", "usdShaders"):
         plugin = registry.GetPluginWithName(name)
         if not plugin:
             failures.append(f"{name} plugin was not discovered under {dll_root}")
