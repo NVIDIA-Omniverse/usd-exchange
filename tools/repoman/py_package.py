@@ -182,9 +182,16 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                 f.write(inspect.cleandoc("""
                         import os
 
-                        # Set environment variable for USD Windows DLL path
+                        # Prepend the wheel's DLL path while preserving caller-supplied fallback paths.
                         dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../usd_exchange.libs"))
-                        os.environ["PXR_USD_WINDOWS_DLL_PATH"] = dll_path
+                        dll_paths = os.environ.get("PXR_USD_WINDOWS_DLL_PATH", "").split(os.pathsep)
+                        normalized_dll_path = os.path.normcase(os.path.normpath(dll_path))
+                        dll_paths = [
+                            path
+                            for path in dll_paths
+                            if path and os.path.normcase(os.path.normpath(path)) != normalized_dll_path
+                        ]
+                        os.environ["PXR_USD_WINDOWS_DLL_PATH"] = os.pathsep.join([dll_path, *dll_paths])
 
                         # OpenUSD's Plug loader resolves lazy plugin dependencies through the process PATH.
                         path_entries = os.environ.get("PATH", "").split(os.pathsep)
