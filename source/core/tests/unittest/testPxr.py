@@ -5,6 +5,7 @@ import importlib.metadata
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -89,7 +90,10 @@ print(json.dumps({
                     normalized_path_entries.append(os.path.normcase(os.path.realpath(path)))
                 self.assertEqual(normalized_path_entries[0], normalized_dll_path)
                 self.assertEqual(normalized_path_entries.count(normalized_dll_path), 1)
-                self.assertEqual(values["version"], expected_version)
+                # our version is semver, so the wheel metadata carries the PEP 440 spelling hatchling normalized it to,
+                # where a pre-release loses its separator & an unnumbered dev release becomes `.dev0`
+                version = re.sub(r"-(a|b|rc)", r"\1", values["version"]).replace("-dev", ".dev0")
+                self.assertEqual(version, expected_version)
 
     @unittest.skipUnless(sys.platform == "win32", "Windows DLL search test")
     def testPxrDllPathLoadsCallerDll(self):
