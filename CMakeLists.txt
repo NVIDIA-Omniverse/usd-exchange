@@ -229,12 +229,28 @@ configure_package_config_file(cmake/usdex-config.cmake.in
     INSTALL_DESTINATION ${USDEX_INSTALL_CMAKEDIR})
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/usdex-config.cmake"
     DESTINATION ${USDEX_INSTALL_CMAKEDIR})
+# Lets consumers pin a version; without this file any find_package(usdex <version>) reports not-found. The version
+# is passed explicitly because project() carries none: USDEX_VERSION_STRING may hold a prerelease suffix that CMake
+# would reject, so the components parsed from it above are re-joined here.
+# SameMajorVersion, matching the promise that target names and the C++ API are stable within a major. It cannot
+# express what actually governs binary compatibility, which is the OpenUSD flavor and the Python ABI; consumers
+# needing that must check USDEX_PACKAGE_PYTHON_VERSION, which the config enforces on its own.
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/usdex-config-version.cmake"
+    VERSION "${USDEX_VERSION_MAJOR}.${USDEX_VERSION_MINOR}.${USDEX_VERSION_PATCH}"
+    COMPATIBILITY SameMajorVersion)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/usdex-config-version.cmake"
+    DESTINATION ${USDEX_INSTALL_CMAKEDIR})
 # shipped so consumers get usdex_target_link_usd() + usdex_usd_headers for their own OpenUSD usage
 install(FILES cmake/UsdexUSD.cmake DESTINATION ${USDEX_INSTALL_CMAKEDIR})
 # shipped so consumers inherit the shared compile settings (usdex_build_options) rather than replicating them
 install(FILES cmake/UsdexCompilerConfig.cmake DESTINATION ${USDEX_INSTALL_CMAKEDIR})
 # keeps find_package(usd-exchange) from 3.0.0 resolving; needs no configure_file, it only delegates to the above
 install(FILES cmake/usd-exchange-config.cmake DESTINATION ${USDEX_INSTALL_COMPAT_CMAKEDIR})
+# the same generated file under the other name, so a version can be pinned through either entry point. Its contents
+# only compare the requested version against the built one, so it is independent of the package name.
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/usdex-config-version.cmake"
+    DESTINATION ${USDEX_INSTALL_COMPAT_CMAKEDIR} RENAME usd-exchange-config-version.cmake)
 # dev/ tooling consumers use to run install_usdex (not part of the find_package contract)
 install(
     DIRECTORY tools/repoman tools/vscode tools/packman
