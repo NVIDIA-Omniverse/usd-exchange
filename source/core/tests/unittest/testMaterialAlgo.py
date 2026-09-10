@@ -3731,7 +3731,7 @@ class ConnectPreviewSurfacePrimvarShaderTest(usdex.test.TestCase):
         shaderPath = self.shader.GetPath()
         self.defaultValidationIssuePredicates = [
             usd_validation_nvidia.IssuePredicates.And(
-                usd_validation_nvidia.IssuePredicates.IsRule("ShaderSdrCompliance"),
+                usd_validation_nvidia.IssuePredicates.IsRule(usd_validation_nvidia.UsdShadeShaderSdrCompliance),
                 lambda issue: getattr(issue.at, "prim_id", None) is not None and issue.at.prim_id.path == shaderPath,
             )
         ]
@@ -3937,7 +3937,7 @@ class ConnectMtlxPrimvarShaderTest(usdex.test.TestCase):
         shaderPath = self.shader.GetPath()
         self.defaultValidationIssuePredicates = [
             usd_validation_nvidia.IssuePredicates.And(
-                usd_validation_nvidia.IssuePredicates.IsRule("ShaderSdrCompliance"),
+                usd_validation_nvidia.IssuePredicates.IsRule(usd_validation_nvidia.UsdShadeShaderSdrCompliance),
                 lambda issue: getattr(issue.at, "prim_id", None) is not None and issue.at.prim_id.path == shaderPath,
             )
         ]
