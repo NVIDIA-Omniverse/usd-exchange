@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Usage requirements for compiling against the OpenUSD Exchange SDK and OpenUSD, exposed as the INTERFACE target
-# `usdex_build_options`. It ships with the package and find_package(usd-exchange) re-includes it, so downstream
+# `usdex_build_options`. It ships with the package and find_package(usdex) re-includes it, so downstream
 # consumers inherit these settings; our own C++ targets link it PRIVATE too.
 #
 # Build hygiene that should not be imposed on consumers (strict warnings, hidden visibility, hardening, release

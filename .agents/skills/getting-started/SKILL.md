@@ -79,7 +79,7 @@ The output goes to `_install/`. Deep copy it into the project's `usdex/` folder 
 
 For build configuration, follow [`docs/native-application.md`](../../../docs/native-application.md). It covers include paths, libraries, preprocessor definitions, and runtime paths for Makefiles and Visual Studio projects.
 
-Prefer CMake for new projects. The SDK package supplies a relocatable configuration file, so `find_package(usd-exchange REQUIRED)` provides the imported `usdex::core` and `usdex::rtx` targets. These targets supply the required include paths and build settings.
+Prefer CMake for new projects. The SDK package supplies a relocatable configuration file, so `find_package(usdex REQUIRED)` provides the imported `usdex::core` and `usdex::rtx` targets. These targets supply the required include paths and build settings.
 
 Set `CMAKE_PREFIX_PATH` to `$project_root/usdex/target-deps/usd-exchange/<config>`, where `<config>` is `release` or `debug`. Set `USDEX_USD_ROOT`, `USDEX_TBB_ROOT`, and `USDEX_MATERIALX_ROOT` to the matching packages under `$project_root/usdex/target-deps`. Those three take the same `<config>` suffix, while `python` does not.
 
