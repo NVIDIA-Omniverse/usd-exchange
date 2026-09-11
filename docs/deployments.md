@@ -219,10 +219,10 @@ cmake --build build --config Release
 The build tree contains generator-specific compiler outputs. Run `cmake --install build --prefix <dir>` to assemble
 the relocatable SDK tree that your own project should consume, including `lib/`, `bin/`, `python/`, and `include/`.
 
-Consume the installed tree through `find_package(usd-exchange)`. Link the imported targets, then list each OpenUSD module that the application calls directly:
+Consume the installed tree through `find_package(usdex)`. Link the imported targets, then list each OpenUSD module that the application calls directly:
 
 ```cmake
-find_package(usd-exchange REQUIRED)
+find_package(usdex REQUIRED)
 add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE usdex::core usdex::rtx)
 usdex_target_link_usd(my_app arch gf sdf tf usd usdGeom)
@@ -230,9 +230,11 @@ usdex_target_link_usd(my_app arch gf sdf tf usd usdGeom)
 
 Add the installed SDK to `CMAKE_PREFIX_PATH`. Provide the dependencies required by the OpenUSD distribution.
 
+A version may be requested, as in `find_package(usdex 3.1 REQUIRED)`. The package accepts any release at or above the request that shares its major version, matching the guarantee that the C++ API and the imported target names are stable within a major. A version request says nothing about which OpenUSD or Python the package was built against; those are recorded separately and described below.
+
 A Python-enabled OpenUSD distribution requires `Python.h`, because its public headers reach it through `VtValue`. The SDK detects this from the distribution itself and its imported targets supply the Python include path, whether or not the SDK ships bindings. The `usdex_target_link_usd` function also links `usd_python` and the Python runtime library for applications that use the OpenUSD APIs directly; extension modules receive the include path without the runtime library, which they resolve from the interpreter that loads them.
 
-Set `USDEX_PYTHON_ROOT` to a Python development installation when the matching one is not already discoverable, or to override which one the SDK finds. The SDK package records the Python major and minor version it was built with and requires that exact version. A project that calls `find_package(Python3)` before `find_package(usd-exchange)` must select that version itself, because `USDEX_PYTHON_ROOT` cannot change a Python that is already found.
+Set `USDEX_PYTHON_ROOT` to a Python development installation when the matching one is not already discoverable, or to override which one the SDK finds. The SDK package records the Python major and minor version it was built with and requires that exact version. A project that calls `find_package(Python3)` before `find_package(usdex)` must select that version itself, because `USDEX_PYTHON_ROOT` cannot change a Python that is already found.
 
 The OpenUSD Exchange Samples provide a complete [CMake project](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/CMakeLists.txt). The [Linux](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.sh) and [Windows](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/build.bat) scripts show the dependency roots and configure commands.
 

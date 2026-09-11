@@ -5,7 +5,7 @@
 # calls require configs the package does not bundle and Imath has no skip toggle).
 # Instead we add `<usd_root>/include` as a SYSTEM include and link the individual USD libraries by full path out of `<usd_root>/lib`.
 #
-# Reusable by external consumers via find_package(usd-exchange). Inputs: USDEX_USD_ROOT, or any prefix CMake
+# Reusable by external consumers via find_package(usdex). Inputs: USDEX_USD_ROOT, or any prefix CMake
 # searches (CMAKE_PREFIX_PATH as a variable or an environment variable, CMAKE_INCLUDE_PATH, the system paths)
 # containing include/pxr/pxr.h. When USD is located it provides the `usdex_usd_headers` target, PXR_VERSION, and
 # `usdex_target_link_usd()`; absent USD is not an error (usdex links USD privately) until that function is called.
@@ -104,9 +104,9 @@ macro(usdex_find_python version)
         AND NOT "${version}" STREQUAL "0"
         AND NOT "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}" STREQUAL "${version}")
         message(FATAL_ERROR
-            "usd-exchange requires Python ${version}, but Python "
+            "The OpenUSD Exchange SDK requires Python ${version}, but Python "
             "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR} was already found by this project. "
-            "Select Python ${version} before configuring usd-exchange; USDEX_PYTHON_ROOT cannot "
+            "Select Python ${version} before configuring usdex; USDEX_PYTHON_ROOT cannot "
             "change a Python that is already found."
         )
     endif()
