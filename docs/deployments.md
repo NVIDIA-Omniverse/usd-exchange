@@ -149,7 +149,7 @@ OpenUSD Exchange: ${repo_docs_version}
 
 ```{eval-rst}
 .. note::
-  The example above is a specific base image with Python 3.12, but neither of these are strict requirements. The precompiled OpenUSD Exchange SDK binaries are ``manylinux_2_35`` compatible and available for multiple python versions.
+  The example above is a specific base image with Python 3.12, but neither of these are strict requirements. The precompiled OpenUSD Exchange SDK binaries are ``manylinux_2_34`` compatible and available for multiple python versions.
 ```
 
 ```{eval-rst}

@@ -9,7 +9,8 @@ class CustomHook(BuildHookInterface):
 
     The package bundles precompiled python bindings (`pxr`, `usdex`) and shared libraries
     (`usd_exchange.libs`), so the wheel must be tagged for the building interpreter & platform
-    (e.g. ``cp310-cp310-manylinux_2_35_x86_64``) rather than ``py3-none-any``.
+    (e.g. ``cp310-cp310-linux_x86_64``) rather than ``py3-none-any``. On linux ``auditwheel``
+    replaces that platform tag with the manylinux tag the repaired binaries qualify for.
     """
 
     def initialize(self, version, build_data):

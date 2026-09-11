@@ -16,7 +16,7 @@ import omni.repo.man
 import toml
 
 
-def __patch_usd_pluginfo(uv: str, wheel_path: str, out_dir: str, wheel_version: str):
+def __patch_usd_pluginfo(libs_root: str):
     """Patch each OpenUSD plugin's plugInfo ``LibraryPath`` to point at its auditwheel-hashed shared library.
 
     auditwheel grafts the bundled USD libraries into the wheel with a content-hash suffix appended to each
@@ -24,6 +24,53 @@ def __patch_usd_pluginfo(uv: str, wheel_path: str, out_dir: str, wheel_version: 
     path happens to work for plugins whose library is already loaded by importing the matching ``pxr`` module,
     but on-demand Ndr/Sdr discovery & parser plugins (e.g. ``usdMtlx``) are never imported, so OpenUSD's
     ``Plug`` system cannot instantiate them.
+    """
+    # Map the original lib name to its auditwheel-hashed name
+    hashed_libs = {}
+    for lib in glob.glob(f"{libs_root}/*.so*"):
+        match = re.match(r"^(lib.+?)-[0-9a-f]{6,}\.so", os.path.basename(lib))
+        if match:
+            hashed_libs[match.group(1)] = os.path.basename(lib)
+
+    for plugInfo in glob.glob(f"{libs_root}/usd/*/resources/plugInfo.json"):
+        with open(plugInfo, "r") as f:
+            # plugInfo.json files use python-style `#` comments that are not valid JSON
+            data = json.loads("".join(line for line in f if not line.lstrip().startswith("#")))
+        modified = False
+        for plug in data.get("Plugins", []):
+            lib = hashed_libs.get(f"libusd_{plug.get('Name')}")
+            if lib and "LibraryPath" in plug:
+                # LibraryPath is resolved relative to the plugin dir (the parent of `resources/`), so `../..`
+                # reaches the `usd_exchange.libs/` root where auditwheel places the hashed libraries.
+                plug["LibraryPath"] = f"../../{lib}"
+                modified = True
+        if modified:
+            with open(plugInfo, "w") as f:
+                json.dump(data, f, indent=4)
+
+
+def __drop_libpython_dependency(uv: str, patchelf_version: str, unpacked: str):
+    """Remove every ``libpython`` ``DT_NEEDED`` entry from the wheel's shared libraries.
+
+    A wheel must resolve the CPython symbols from whichever interpreter imported it, so auditwheel drops these
+    entries from the binaries the wheel already contained, but it does not repeat that pass over the libraries
+    it grafts in. Those keep the dependency, and an interpreter that ships no ``libpython`` shared library then
+    fails the import with "libpython3.x.so.1.0: cannot open shared object file".
+    """
+    patchelf = [uv, "tool", "run", "--from", f"patchelf=={patchelf_version}", "patchelf"]
+    for lib in glob.glob(f"{unpacked}/**/*.so*", recursive=True):
+        if os.path.islink(lib) or not os.path.isfile(lib):
+            continue
+        with open(lib, "rb") as binary:
+            if binary.read(4) != b"\x7fELF":
+                continue
+        _, output = omni.repo.man.run_process_return_output([*patchelf, "--print-needed", lib], exit_on_error=True, print_stdout=False)
+        for needed in [line.strip() for line in output if line.strip().startswith("libpython")]:
+            omni.repo.man.run_process([*patchelf, "--remove-needed", needed, lib], exit_on_error=True)
+
+
+def __patch_wheel(uv: str, wheel_path: str, out_dir: str, wheel_version: str, patchelf_version: str):
+    """Apply the fixes that can only be made once auditwheel has repaired the wheel.
 
     ``wheel unpack`` / ``wheel pack`` are used so the wheel's ``RECORD`` is regenerated correctly.
     """
@@ -33,33 +80,11 @@ def __patch_usd_pluginfo(uv: str, wheel_path: str, out_dir: str, wheel_version: 
             exit_on_error=True,
         )
         unpacked = glob.glob(f"{tmp}/*/")[0].rstrip("/")
-        libs_root = f"{unpacked}/usd_exchange.libs"
 
-        # Map the original lib name to its auditwheel-hashed name
-        hashed_libs = {}
-        for lib in glob.glob(f"{libs_root}/*.so*"):
-            match = re.match(r"^(lib.+?)-[0-9a-f]{6,}\.so", os.path.basename(lib))
-            if match:
-                hashed_libs[match.group(1)] = os.path.basename(lib)
+        __patch_usd_pluginfo(f"{unpacked}/usd_exchange.libs")
+        __drop_libpython_dependency(uv, patchelf_version, unpacked)
 
-        for plugInfo in glob.glob(f"{libs_root}/usd/*/resources/plugInfo.json"):
-            with open(plugInfo, "r") as f:
-                # plugInfo.json files use python-style `#` comments that are not valid JSON
-                data = json.loads("".join(line for line in f if not line.lstrip().startswith("#")))
-            modified = False
-            for plug in data.get("Plugins", []):
-                lib = hashed_libs.get(f"libusd_{plug.get('Name')}")
-                if lib and "LibraryPath" in plug:
-                    # LibraryPath is resolved relative to the plugin dir (the parent of `resources/`), so `../..`
-                    # reaches the `usd_exchange.libs/` root where auditwheel places the hashed libraries.
-                    plug["LibraryPath"] = f"../../{lib}"
-                    modified = True
-            if modified:
-                with open(plugInfo, "w") as f:
-                    json.dump(data, f, indent=4)
-
-        # repack (regenerates dist-info/RECORD) in place of the original repaired wheel
-        os.remove(wheel_path)
+        # repack (regenerates dist-info/RECORD), naming the wheel from the tags auditwheel wrote into its `WHEEL`
         omni.repo.man.run_process(
             [uv, "tool", "run", "--from", f"wheel=={wheel_version}", "wheel", "pack", unpacked, "--dest-dir", out_dir],
             exit_on_error=True,
@@ -226,35 +251,34 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
             print(f"Packaged wheel installed to {result}")
         else:
             # repair the wheel by baking in the shared libraries
-            tokens = omni.repo.man.get_tokens()
-            platform_target_abi = omni.repo.man.get_abi_platform_translation(tokens["platform"], tokens.get("abi", "2.35"))
             env = os.environ.copy()
             env["LD_LIBRARY_PATH"] = os.path.abspath(os.path.realpath(f"{source}/lib"))
             # Strip the external libs auditwheel is about to graft so that `strip` runs before auditwheel's `patchelf`
             __strip_shared_objects([f"{source}/lib/*.so*"])
-            # repair via auditwheel using an ephemeral env; patchelf is auditwheel's runtime dependency.
-            auditwheel_args = [
-                uv,
-                "tool",
-                "run",
-                "--from",
-                f"auditwheel=={auditwheelVersion}",
-                "--with",
-                f"patchelf=={patchelfVersion}",
-                "auditwheel",
-                "repair",
-                wheel,
-                "--plat",
-                platform_target_abi,
-                "-w",
-                installDir,
-            ]
-            omni.repo.man.logger.info(" ".join(auditwheel_args))
-            omni.repo.man.run_process(auditwheel_args, exit_on_error=True, env=env)
+            with tempfile.TemporaryDirectory() as repairDir:
+                # repair via auditwheel using an ephemeral env; patchelf is auditwheel's runtime dependency.
+                # `--plat` is left at its `auto` default so the tag follows the symbols the artifacts actually reference.
+                # Naming a tag can only over-declare it, as auditwheel stamps anything at or above its floor verbatim.
+                auditwheel_args = [
+                    uv,
+                    "tool",
+                    "run",
+                    "--from",
+                    f"auditwheel=={auditwheelVersion}",
+                    "--with",
+                    f"patchelf=={patchelfVersion}",
+                    "auditwheel",
+                    "repair",
+                    wheel,
+                    "-w",
+                    repairDir,
+                ]
+                omni.repo.man.logger.info(" ".join(auditwheel_args))
+                omni.repo.man.run_process(auditwheel_args, exit_on_error=True, env=env)
 
-            # auditwheel renames the bundled libs with content hashes, which invalidates the plugInfo LibraryPath values,
-            # so we need to patch the plugInfo LibraryPath values to point at the new hashed library names.
-            wheel_tag_prefix = os.path.basename(wheel).rsplit("-", 1)[0]
-            __patch_usd_pluginfo(uv, f"{installDir}/{wheel_tag_prefix}-{platform_target_abi}.whl", installDir, wheelVersion)
+                repaired = glob.glob(f"{repairDir}/*.whl")[0]
+                os.makedirs(installDir, exist_ok=True)
+                __patch_wheel(uv, repaired, installDir, wheelVersion, patchelfVersion)
+                print(f"Packaged wheel installed to {installDir}/{os.path.basename(repaired)}")
 
     return run_repo_tool
