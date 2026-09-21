@@ -42,8 +42,12 @@ class PxrTest(unittest.TestCase):
         if wheel_dll_root is None:
             self.skipTest("Test requires the installed wheel")
 
+        def normalize_version(version):
+            # Accept both SemVer and PEP 440 forms for the SDK version and wheel metadata.
+            return re.sub(r"-(a|b|rc)", r"\1", version).replace("-dev", ".dev0")
+
         package_version = importlib.metadata.version("usd-exchange")
-        expected_version = package_version.partition("+")[0]
+        expected_version = normalize_version(package_version.partition("+")[0])
 
         script = """
 import importlib
@@ -90,9 +94,7 @@ print(json.dumps({
                     normalized_path_entries.append(os.path.normcase(os.path.realpath(path)))
                 self.assertEqual(normalized_path_entries[0], normalized_dll_path)
                 self.assertEqual(normalized_path_entries.count(normalized_dll_path), 1)
-                # our version is semver, so the wheel metadata carries the PEP 440 spelling hatchling normalized it to,
-                # where a pre-release loses its separator & an unnumbered dev release becomes `.dev0`
-                version = re.sub(r"-(a|b|rc)", r"\1", values["version"]).replace("-dev", ".dev0")
+                version = normalize_version(values["version"])
                 self.assertEqual(version, expected_version)
 
     @unittest.skipUnless(sys.platform == "win32", "Windows DLL search test")
