@@ -75,14 +75,15 @@ print(json.dumps({
         for name, fallback_paths in cases.items():
             with self.subTest(name=name):
                 env = os.environ.copy()
+                # Remove the wheel path so the first import must prepend it to PATH.
+                env["PATH"] = self._removePathEntry(env.get("PATH", ""), wheel_dll_root)
                 if fallback_paths is None:
                     env.pop("PXR_USD_WINDOWS_DLL_PATH", None)
-                    expected_fallbacks = []
+                    # OpenUSD falls back to PATH when the override is unset
+                    expected_fallbacks = [entry for entry in env["PATH"].split(os.pathsep) if entry]
                 else:
                     env["PXR_USD_WINDOWS_DLL_PATH"] = os.pathsep.join(fallback_paths)
                     expected_fallbacks = fallback_paths
-                # Remove the wheel path so the first import must prepend it to PATH.
-                env["PATH"] = self._removePathEntry(env.get("PATH", ""), wheel_dll_root)
                 result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 values = json.loads(result.stdout.splitlines()[-1])

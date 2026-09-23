@@ -209,7 +209,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
 
                         # Prepend the wheel's DLL path while preserving caller-supplied fallback paths.
                         dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../usd_exchange.libs"))
-                        dll_paths = os.environ.get("PXR_USD_WINDOWS_DLL_PATH", "").split(os.pathsep)
+                        # OpenUSD searches PATH when PXR_USD_WINDOWS_DLL_PATH is unset, so keep that as the fallback.
+                        dll_paths = os.environ.get("PXR_USD_WINDOWS_DLL_PATH", os.environ.get("PATH", "")).split(os.pathsep)
                         normalized_dll_path = os.path.normcase(os.path.normpath(dll_path))
                         dll_paths = [
                             path
@@ -219,10 +220,12 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                         os.environ["PXR_USD_WINDOWS_DLL_PATH"] = os.pathsep.join([dll_path, *dll_paths])
 
                         # OpenUSD's Plug loader resolves lazy plugin dependencies through the process PATH.
-                        path_entries = os.environ.get("PATH", "").split(os.pathsep)
-                        normalized_entries = [os.path.normcase(os.path.normpath(entry)) for entry in path_entries if entry]
-                        if os.path.normcase(os.path.normpath(dll_path)) not in normalized_entries:
-                            os.environ["PATH"] = dll_path + os.pathsep + os.environ.get("PATH", "")
+                        path_entries = [
+                            entry
+                            for entry in os.environ.get("PATH", "").split(os.pathsep)
+                            if entry and os.path.normcase(os.path.normpath(entry)) != normalized_dll_path
+                        ]
+                        os.environ["PATH"] = os.pathsep.join([dll_path, *path_entries])
                         """))
         elif not omni.repo.man.is_linux():
             raise omni.repo.man.ExpectedError("Unsupported platform")
