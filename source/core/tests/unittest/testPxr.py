@@ -35,6 +35,7 @@ class PxrTest(unittest.TestCase):
         """Verify the complete environment-variable contract for the generated wheel initializer.
 
         The wheel path must appear first and exactly once. Caller paths must retain their order.
+        An unset override falls back to ``PATH`` while an empty one excludes it.
         Unset and empty values must not produce empty entries. Reloading ``pxr`` must not add duplicates.
         The existing ``PATH`` prepend must also remain duplicate-free. Both usdex modules must import successfully.
         """
@@ -67,39 +68,50 @@ print(json.dumps({
     "version": usdex.core.version(),
 }))
 """
-        cases = {
-            "unset": None,
-            "empty": [],
-            "multiple": [r"C:\caller\first", r"D:\caller\second", r"E:\caller\third"],
-        }
-        for name, fallback_paths in cases.items():
+        first, second = r"C:\caller\first", r"D:\caller\second"
+        overrides = [r"C:\caller\a", r"D:\caller\b", r"E:\caller\c"]
+        # spellings that name the wheel directory: case, separators, trailing separator, and a dot component
+        wheel_spellings = [
+            wheel_dll_root.upper(),
+            wheel_dll_root.replace("\\", "/"),
+            wheel_dll_root + "\\",
+            os.path.join(os.path.dirname(wheel_dll_root), ".", os.path.basename(wheel_dll_root)),
+        ]
+        # (name, override, PATH, expected fallbacks, expected PATH entries after the wheel); None leaves a variable unset
+        cases = [
+            ("unset override falls back to PATH", None, [first, second], [first, second], [first, second]),
+            ("empty override excludes PATH", [], [first], [], [first]),
+            ("multiple overrides keep their order", overrides, [first], overrides, [first]),
+            ("existing wheel entry moves to the front", None, [first, wheel_dll_root, second], [first, second], [first, second]),
+            ("equivalent spellings collapse", [*wheel_spellings, overrides[0]], [first, *wheel_spellings, second], [overrides[0]], [first, second]),
+            ("unrelated duplicates are kept", None, [first, second, first], [first, second, first], [first, second, first]),
+            ("missing PATH", None, None, [], []),
+            ("empty PATH", None, [], [], []),
+        ]
+        for name, override, path, expected_fallbacks, expected_path_entries in cases:
             with self.subTest(name=name):
                 env = os.environ.copy()
-                if fallback_paths is None:
-                    env.pop("PXR_USD_WINDOWS_DLL_PATH", None)
-                    expected_fallbacks = []
-                else:
-                    env["PXR_USD_WINDOWS_DLL_PATH"] = os.pathsep.join(fallback_paths)
-                    expected_fallbacks = fallback_paths
-                # Remove the wheel path so the first import must prepend it to PATH.
-                env["PATH"] = self._removePathEntry(env.get("PATH", ""), wheel_dll_root)
+                for key, value in (("PXR_USD_WINDOWS_DLL_PATH", override), ("PATH", path)):
+                    if value is None:
+                        env.pop(key, None)
+                    else:
+                        env[key] = os.pathsep.join(value)
                 result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 values = json.loads(result.stdout.splitlines()[-1])
+                # exact lists: the wheel directory is first and appears once, and every other entry keeps its order
                 self.assertEqual(values["dll_paths"], [values["dll_path"], *expected_fallbacks])
-                self.assertEqual(values["dll_paths"].count(values["dll_path"]), 1)
-                normalized_dll_path = os.path.normcase(os.path.realpath(values["dll_path"]))
-                normalized_path_entries = []
-                for path in values["path_entries"]:
-                    normalized_path_entries.append(os.path.normcase(os.path.realpath(path)))
-                self.assertEqual(normalized_path_entries[0], normalized_dll_path)
-                self.assertEqual(normalized_path_entries.count(normalized_dll_path), 1)
+                self.assertEqual(values["path_entries"], [values["dll_path"], *expected_path_entries])
                 version = normalize_version(values["version"])
                 self.assertEqual(version, expected_version)
 
     @unittest.skipUnless(sys.platform == "win32", "Windows DLL search test")
     def testPxrDllPathLoadsCallerDll(self):
-        """Prove that OpenUSD loads a required DLL found only in a caller-supplied directory."""
+        """Prove that OpenUSD loads a required DLL found only in a caller-supplied directory.
+
+        The directory is reachable through an explicit override, or through PATH when the override is unset.
+        An empty override must exclude PATH, so the same import fails.
+        """
         dll_root = self._getWheelDllRoot()
         if dll_root is None:
             self.skipTest("Test requires the installed wheel")
@@ -120,17 +132,44 @@ print(json.dumps({
             self.assertTrue(os.path.isfile(staged_dll), f"Missing wheel DLL: {staged_dll}")
             shutil.move(staged_dll, fallback_dll)
 
-            env = os.environ.copy()
-            env["PXR_USD_WINDOWS_DLL_PATH"] = fallback_root
-            env["PYTHONPATH"] = staging_root
-            env["PATH"] = self._removePathEntry(env.get("PATH", ""), dll_root)
-            result = subprocess.run(
-                [sys.executable, "-c", "from pxr import Tf; assert hasattr(Tf, 'Status')"],
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
+            # Report the file the DLL was loaded from, so another installed copy cannot mask the result.
+            script = """
+import ctypes
+from ctypes import wintypes
+from pxr import Tf
+assert hasattr(Tf, "Status")
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+kernel32.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+buffer = ctypes.create_unicode_buffer(32768)
+kernel32.GetModuleFileNameW(kernel32.GetModuleHandleW("usd_tf.dll"), buffer, len(buffer))
+print(buffer.value)
+"""
+            path = self._removePathEntry(os.environ.get("PATH", ""), dll_root)
+            # (name, override, PATH, whether usd_tf.dll must load); None leaves the override unset
+            cases = [
+                ("explicit override", fallback_root, path, True),
+                ("unset override falls back to PATH", None, os.pathsep.join([fallback_root, path]), True),
+                ("empty override excludes PATH", "", os.pathsep.join([fallback_root, path]), False),
+            ]
+            for name, override, path_value, loads in cases:
+                with self.subTest(name=name):
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = staging_root
+                    env["PATH"] = path_value
+                    if override is None:
+                        env.pop("PXR_USD_WINDOWS_DLL_PATH", None)
+                    else:
+                        env["PXR_USD_WINDOWS_DLL_PATH"] = override
+                    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env)
+                    if loads:
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        loaded_dll = result.stdout.splitlines()[-1]
+                        self.assertEqual(os.path.normcase(os.path.realpath(loaded_dll)), os.path.normcase(os.path.realpath(fallback_dll)))
+                    else:
+                        self.assertNotEqual(result.returncode, 0, result.stdout)
+                        self.assertIn("DLL load failed", result.stderr)
 
     def testPxrImport(self):
         # Guardrail: OpenUSD must import in a fresh process where usdex has not bootstrapped it. Run in a subprocess
