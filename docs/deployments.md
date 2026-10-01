@@ -230,7 +230,7 @@ usdex_target_link_usd(my_app arch gf sdf tf usd usdGeom)
 
 Add the installed SDK to `CMAKE_PREFIX_PATH`. Provide the dependencies required by the OpenUSD distribution.
 
-A version may be requested, as in `find_package(usdex 3.1 REQUIRED)`. The package accepts any release at or above the request that shares its major version, matching the guarantee that the C++ API and the imported target names are stable within a major. A version request says nothing about which OpenUSD or Python the package was built against; those are recorded separately and described below.
+A version may be requested, as in `find_package(usdex 3.0.1 REQUIRED)`. The package accepts any release at or above the request that shares its major version, matching the guarantee that the C++ API and the imported target names are stable within a major. A version request says nothing about which OpenUSD or Python the package was built against; those are recorded separately and described below.
 
 A Python-enabled OpenUSD distribution requires `Python.h`, because its public headers reach it through `VtValue`. The SDK detects this from the distribution itself and its imported targets supply the Python include path, whether or not the SDK ships bindings. The `usdex_target_link_usd` function also links `usd_python` and the Python runtime library for applications that use the OpenUSD APIs directly; extension modules receive the include path without the runtime library, which they resolve from the interpreter that loads them.
 
