@@ -1,4 +1,36 @@
-# 3.1.0-dev
+# 3.0.1rc1
+
+## Test
+
+### Fixes
+
+- Updated `usdex.test` to use the native validator adapters from `usd-validation-nvidia`
+
+## Dev Tools
+
+### Fixes
+
+- Updated OpenUSD & MaterialX builds to avoid DLL name conflicts on Windows
+- Fixed the Windows wheels to preserve `PXR_USD_WINDOWS_DLL_PATH` overrides & the `PATH` fallback
+- Fixed the Linux wheel platform tag to allow installation on `manylinux_2_34` systems, such as Rocky Linux 9 & AlmaLinux 9
+- Removed the Linux wheels' dependency on a shared `libpython` to support statically linked Python runtimes
+- Fixed CMake package naming & versioned `find_package` requests
+  - Use `find_package(usdex)`; `find_package(usd-exchange)` remains supported with a deprecation warning
+
+## Documentation
+
+- Added the supported Python version range to the Getting Started guide
+- Updated deployment instructions & Agent Skills for the CMake package changes
+
+## Dependencies
+
+### Runtime Deps
+
+- usd-validation-nvidia 1.22.0 (test only)
+
+### Dev Tools
+
+- auditwheel 6.8.2
 
 # 3.0.0
 
