@@ -5,6 +5,7 @@
 ### Fixes
 
 - Updated `usdex.test` to use the native validator adapters from `usd-validation-nvidia`
+- Fixed validation assertions to report issues with tuple-valued locations
 
 ## Dev Tools
 

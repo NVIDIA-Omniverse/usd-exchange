@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+import usd_validation_nvidia
+import usdex.core
+import usdex.test
+
+
+class ValidationAssertionsTest(usdex.test.TestCase):
+
+    def testIssueLocations(self):
+        stage = usdex.core.createStage(
+            self.tmpFile("locations", ext="usda"),
+            usdex.core.getValidPrimName(self.defaultPrimName),
+            self.defaultUpAxis,
+            self.defaultLinearUnits,
+            self.defaultAuthoringMetadata,
+        )
+        root = usdex.core.defineXform(stage.GetDefaultPrim()).GetPrim()
+        child = usdex.core.defineXform(root, usdex.core.getValidChildName(root, "Child")).GetPrim()
+
+        for locations in (None, root, [root], [root, child], (root,), (root, child)):
+            with self.subTest(locations=locations):
+
+                class LocationChecker(usd_validation_nvidia.BaseRuleChecker):
+                    def CheckStage(self, stage):
+                        self._AddFailedCheck(message="Invalid test locations", at=locations)
+
+                self.validationEngine = usd_validation_nvidia.ValidationEngine(init_rules=False)
+                self.validationEngine.enable_rule(LocationChecker)
+                issue = self.validationEngine.validate(stage).issues()[0]
+                identifiers = issue.at if isinstance(issue.at, (list, tuple)) else [issue.at] if issue.at else []
+                expected = "LocationChecker: Invalid test locations"
+                if identifiers:
+                    expected += " At " + ", ".join(identifier.as_str() for identifier in identifiers)
+
+                with self.assertRaises(AssertionError) as context:
+                    self.assertIsValidUsd(stage)
+                self.assertEqual(str(context.exception), expected)

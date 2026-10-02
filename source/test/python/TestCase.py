@@ -432,7 +432,7 @@ class TestCase(unittest.TestCase):
         tokens.append(issue.message)
         if issue.at:
             tokens.append("At")
-            if isinstance(issue.at, list):
+            if isinstance(issue.at, (list, tuple)):
                 tokens.append(", ".join([at.as_str() for at in issue.at]))
             else:
                 tokens.append(issue.at.as_str())
