@@ -47,6 +47,41 @@ class CoreTest(unittest.TestCase):
         version = get_changelog_version_string()
         self.assertEqual(usdex.core.version(), version)
 
+    def testMissingUsdConvertersDuringImport(self):
+        # Load the native module in a fresh interpreter without importing pxr.Gf.
+        # This exercises the same missing converter as a foreign USD runtime,
+        # without requiring a second, unsupported USD installation in the test.
+        script = """
+import importlib.util
+import os
+import sys
+
+# Python 3.8+ needs explicit DLL directories on Windows, including wheel libs.
+dll_dirs = []
+if hasattr(os, "add_dll_directory"):
+    for path in sys.argv[2:]:
+        if os.path.isdir(path):
+            dll_dirs.append(os.add_dll_directory(path))
+spec = importlib.util.spec_from_file_location("_usdex_core", sys.argv[1])
+try:
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+except ImportError as error:
+    assert isinstance(error.__cause__, TypeError), repr(error)
+    assert "No to_python" in str(error.__cause__), repr(error.__cause__)
+    assert "GfVec3f" in str(error.__cause__), repr(error.__cause__)
+else:
+    raise AssertionError("Import unexpectedly succeeded without USD converters")
+# The interpreter must remain usable after the failed extension initialization.
+assert sum(range(10)) == 45
+"""
+        modulePath = pathlib.Path(usdex.core._usdex_core.__file__).resolve()
+        pythonRoot = modulePath.parents[2]
+        dllDirs = [pythonRoot.parent / "bin", pythonRoot / "usd_exchange.libs"]
+        dllDirs.extend(pathlib.Path(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p)
+        result = subprocess.run([sys.executable, "-c", script, str(modulePath), *map(str, dllDirs)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def testBuildVersion(self):
         version = get_changelog_version_string()
         self.assertEqual(usdex.core.buildVersion().split("+")[0], version)
