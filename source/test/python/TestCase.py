@@ -124,7 +124,7 @@ class TestCase(unittest.TestCase):
 
         # Chain all predicates by "or" condition
         predicate = usd_validation_nvidia.IssuePredicates.Or(*issuePredicates)
-        unexpectedIssues = set(issues) - set(issues.filter_by(predicate))
+        unexpectedIssues = issues.filter_by(usd_validation_nvidia.IssuePredicates.Not(predicate))
 
         if not nonDetectedPredicates and not unexpectedIssues:
             return
@@ -371,9 +371,8 @@ class TestCase(unittest.TestCase):
 
         issues = result.issues()
         if issuePredicates:
-            allowedIssues = issues.filter_by(usd_validation_nvidia.IssuePredicates.Or(*issuePredicates))
-            if allowedIssues:
-                issues = usd_validation_nvidia.IssuesList(list(set(issues) - set(allowedIssues)))
+            predicate = usd_validation_nvidia.IssuePredicates.Or(*issuePredicates)
+            issues = issues.filter_by(usd_validation_nvidia.IssuePredicates.Not(predicate))
 
         return issues
 
