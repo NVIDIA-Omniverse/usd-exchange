@@ -40,7 +40,7 @@ namespace usdex::core
 //! favoring the newer `inputs:` attributes.  This is to help with existing USD files containing lights that were authored with
 //! older light schema that didn't include `inputs:` attributes.
 //!
-//! [UsdLux Light CHANGELOG note for 21.02](https://github.com/PixarAnimationStudios/USD/blob/release/CHANGELOG.md#2102---2021-01-18)
+//! [UsdLux Light CHANGELOG note for 21.02](https://github.com/PixarAnimationStudios/OpenUSD/blob/v21.02/CHANGELOG.md#2102---2021-01-18)
 //!
 //! @{
 

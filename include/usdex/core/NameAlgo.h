@@ -56,10 +56,11 @@ namespace usdex::core
 //! identifier. However, it creates a non-bidirectional relationship, for example, something like `カーテンウォール` would be transformed into
 //! `_______________`.
 //!
-//! As an alternative, the default transcoding provided with the functions bellow follows the approach outlined in the [Bi-Directional Transcoding of
-//! Invalid Identifiers](https://github.com/PixarAnimationStudios/OpenUSD-proposals/tree/main/proposals/transcoding_invalid_identifiers) proposal.
-//! This algorithm can transform any identifier (potentially with invalid characters) into a valid identifier, in a reversible, unique, and easily
+//! As an alternative, the functions below follow the draft proposal [Bi-Directional Transcoding of Invalid Identifiers][transcoding].
+//! This algorithm transforms any identifier, including invalid characters, into a valid identifier in a reversible, unique, and easily
 //! identifiable manner.
+//!
+//! [transcoding]: https://github.com/PixarAnimationStudios/OpenUSD-proposals/tree/main/proposals/_notPublished/draft/transcoding_invalid_identifiers
 //!
 //! - For any legal identifier in a given runtime, this transcoding will produce no changes.
 //! - For illegal identifiers, the transcoding will produce a human readable name that meets the requirements of the runtime.

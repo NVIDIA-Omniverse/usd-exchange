@@ -177,6 +177,8 @@ from pathlib import Path
 with (Path(__file__).parent / "tools/pyproject/pyproject.toml").open("rb") as project_file:
     source_substitutions["python_requires"] = tomllib.load(project_file)["project"]["requires-python"]
 
+templates_path = ["tools/docs/templates"]
+
 autodoc_member_order = 'bysource'
 extensions += ["autodocsumm"] # enables :autosummary: flag in automodule directives
 """

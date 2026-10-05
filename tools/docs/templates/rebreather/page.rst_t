@@ -1,0 +1,6 @@
+{# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. #}
+{# SPDX-License-Identifier: Apache-2.0 #}
+{# Keep the Doxygen page target: Breathe 4.36 drops it with :content-only:.
+   repo_docs already unwraps the normal directive's title and retains its target. #}
+{% extends "rebreather/base.rst_t" %}
+{% set show_members = true %}

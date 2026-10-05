@@ -268,5 +268,5 @@ We support a range of python versions, but if yours is unsupported, you will nee
 
 ```{eval-rst}
 .. warning::
-  Even if you don't require python in your application, you may still require ``libpython.so/python3.dll`` as the OpenUSD C++ libraries do link python by default unless you are using a flavor of the OpenUSD binaries without the python dependency or have explicitly built OpenUSD without python. See `install_usdex <./devtools.html#install_usdex>`_ if you want to automatically install the necessary python library.
+  Even if you don't require python in your application, you may still require ``libpython.so/python3.dll`` as the OpenUSD C++ libraries do link python by default unless you are using a flavor of the OpenUSD binaries without the python dependency or have explicitly built OpenUSD without python. See `install_usdex <./devtools.html#install-usdex>`_ if you want to automatically install the necessary python library.
 ```
