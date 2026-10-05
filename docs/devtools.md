@@ -44,7 +44,7 @@ engine = usd_validation_nvidia.ValidationEngine()
 print(engine.validate(stage))
 ```
 
-There are also [CLI examples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/source/assetValidator/README.md) of the Asset Validator in [OpenUSD Exchange Samples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples).
+There are also [CLI examples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples/blob/main/source/validateUsd/README.md) of the Asset Validator in [OpenUSD Exchange Samples](https://github.com/NVIDIA-Omniverse/usd-exchange-samples).
 
 If you are using Python's [unittest framework](https://docs.python.org/3/library/unittest.html) for your regression testing, consider trying the [`usdex.test` python module](./python-usdex-test.rst) in your test suite. It includes a few `unittest.TestCase` derived classes to simplify some common OpenUSD testing scenarios, including the Asset Validator (e.g `self.assertIsValidUsd()`).
 

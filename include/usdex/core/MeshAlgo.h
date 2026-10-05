@@ -64,7 +64,7 @@ namespace usdex::core
 //! See [UsdGeomPointBased](https://openusd.org/release/api/class_usd_geom_point_based.html#ac9a057e1f221d9a20b99887f35f84480) for details.
 //!
 //! The primary uv set will be named based on the result of
-//! [UsdUtilsGetPrimaryUVSetName()](https://openusd.org/release/api/pipeline_8h.html#aaba37cce54b9db62e0813003dc61cd07).
+//! [UsdUtilsGetPrimaryUVSetName()](https://openusd.org/release/api/pipeline_8h.html#a9ce7efb90afe51de8874873fde3b3ab4).
 //! By default the name is "st" but can be configured by extension.
 //! See [UsdUtils Pipeline](https://openusd.org/release/api/pipeline_8h.html#details) for details.
 //!

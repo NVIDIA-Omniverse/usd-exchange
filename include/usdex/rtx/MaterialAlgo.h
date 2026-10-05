@@ -37,8 +37,8 @@ namespace usdex::rtx
 //!
 //! The RTX Renderer supports several types of `UsdShadeShaders`, but it is most performant & results will be more photorealistic when using
 //! MDL shaders, especially those from the Core MDL Materials, like:
-//! - [OmniPBR](https://docs.omniverse.nvidia.com/materials-and-rendering/latest/materials.html#omnipbr)
-//! - [OmniGlass](https://docs.omniverse.nvidia.com/materials-and-rendering/latest/materials.html#omniglass)
+//! - [OmniPBR](https://docs.omniverse.nvidia.com/materials-and-rendering/latest/templates/OmniPBR.html)
+//! - [OmniGlass](https://docs.omniverse.nvidia.com/materials-and-rendering/latest/templates/OmniGlass.html)
 //!
 //! Several functions below assist with authoring and adding textures to PBR and Glass Materials that are specifically tailored for the RTX Renderer.
 //!
