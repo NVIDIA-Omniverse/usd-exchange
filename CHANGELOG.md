@@ -1,5 +1,11 @@
 # 3.0.1rc1
 
+## Pybind
+
+### Fixes
+
+- Fixed Python bindings to propagate exceptions correctly during module initialization & function calls instead of crashing or losing the original error
+
 ## Test
 
 ### Fixes

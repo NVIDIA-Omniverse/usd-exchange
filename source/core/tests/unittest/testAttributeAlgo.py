@@ -32,6 +32,17 @@ class AttributeAlgoTest(usdex.test.TestCase):
         stage.SetEditTarget(Usd.EditTarget(strongerLayer))
         return stage, weakerLayer, strongerLayer, sphere
 
+    def testArrayConversionPreservesPythonError(self):
+        stage = Usd.Stage.CreateInMemory()
+        prim = stage.DefinePrim("/Test")
+        attr = prim.CreateAttribute("ints", Sdf.ValueTypeNames.IntArray)
+        # Conversion accepts the list, then fails while extracting an element.
+        with self.assertRaises(OverflowError):
+            usdex.core.setEffectiveAttributeValue(prim, "ints", [1, 2**100])
+        self.assertFalse(attr.HasAuthoredValueOpinion())
+        self.assertTrue(usdex.core.setEffectiveAttributeValue(prim, "ints", [1, 2]))
+        self.assertEqual(attr.Get(), Vt.IntArray([1, 2]))
+
     def testSparseAuthoringSkipsFallbackValue(self):
         stage = Usd.Stage.CreateInMemory()
         usdex.core.configureStage(stage, self.defaultPrimName, self.defaultUpAxis, self.defaultLinearUnits, self.defaultAuthoringMetadata)

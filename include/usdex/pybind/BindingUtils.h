@@ -49,13 +49,32 @@ template <typename T> struct caster
     bool check() const { return ext.check(); }
 
     // From-Python conversion.
-    operator T() { return ext(); }
-    T operator()() { return ext(); }
+    operator T() { return (*this)(); }
+    T operator()()
+    {
+        try
+        {
+            return ext();
+        }
+        catch (const PXR_BOOST_PYTHON_NAMESPACE::error_already_set&)
+        {
+            throw pybind11::error_already_set();
+        }
+    }
 
     // To-Python conversion.
     static pybind11::handle to_python(T & src)
     {
-        return PXR_BOOST_PYTHON_NAMESPACE::incref(PXR_BOOST_PYTHON_NAMESPACE::object(src).ptr());
+        try
+        {
+            return PXR_BOOST_PYTHON_NAMESPACE::incref(PXR_BOOST_PYTHON_NAMESPACE::object(src).ptr());
+        }
+        catch (const PXR_BOOST_PYTHON_NAMESPACE::error_already_set&)
+        {
+            // Boost.Python's exception is not a std::exception. Translate it so
+            // pybind11 also handles failures while converting module defaults.
+            throw pybind11::error_already_set();
+        }
     }
 
     PXR_BOOST_PYTHON_NAMESPACE::object obj;
