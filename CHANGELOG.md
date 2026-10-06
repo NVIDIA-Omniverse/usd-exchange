@@ -1,4 +1,4 @@
-# 3.0.1rc1
+# 3.0.1rc2
 
 ## Pybind
 
@@ -21,12 +21,17 @@
 - Updated OpenUSD & MaterialX builds to avoid DLL name conflicts on Windows
 - Fixed the Windows wheels to preserve `PXR_USD_WINDOWS_DLL_PATH` overrides & the `PATH` fallback
 - Fixed the Linux wheel platform tag to allow installation on `manylinux_2_34` systems, such as Rocky Linux 9 & AlmaLinux 9
+- Changed the Linux wheels to bundle OpenUSD, oneTBB & MaterialX under their original library names, matching the Windows wheels
+  - Native wheels that link OpenUSD should depend on these libraries rather than bundle their own copies
+  - oneTBB and MaterialX library names are no longer globally unique, but retain ABI stable version suffixes
+- Fixed the `UsdProfiles` plugin library path in Linux wheels
 - Removed the Linux wheels' dependency on a shared `libpython` to support statically linked Python runtimes
 - Fixed CMake package naming & versioned `find_package` requests
   - Use `find_package(usdex)`; `find_package(usd-exchange)` remains supported with a deprecation warning
 
 ## Documentation
 
+- Fixed documentation links & preserved generated page anchors
 - Added the supported Python version range to the Getting Started guide
 - Updated deployment instructions & Agent Skills for the CMake package changes
 
