@@ -34,7 +34,8 @@ def __stage_linux_libraries(patchelf: list, source_lib: str, libs_root: str) -> 
             continue
         # stdout only: the first `uv tool run` reports installing patchelf on stderr
         soname = subprocess.run([*patchelf, "--print-soname", lib], capture_output=True, text=True, check=True).stdout.strip()
-        soname = soname or os.path.basename(lib)
+        if not soname:
+            raise omni.repo.man.ExpectedError(f"{lib} has no SONAME, so nothing could depend on it by its staged name")
         if not soname.startswith("lib") or ".so" not in soname or "/" in soname:
             raise omni.repo.man.ExpectedError(f"Unexpected SONAME {soname!r} for {lib}")
         if soname in staged:
@@ -58,47 +59,6 @@ def __set_linux_rpaths(patchelf: list, staging_dir: str):
         relative = os.path.relpath(libs_root, os.path.dirname(binary))
         rpath = "$ORIGIN" if relative == "." else f"$ORIGIN/{relative}"
         omni.repo.man.run_process([*patchelf, "--force-rpath", "--set-rpath", rpath, binary], exit_on_error=True)
-
-
-def __drop_libpython_dependency(uv: str, patchelf_version: str, unpacked: str):
-    """Remove every ``libpython`` ``DT_NEEDED`` entry from the wheel's shared libraries.
-
-    A wheel must resolve the CPython symbols from whichever interpreter imported it, so auditwheel drops these
-    entries from the binaries the wheel already contained, but it does not repeat that pass over the libraries
-    it grafts in. Those keep the dependency, and an interpreter that ships no ``libpython`` shared library then
-    fails the import with "libpython3.x.so.1.0: cannot open shared object file".
-    """
-    patchelf = [uv, "tool", "run", "--from", f"patchelf=={patchelf_version}", "patchelf"]
-    for lib in glob.glob(f"{unpacked}/**/*.so*", recursive=True):
-        if os.path.islink(lib) or not os.path.isfile(lib):
-            continue
-        with open(lib, "rb") as binary:
-            if binary.read(4) != b"\x7fELF":
-                continue
-        _, output = omni.repo.man.run_process_return_output([*patchelf, "--print-needed", lib], exit_on_error=True, print_stdout=False)
-        for needed in [line.strip() for line in output if line.strip().startswith("libpython")]:
-            omni.repo.man.run_process([*patchelf, "--remove-needed", needed, lib], exit_on_error=True)
-
-
-def __patch_wheel(uv: str, wheel_path: str, out_dir: str, wheel_version: str, patchelf_version: str):
-    """Apply the fixes that can only be made once auditwheel has repaired the wheel.
-
-    ``wheel unpack`` / ``wheel pack`` are used so the wheel's ``RECORD`` is regenerated correctly.
-    """
-    with tempfile.TemporaryDirectory() as tmp:
-        omni.repo.man.run_process(
-            [uv, "tool", "run", "--from", f"wheel=={wheel_version}", "wheel", "unpack", wheel_path, "--dest", tmp],
-            exit_on_error=True,
-        )
-        unpacked = glob.glob(f"{tmp}/*/")[0].rstrip("/")
-
-        __drop_libpython_dependency(uv, patchelf_version, unpacked)
-
-        # repack (regenerates dist-info/RECORD), naming the wheel from the tags auditwheel wrote into its `WHEEL`
-        omni.repo.man.run_process(
-            [uv, "tool", "run", "--from", f"wheel=={wheel_version}", "wheel", "pack", unpacked, "--dest-dir", out_dir],
-            exit_on_error=True,
-        )
 
 
 def __strip_shared_objects(lib_globs):
@@ -140,7 +100,6 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
         installDir = toolConfig["install_dir"]
         auditwheelVersion = toolConfig["auditwheel_version"]
         patchelfVersion = toolConfig["patchelf_version"]
-        wheelVersion = toolConfig["wheel_version"]
         exclusions = toolConfig.get("exclude", [])
         # "cmake": keep the lib/cmake find_package config out of the wheel (it's for native consumers)
         ignore_callable = shutil.ignore_patterns(*exclusions, "cmake")
@@ -268,6 +227,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                 # their SONAMEs as well guarantees a resolution miss can never graft a second, renamed copy; the wheel
                 # tests fail on the unresolved dependency instead. Excluded libraries inside the wheel still count
                 # towards the platform tag, since auditwheel reads the symbols of every ELF file the wheel contains.
+                # auditwheel also removes the libpython dependency from every binary the wheel contains, which now
+                # includes the staged libraries, so no binary needs one shared with the importing interpreter.
                 auditwheel_args = [
                     uv,
                     "tool",
@@ -287,8 +248,9 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Callable:
                 omni.repo.man.run_process(auditwheel_args, exit_on_error=True)
 
                 repaired = glob.glob(f"{repairDir}/*.whl")[0]
+                result = f"{installDir}/{os.path.basename(repaired)}"
                 os.makedirs(installDir, exist_ok=True)
-                __patch_wheel(uv, repaired, installDir, wheelVersion, patchelfVersion)
-                print(f"Packaged wheel installed to {installDir}/{os.path.basename(repaired)}")
+                shutil.copyfile(repaired, result)
+                print(f"Packaged wheel installed to {result}")
 
     return run_repo_tool

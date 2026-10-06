@@ -146,6 +146,19 @@ def _check_linux_libraries() -> list[str]:
         except Exception as exc:
             failures.append(f"{name} failed to load from {plugin.path}: {type(exc).__name__}: {exc}")
 
+    # the loader reuses an already-loaded library by SONAME, so confirm the shared runtime is the wheel's own copy
+    mapped = set()
+    with open("/proc/self/maps") as f:
+        for line in f:
+            fields = line.split(maxsplit=5)
+            if len(fields) == 6 and fields[5].startswith("/"):
+                mapped.add(Path(fields[5].rstrip("\n")))
+    for soname in ("libtbb.so.12", "libusd_tf.so"):
+        # another provider's copy may be mapped under the versioned file name its SONAME links to
+        sources = sorted({os.path.realpath(path) for path in mapped if path.name == soname or path.name.startswith(f"{soname}.")})
+        if sources != [os.path.realpath(libs / soname)]:
+            failures.append(f"{soname} is mapped from {sources or 'nowhere'}, expected only {libs / soname}")
+
     if not failures:
         print(f"  Linux libraries: {len(list(libs.glob('*.so*')))} under their SONAMEs, {len(binaries)} binaries resolve [ok]")
     return failures
