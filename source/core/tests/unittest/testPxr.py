@@ -192,11 +192,12 @@ print(buffer.value)
         self.assertTrue(hasattr(UsdRender, "Settings"))
         self.assertTrue(hasattr(UsdMtlx, "MaterialXConfigAPI"))
 
-        if Usd.GetVersion()[:2] >= (26, 8):
+        if Usd.GetVersion() >= (0, 26, 8):
             from pxr import UsdLod, UsdProfiles
 
-            self.assertTrue(hasattr(UsdLod, "LevelOfDetail"))
-            self.assertTrue(hasattr(UsdProfiles, "Profile"))
+            self.assertTrue(hasattr(UsdLod, "RootAPI"))
+            self.assertTrue(hasattr(UsdProfiles, "ClaimsAPI"))
+            self.assertTrue(hasattr(UsdProfiles, "ProfileRegistry"))
 
     def testValidatorPluginsImplemented(self):
         try:
